@@ -90,10 +90,9 @@ STYLE WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About EasyMD5"
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT           "This work is based on ""RSA Data Security, Inc. MD5 Message-Digest Algorithm"" (Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991)\n\nSpecial Thanks:",
-                    IDC_STATIC,7,7,198,32
-    LTEXT           "",IDC_STATIC,7,56,193,19,WS_DISABLED
-    LTEXT           "Contact for support",IDC_STATIC_MAILME,67,47,101,15
+    LTEXT           "This work is based on ""RSA Data Security, Inc. MD5 Message-Digest Algorithm"" (Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991)\n\nAuthor: Zhang Xiaomin (2005.3)",
+                    IDC_STATIC,7,7,198,46
+    LTEXT           "Contact for support",IDC_STATIC_MAILME,67,58,77,8
 END
 
 IDD_WMD5_DIALOG DIALOGEX 0, 0, 316, 193
@@ -101,7 +100,7 @@ STYLE DS_MODALFRAME | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
 EXSTYLE WS_EX_APPWINDOW
 CAPTION "EasyMD5"
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
 BEGIN
     CONTROL         "Progress2",IDC_QueueProgress,"msctls_progress32",
                     PBS_SMOOTH | WS_BORDER,7,15,302,16
