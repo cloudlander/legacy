@@ -896,12 +896,10 @@ void X86::EmitBeginTry(const char* label)
 	Emit("movl %%esp,%%edi\n");
 }
 
-void X86::EmitEndTry(const char* label)
+void X86::EmitEndTry()
 {
 	Emit("movl 8(%%esp),%%edi\n");
 	Emit("addl $12,%%esp\n");
-	SpillAllDirtyRegisters();
-	Emit("jmp %s\n",label);
 }
 
 void X86::EmitThrow()

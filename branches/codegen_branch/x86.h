@@ -98,7 +98,7 @@ class X86 {
 	void EmitVTableWithType(const char* label, List<const char*> *methodLabels, const char* typeName);
 	void EmitTypeObject(const char* label,const char* typeName,const char* parentName);
 	void EmitBeginTry(const char* label);
-	void EmitEndTry(const char* label);
+	void EmitEndTry();
 	void EmitThrow();
 	
 	void EmitDeclareGlobal(const char* s);

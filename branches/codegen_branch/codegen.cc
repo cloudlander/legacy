@@ -310,9 +310,9 @@ void CodeGenerator::GenBeginTry(const char* l)
   code->Append(new BeginTry(l));
 }
 
-void CodeGenerator::GenEndTry(const char* l)
+void CodeGenerator::GenEndTry()
 {
-  code->Append(new EndTry(l));
+  code->Append(new EndTry);
 }
 
 void CodeGenerator::GenThrow()

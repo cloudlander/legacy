@@ -297,16 +297,11 @@ void BeginTry::EmitSpecific(X86 *x86) {
 	x86->EmitBeginTry(labelCatchBlock);
 }
 
-EndTry::EndTry(const char* l)
-:labelExitTry(strdup(l)) {
-	Assert(labelExitTry != NULL);
-	sprintf(printed, "EndTry(ExitTryLabel: %s)\n",labelExitTry);
-}
 void EndTry::Print() {
-	printf("End Try(CatchBlockLabel: %s)\n",labelExitTry);
+	printf("End Try\n");
 }
 void EndTry::EmitSpecific(X86 *x86) {
-	x86->EmitEndTry(labelExitTry);
+	x86->EmitEndTry();
 }
 
 void Throw::Print() {

@@ -173,7 +173,7 @@ class CodeGenerator {
 	void GenTypeObject(const char* label,const char* TypeName,const char* parentName);
 
 	void GenBeginTry(const char* labelCatchBlock);
-	void GenEndTry(const char* labelExitTry);
+	void GenEndTry();
 	void GenThrow();
 	
 	void GenGlobalVar(const char* var);

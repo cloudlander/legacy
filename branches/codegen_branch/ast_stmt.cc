@@ -309,7 +309,7 @@ Location* TryStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	for(i=0;i<stmts->NumElements();i++)
 		stmts->Nth(i)->GenTac(cg,symtbl);
 	
-	cg->GenEndTry(labelExitTry);
+	cg->GenEndTry();
 
 	tryExitLabelStack.Append(labelExitTry);
 

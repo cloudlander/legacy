@@ -289,9 +289,7 @@ class BeginTry: public Instruction {
 };
 
 class EndTry: public Instruction {
-	const char* labelExitTry;
  public:
-	EndTry(const char* labelExitTry);
 	void Print();
 	void EmitSpecific(X86 *x86);
 };

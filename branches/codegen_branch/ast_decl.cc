@@ -176,7 +176,7 @@ void FnDecl::GenTopExceptionHandler(CodeGenerator* cg)
 
 	body->GenTac(cg,formalTable);
 	
-	cg->GenEndTry(labelExitTry);
+	cg->GenEndTry();
 
 	cg->GenGoto(labelExitTry);
 	
