@@ -25,6 +25,17 @@ void VarDecl::BuildSymTable(SymTable* parent)
 		parent->Append(id->GetName(),this);
 }
 
+bool VarDecl::Check(SymTable* symtbl)
+{
+	Symbol* sym=symtbl->Find(id->GetName());
+	Assert(NULL!=sym);
+	if(!type->Check(symtbl))		// error has been reported
+	{
+		type=Type::errorType;		// set as error
+		return false;
+	}
+	return true;
+}
 /* 
  * as classdecl enters a new scope,class field will be inserted to its scope 
  * also, it checkes its name into parent symbol table
@@ -74,7 +85,7 @@ void ClassDecl::DetermineLocation()
 	DEBUGLOCATIONEND(symtable)
 }
 
-const char* ClassDecl::GetExtendClass()
+const char* ClassDecl::GetExtendClassName()
 {
 		if(extends)
 			return extends->GetName();
@@ -87,6 +98,16 @@ const char* ClassDecl::GetClassName()
 	return id->GetName();
 }
 
+bool ClassDecl::Check(SymTable* symtbl)
+{
+	Assert(symtable);
+	bool ret=true;
+	for(int i=0;i<members->NumElements();i++)
+		if(false==members->Nth(i)->Check(symtable))
+			ret=false;
+	return ret;
+}
+
 void FnDecl::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL==symtable);
@@ -95,6 +116,8 @@ void FnDecl::BuildSymTable(SymTable* parent)
 	if(NULL!=sym)
 	{
 		ReportError::DeclConflict(this,sym->GetDecl());
+	// set type as error (bug fixed) !
+		type=Type::errorType;
 		return;
 	}
 	else
@@ -112,7 +135,7 @@ void FnDecl::BuildSymTable(SymTable* parent)
 	{
 		// set the actual Decl* of "this"
 		formalTable->Append("this",new VarDecl(new Identifier(*location,"this"),
-					new NamedType(new Identifier(*location,
+					new NamedType(new Identifier(*(GetParent()->GetLocation()),		// set the actual location
 					static_cast<ClassDecl*>(GetParent())->GetClassName()))));
 	}
 	DEBUGSCOPE(formalTable)
@@ -124,6 +147,9 @@ void FnDecl::BuildSymTable(SymTable* parent)
      
 void FnDecl::DetermineLocation()
 {
+	if(type && type->IsEquivalentTo(Type::errorType))
+		return;
+
 	DEBUGLOCATIONBEGIN(symtable)
 	DEBUGLOCATIONBEGIN(formalTable);
 	localoffset=-4;
@@ -139,17 +165,40 @@ void FnDecl::DetermineLocation()
 	localOffset=localoffset;
 }
 
+extern bool mainFunctionFound;
+
+bool FnDecl::Check(SymTable* symtbl)
+{
+	if(type && type->IsEquivalentTo(Type::errorType))
+		return false;
+	
+	bool ret=true;
+	int i;
+	for(i=0;i<formals->NumElements();i++)
+		if(false==formals->Nth(i)->Check(formalTable))
+			ret=false;
+	
+	if(0==strcmp("main",id->GetName()))
+		mainFunctionFound=true;
+	// return type check will be delayed until return stmt found
+	return body->Check(symtbl) && ret;
+}
+
 void FnDecl::GenCode(CodeGenerator* cg)
 {
-	BeginMainFunc* pm;
-	BeginFunc* pf;
+	BeginMainFunc* pm=NULL;
+	BeginFunc* pf=NULL;
 	if(0==strcmp("main",id->GetName()))
 		pm=cg->GenBeginMainFunc();
 	else
 		pf=cg->GenBeginFunc();
+
 	localoffset=localOffset;
 	
-	body->GenTac(cg,formalTable);
+	if(pm)
+		GenTopExceptionHandler(cg);
+	else
+		body->GenTac(cg,formalTable);
 	
 	frameSize=-(4+localoffset);
 
@@ -158,6 +207,56 @@ void FnDecl::GenCode(CodeGenerator* cg)
 	else
 		pf->SetFrameSize(frameSize);
 	cg->GenEndFunc();
+}
+
+extern int bie_size;
+extern BuiltInException bie[];
+
+void FnDecl::GenTopExceptionHandler(CodeGenerator* cg)
+{
+	char* labelCatchBlock=cg->NewLabel();
+	char* labelExitTry=cg->NewLabel();
+
+	cg->GenBeginTry(labelCatchBlock);
+
+	body->GenTac(cg,formalTable);
+	
+	cg->GenEndTry();
+
+	cg->GenGoto(labelExitTry);
+	
+	cg->GenLabel(labelCatchBlock);
+
+	Location* typematch=NULL;
+	Location* typeobject=NULL;
+	Location* typedim=NULL;
+	int i;
+	for(i=0;i<bie_size-1;i++)
+	{
+		char typeLabel[100];
+		strcpy(typeLabel,bie[i].typeName);	
+		strcat(typeLabel,"_Type");
+		typeobject=cg->GenLoadLabel(typeLabel,formalTable);
+		
+		typedim=cg->GenLoadConstant(0,formalTable);
+
+		typematch=cg->GenThunkCall(IsKindOf,typeobject,typedim,formalTable);
+
+		char* catchEnd=cg->NewLabel();
+	
+		cg->GenIfZ(typematch,catchEnd);
+
+		cg->GenBuiltInCall(PrintString,cg->GenLoadConstant(bie[i].errMsg,formalTable),NULL,formalTable);
+
+		cg->GenGoto(labelExitTry);
+	
+		cg->GenLabel(catchEnd);
+	}
+
+	/* catch the unhandled exception if no matching found */
+	cg->GenBuiltInCall(PrintString,cg->GenLoadConstant(bie[i].errMsg,formalTable),NULL,formalTable);
+	
+	cg->GenLabel(labelExitTry);
 }
 
 Decl::Decl(Identifier *n) : Node(*n->GetLocation()) {

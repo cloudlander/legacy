@@ -278,11 +278,37 @@
 
 	进行处理。
 
-	
+
+
+	(now)未执行的类型检查:
+
+	1. 所有控制路径都有返回值
+
+	2. not check the accessisibility of field (bad4.curry,bad8.curry)	/* fixed */
+
+	3. parameter check/call check	/* fixed */
+
+	4. virtual function signature checking (testcases3/bad/bad13.curry)	/* fixed */
+
+	5. should class variable be overided? (testcases3/bad/bad16.curry)	
 
 	
 
+	bug:/* fixed */
+
+	unknown class checking? (bad14.curry,bad17.curry)
+
 	
+
+	Note:
+
+	(1): some errors may be ommited by me (e.g. testcases3/bad/bad8.curry)
+
+	(2): CALL/break/return in parser.y may contain error! (location issue) (bad6.curry bad9.curry)
+
+	(3): double type implementated before? (testcases3/bad/bad1.curry)
+
+
 
 4.  代码生成
 
@@ -322,9 +348,65 @@
 
 
 
-5.	外部.c程序和.s的全局变量之间的共享
+5.	外部.c程序和.s的全局变量之间的共享(/* 此处有误,情况并不是这样,thunk.c中已经体现,作为
+
+	一个日志, 这里就不删除本记录了 */)
 
 	.c 程序声明extern ... .s中使用.comm或者.data LABEL: .long(.asciz) ...但是这样共享的
 
 	都是值，如果需要得到字符串的地址(在printf时需要),则要取共享变量地址。
+
+
+
+6.	Exception Handling
+
+	基本实现框架为基于%edi的setjmp/longjmp方式。需要对x86.cc作改动,使支持堆栈的保存.
+
+	除此之外，还需要专门的动态类型识别(RTTI)的支持. 使用简单的RTTI策略，在编译阶段生成
+
+	所有的NamedType类型对象(包括类型名,父类型对象指针),同时生成所有内置基本类型的类型对象.
+
+	在thunk.c中增加一个外部函数，用以比较类型对象是否匹配(相容)
+
+	所有的NamedType类型指针都放在虚函数表的-1位置.
+
+
+
+	发生exception时所完成的动作:
+
+	(1):  根据异常对象的类型设置_exception_type(对象类型)
+
+	(2):  把异常对象的value放入_exception_value(简单考虑,不专门使用%eax)
+
+	(3):  控制跳转到catch代码段时,调用IsKindOf完成类型匹配检查
+
+
+
+	另外,由于使用edi保存jumpbuf,所以gcc不能在生成thunk.c的代码时使用到edi,这可以通过-ffixed-edi
+
+	参数确保gcc不会这样做.(事实上,目前gcc编译thunk.c时还没有使用到edi)
+
+
+
+7.	运行时异常处理
+
+	包括数组访问越界,NewArray的参数无效,以及New(Array)失败. 通过内置的异常处理机制实现.在生成main
+
+	函数的代码时,安装上顶层try/catch结构,捕捉所有的内置异常以及用户没有处理的异常.
+
+	真正的运行时检查在thunk.c中由相关函数完成,如果发生错误,则模拟throw过程抛出异常,等待被main中的
+
+	try/catch捕捉.
+
+
+
+8.	关于CYGWIN环境
+
+	cyg.sh脚本将原来的x86实现中和cygwin不兼容的代码过滤掉,现在已经不需要该程序了.
+
+	Makefile中添加-DCYGWIN可以打开cygwin支持,事实上仅仅是转变一下namemangling的方式,去掉前置的_符号
+
+	由于cygwin上的gcc默认会加上_,而Linux环境则不加,给.s和thunk.c之间的全局变量(函数)共享带来麻烦.
+
+	另外,gcc的前置_符号的命令行开关为:-fleading-underscore
 

@@ -253,3 +253,60 @@ void VTable::EmitSpecific(X86 *x86) {
   x86->EmitVTable(label, methodLabels);
 }
 
+
+VTableWithType::VTableWithType(const char *l, List<const char *> *m , const char* tn)
+  : VTable(l,m) , typeName(strdup(tn)) {
+  Assert(methodLabels != NULL && label != NULL && tn != NULL);
+  sprintf(printed, "VTableWithType for class %s", l);
+}
+void VTableWithType::Print() {
+  printf("VTableWithType %s =\n", label);
+  printf("\t%s\n", typeName);
+  for (int i = 0; i < methodLabels->NumElements(); i++) 
+    printf("\t%s,\n", methodLabels->Nth(i));
+  printf("; \n"); 
+}
+void VTableWithType::EmitSpecific(X86 *x86) {
+  x86->EmitVTableWithType(label, methodLabels,typeName);
+}
+
+TypeObject::TypeObject(const char* l,const char* tn,const char* pn)
+:label(strdup(l)),typeName(strdup(tn)),parentName(strdup(pn)) {
+	Assert(label != NULL && typeName != NULL && parentName != NULL);
+	sprintf(printed, "TypeObject of class %s",typeName);
+}
+void TypeObject::Print() {
+	printf("TypeObject %s =\n", label);
+	printf("\ttype=\"%s\"\n",typeName);
+	printf("\tparent=%s\n",parentName);
+	printf("; \n");
+}
+void TypeObject::EmitSpecific(X86 *x86) {
+	x86->EmitTypeObject(label,typeName,parentName);
+}
+	
+BeginTry::BeginTry(const char* l)
+:labelCatchBlock(strdup(l)) {
+	Assert(labelCatchBlock != NULL);
+	sprintf(printed, "BeginTry(CatchBlockLabel: %s)\n",labelCatchBlock);
+}
+void BeginTry::Print() {
+	printf("Begin Try(CatchBlockLabel: %s)\n",labelCatchBlock);
+}
+void BeginTry::EmitSpecific(X86 *x86) {
+	x86->EmitBeginTry(labelCatchBlock);
+}
+
+void EndTry::Print() {
+	printf("End Try\n");
+}
+void EndTry::EmitSpecific(X86 *x86) {
+	x86->EmitEndTry();
+}
+
+void Throw::Print() {
+	printf("Throw Exception\n");
+}
+void Throw::EmitSpecific(X86 *x86){
+	x86->EmitThrow();
+}

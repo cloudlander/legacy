@@ -52,6 +52,8 @@ class StmtBlock : public Stmt
 	void BuildSymTable(SymTable*);
 	void DetermineLocation();
 	Location* GenTac(CodeGenerator*,SymTable*);
+
+	bool Check(SymTable*);
 };
 
 class ConditionalStmt : public Stmt
@@ -73,6 +75,8 @@ class ExprStmt : public Stmt
         const char *GetPrintNameForNode() { return "ExprStmt";}
         void PrintChildren(int indentLevel);
 	Location* GenTac(CodeGenerator*,SymTable*);
+
+	bool Check(SymTable* symtbl);
 };
 
 class LoopStmt : public ConditionalStmt 
@@ -95,6 +99,7 @@ class ForStmt : public LoopStmt
 	void BuildSymTable(SymTable*);
 	void DetermineLocation();
 	Location* GenTac(CodeGenerator*,SymTable*);
+	bool Check(SymTable*);
 };
 
 class WhileStmt : public LoopStmt 
@@ -107,6 +112,8 @@ class WhileStmt : public LoopStmt
 	void BuildSymTable(SymTable*);
 	void DetermineLocation();
 	Location* GenTac(CodeGenerator*,SymTable*);
+
+	bool Check(SymTable*);
 };
 
 class IfStmt : public ConditionalStmt 
@@ -125,6 +132,8 @@ class IfStmt : public ConditionalStmt
 	void BuildSymTable(SymTable*);
 	void DetermineLocation();
 	Location* GenTac(CodeGenerator*,SymTable*);
+
+	bool Check(SymTable*);
 };
 
 class SwitchStmt : public ConditionalStmt
@@ -138,6 +147,7 @@ class SwitchStmt : public ConditionalStmt
 	void DetermineLocation();
 
 	Location* GenTac(CodeGenerator*,SymTable*);
+	bool Check(SymTable*);
 };
 
 class CaseStmt : public ConditionalStmt
@@ -151,6 +161,7 @@ class CaseStmt : public ConditionalStmt
 	void DetermineLocation();
 
 	Location* GenTac(CodeGenerator*,SymTable*);
+	bool Check(SymTable*);
 };
 
 class DefaultStmt : public Stmt
@@ -166,6 +177,7 @@ class DefaultStmt : public Stmt
 	void DetermineLocation();
 
 	Location* GenTac(CodeGenerator*,SymTable*);
+	bool Check(SymTable*);
 };
 
 class SwitchBody : public Stmt
@@ -182,6 +194,7 @@ class SwitchBody : public Stmt
 	void DetermineLocation();
 
 	Location* GenTac(CodeGenerator*,SymTable*);
+	bool Check(SymTable*);
 };
 
 class BreakStmt : public Stmt 
@@ -190,6 +203,7 @@ class BreakStmt : public Stmt
     BreakStmt(yyltype loc) : Stmt(loc) {}
     const char *GetPrintNameForNode() { return "BreakStmt"; }
 	Location* GenTac(CodeGenerator*,SymTable*);
+	bool Check(SymTable*);
 };
 
 class ReturnStmt : public Stmt  
@@ -202,6 +216,8 @@ class ReturnStmt : public Stmt
     const char *GetPrintNameForNode() { return "ReturnStmt"; }
     void PrintChildren(int indentLevel);
 	Location* GenTac(CodeGenerator*,SymTable*);
+
+	bool Check(SymTable*);
 };
 
 class PrintStmt : public Stmt
@@ -214,6 +230,7 @@ class PrintStmt : public Stmt
     const char *GetPrintNameForNode() { return "PrintStmt"; }
     void PrintChildren(int indentLevel);
 	Location* GenTac(CodeGenerator*,SymTable*);
+	bool Check(SymTable*);
 };
 
 class CatchStmt : public Stmt
@@ -229,7 +246,8 @@ class CatchStmt : public Stmt
 	void BuildSymTable(SymTable*);
 	void DetermineLocation();
 
-//	Location* GenTac(CodeGenerator*,SymTable*);
+	Location* GenTac(CodeGenerator*,SymTable*);
+	bool Check(SymTable*);
 };
 
 class TryStmt : public Stmt
@@ -245,7 +263,8 @@ class TryStmt : public Stmt
 	void BuildSymTable(SymTable*);
 	void DetermineLocation();
 
-//	Location* GenTac(CodeGenerator*,SymTable*);
+	Location* GenTac(CodeGenerator*,SymTable*);
+	bool Check(SymTable*);
 };
 
 class ThrowStmt : public Stmt
@@ -256,7 +275,9 @@ class ThrowStmt : public Stmt
 	  ThrowStmt(yyltype loc, Expr *excpt);
 	  const char *GetPrintNameForNode() { return "ThrowStmt"; }
 	  void PrintChildren(int indentLevel);
-//	Location* GenTac(CodeGenerator*,SymTable*);
+
+	  Location* GenTac(CodeGenerator*,SymTable*);
+	bool Check(SymTable*);
 };
 
 

@@ -5,7 +5,8 @@
 #include "ast_type.h"
 #include "ast_decl.h"
 #include "symtable.h"
- 
+#include "errors.h"
+
 /* code implementation for type checking */
 bool Type::IsCompatibleTo(Type* other)
 {
@@ -44,7 +45,34 @@ bool NamedType::IsCompatibleTo(Type* other)
 	return false;
 }
 
+bool NamedType::Check(SymTable* symtbl)
+{
+	Symbol* thissym=GetGlobalSymTable()->Find(this->GetName());
+	if(NULL==thissym)
+	{
+		ReportError::IdentifierNotDeclared(id,LookingForType);
+		return false;
+	}
+	return true;
+}
 
+int ArrayType::GetDim()
+{
+	Type* elem;
+	int d=1;
+	elem=elemType;
+	while(typeid(*elem)==typeid(ArrayType))
+	{
+		d++;
+		elem=static_cast<ArrayType*>(elem)->GetElemType();
+	}
+	return d;
+}
+
+bool ArrayType::Check(SymTable* symtbl)
+{
+	return elemType->Check(symtbl);
+}
 
 /* Class constants
  * ---------------

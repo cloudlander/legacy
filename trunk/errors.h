@@ -106,7 +106,9 @@ class ReportError
   static void Formatted(yyltype *loc, const char *format, ...);
 
   // added for symbol table operation and pp4
-  static void ParentClassNotDefined(Decl* decl,const char* parent);
+  static void ConditionalExprUnmatch(Expr *expr2,Expr *expr3);
+  static void ThrowNullNotAllowed(Expr *expr);
+  static void SwitchOnlyAcceptInteger(Expr *expr);
 
   // Returns number of error messages printed
   static int NumErrors() { return numErrors; }

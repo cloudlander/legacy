@@ -38,6 +38,8 @@ class EmptyExpr : public Expr
     const char *GetPrintNameForNode() { return "Empty"; }
 
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl){return NULL;}
+	Type* GetType(SymTable*){return type=Type::voidType;}
+	bool Check(SymTable*){return true;}
 };
 
 class IntConstant : public Expr 
@@ -51,6 +53,7 @@ class IntConstant : public Expr
     void PrintChildren(int indentLevel);
 
 	Type* GetType(SymTable* symtbl){return type=Type::intType;}
+	bool Check(SymTable*){return true;}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -65,6 +68,7 @@ class DoubleConstant : public Expr
     void PrintChildren(int indentLevel);
 
 	Type* GetType(SymTable* symtbl){return type=Type::doubleType;}
+	bool Check(SymTable*){return true;}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -79,6 +83,7 @@ class BoolConstant : public Expr
     void PrintChildren(int indentLevel);
 
 	Type* GetType(SymTable* symtbl){return type=Type::boolType;}
+	bool Check(SymTable*){return true;}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -93,6 +98,7 @@ class StringConstant : public Expr
     void PrintChildren(int indentLevel);
 
 	Type* GetType(SymTable* symtbl){return type=Type::stringType;}
+	bool Check(SymTable*){return true;}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -103,6 +109,7 @@ class NullConstant: public Expr
     const char *GetPrintNameForNode() { return "NullConstant"; }
 
 	Type* GetType(SymTable* symtbl){return type=Type::nullType;}
+	bool Check(SymTable*){return true;}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -116,6 +123,8 @@ class Operator : public Node
     const char *GetPrintNameForNode() { return "Operator"; }
     void PrintChildren(int indentLevel);
 	
+    friend ostream& operator<<(ostream& out, Operator *op) { return out << op->tokenString; }    
+
 	const char* GetOperName(){return tokenString;}
  };
  
@@ -140,6 +149,7 @@ class ArithmeticExpr : public CompoundExpr
     const char *GetPrintNameForNode() { return "ArithmeticExpr"; }
 
 	Type* GetType(SymTable* symtbl);
+	bool Check(SymTable* symtbl){return ! (GetType(symtbl)->IsEquivalentTo(Type::errorType));}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -150,6 +160,7 @@ class RelationalExpr : public CompoundExpr
     const char *GetPrintNameForNode() { return "RelationalExpr"; }
 
 	Type* GetType(SymTable* symtbl);
+	bool Check(SymTable* symtbl){return ! (GetType(symtbl)->IsEquivalentTo(Type::errorType));}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -160,6 +171,7 @@ class EqualityExpr : public CompoundExpr
     const char *GetPrintNameForNode() { return "EqualityExpr"; }
 
 	Type* GetType(SymTable* symtbl);
+	bool Check(SymTable* symtbl){return ! (GetType(symtbl)->IsEquivalentTo(Type::errorType));}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -171,6 +183,7 @@ class LogicalExpr : public CompoundExpr
     const char *GetPrintNameForNode() { return "LogicalExpr"; }
 
 	Type* GetType(SymTable* symtbl);
+	bool Check(SymTable* symtbl){return ! (GetType(symtbl)->IsEquivalentTo(Type::errorType));}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -181,6 +194,7 @@ class AssignExpr : public CompoundExpr
     const char *GetPrintNameForNode() { return "AssignExpr"; }
 
 	Type* GetType(SymTable* symtbl);
+	bool Check(SymTable* symtbl){return ! (GetType(symtbl)->IsEquivalentTo(Type::errorType));}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -198,6 +212,7 @@ class This : public Expr
     const char *GetPrintNameForNode() { return "This"; }
 
 	Type* GetType(SymTable* symtbl);
+	bool Check(SymTable* symtbl){return ! (GetType(symtbl)->IsEquivalentTo(Type::errorType));}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -212,6 +227,7 @@ class ArrayAccess : public LValue
     void PrintChildren(int indentLevel);
 
 	Type* GetType(SymTable* symtbl);
+	bool Check(SymTable* symtbl){return ! (GetType(symtbl)->IsEquivalentTo(Type::errorType));}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 
 };
@@ -233,6 +249,7 @@ class FieldAccess : public LValue
     void PrintChildren(int indentLevel);
 	
 	Type* GetType(SymTable* symtbl);
+	bool Check(SymTable* symtbl){return ! (GetType(symtbl)->IsEquivalentTo(Type::errorType));}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 	
 };
@@ -254,6 +271,8 @@ class Call : public Expr
     void PrintChildren(int indentLevel);
 	
 	Type* GetType(SymTable* symtbl);
+	bool Check(SymTable* symtbl){ return ! GetType(symtbl)->IsEquivalentTo(Type::errorType); }
+	void CheckActuals(Decl*,SymTable*);
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -268,6 +287,7 @@ class NewExpr : public Expr
     void PrintChildren(int indentLevel);
 
 	Type* GetType(SymTable* symtbl){return type=cType;}
+	bool Check(SymTable* symtbl);
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -283,6 +303,7 @@ class NewArrayExpr : public Expr
     void PrintChildren(int indentLevel);
 
 	Type* GetType(SymTable* symtbl){return type=new ArrayType(*location,elemType);}
+	bool Check(SymTable* symtbl);
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -293,6 +314,7 @@ class ReadIntegerExpr : public Expr
     const char *GetPrintNameForNode() { return "ReadIntegerExpr"; }
 
 	Type* GetType(SymTable* symtbl){return type=Type::intType;}
+	bool Check(SymTable* symtbl){return ! (GetType(symtbl)->IsEquivalentTo(Type::errorType));}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -303,6 +325,7 @@ class ReadLineExpr : public Expr
     const char *GetPrintNameForNode() { return "ReadLineExpr"; }
 
 	Type* GetType(SymTable* symtbl){return type=Type::stringType;}
+	bool Check(SymTable* symtbl){return ! (GetType(symtbl)->IsEquivalentTo(Type::errorType));}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
 
@@ -318,6 +341,7 @@ class ConditionalExpr : public Expr
     void PrintChildren(int indentLevel);
 
 	Type* GetType(SymTable* symtbl);
+	bool Check(SymTable* symtbl){return ! (GetType(symtbl)->IsEquivalentTo(Type::errorType));}
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };    
 #endif

@@ -208,7 +208,7 @@ Location *CodeGenerator::GenACall(Location *fnAddr, bool fnHasReturnValue,SymTab
   return result;
 }
  
- 
+#ifdef CYGWIN
 static struct _builtin {
   const char *label;
   int numArgs;
@@ -225,6 +225,24 @@ static struct _builtin {
    {"_Alloc", 1, true},
    {"_StringEqual", 2, true},
    {"_Halt", 0, false}};
+#else
+static struct _builtin {
+  const char *label;
+  int numArgs;
+  bool hasReturn;
+} builtins[] =
+ {{"ReadInt", 0, true},
+   {"ReadDouble", 0, true},
+   {"ReadLine", 0, true},
+   {"ReadBool", 0, true},
+   {"PrintInt", 1, false},
+   {"PrintDouble", 1, false},
+   {"PrintString", 1, false},
+   {"PrintBool", 1, false},
+   {"Alloc", 1, true},
+   {"StringEqual", 2, true},
+   {"Halt", 0, false}};
+#endif
 
 Location *CodeGenerator::GenBuiltInCall(BuiltIn bn,Location *arg1, Location *arg2, SymTable* symtbl)
 {
@@ -250,6 +268,7 @@ Location *CodeGenerator::GenBuiltInCall(BuiltIn bn,Location *arg1, Location *arg
   return result;
 }
 
+#ifdef CYGWIN
 static struct _thunk {
   const char *label;
   int numArgs;
@@ -259,8 +278,23 @@ static struct _thunk {
    {"_NewArray", 2, true},
    {"_ArrayLength", 1, true},
    {"_EqualString", 2, true},
+   {"_IsKindOf", 2, true},
+   {"_CheckIndex", 2, false},
    };
-
+#else
+static struct _thunk {
+  const char *label;
+  int numArgs;
+  bool hasReturn;
+} thunks[] =
+ {{"NewClass", 2, true},
+   {"NewArray", 2, true},
+   {"ArrayLength", 1, true},
+   {"EqualString", 2, true},
+   {"IsKindOf", 2, true},
+   {"CheckIndex", 2, false},
+   };
+#endif
 
 Location * CodeGenerator::GenThunkCall(Thunk tn, Location *arg1, Location* arg2, SymTable* symtbl)
 {
@@ -291,6 +325,31 @@ Location * CodeGenerator::GenThunkCall(Thunk tn, Location *arg1, Location* arg2,
 void CodeGenerator::GenVTable(const char *className, List<const char *> *methodLabels)
 {
   code->Append(new VTable(className, methodLabels));
+}
+
+void CodeGenerator::GenVTableWithType(const char* className, List<const char*> *methodLabels,const char* typeName)
+{
+  code->Append(new VTableWithType(className, methodLabels,typeName));
+}
+
+void CodeGenerator::GenTypeObject(const char* label,const char* TypeName,const char* parentName)
+{
+  code->Append(new TypeObject(label,TypeName,parentName));
+}
+
+void CodeGenerator::GenBeginTry(const char* l)
+{
+  code->Append(new BeginTry(l));
+}
+
+void CodeGenerator::GenEndTry()
+{
+  code->Append(new EndTry);
+}
+
+void CodeGenerator::GenThrow()
+{
+  code->Append(new Throw);
 }
 
 void CodeGenerator::GenGlobalVar(const char* var)

@@ -93,7 +93,16 @@ class Node
 		Failure(" --- GenTac in %s ---\n",GetPrintNameForNode());
 		return NULL;
 	}
-
+	
+	virtual bool Check(SymTable* symtbl)
+	{
+	    if (GetLocation()) 
+        	printf("%*d", 2, GetLocation()->first_line);
+    	else 
+	        printf("%*s", 2,"");
+		Failure(" --- Check in %s ---\n",GetPrintNameForNode());
+		return false;
+	}
 };
    
 

@@ -410,6 +410,10 @@ Symbol* SymTable::Find(const char* n,bool checkinparent)
 
 
 
+bool CheckOverideMethod(Decl* fn,Decl* fnOverided);
+
+	
+
 void SymTable::DetermineGlobalLocation()
 
 {
@@ -436,7 +440,7 @@ void SymTable::DetermineGlobalLocation()
 
 			{
 
-				const char* ext=static_cast<ClassDecl*>(sym->GetDecl())->GetExtendClass();
+				const char* ext=static_cast<ClassDecl*>(sym->GetDecl())->GetExtendClassName();
 
 				if(NULL==ext)
 
@@ -470,7 +474,9 @@ void SymTable::DetermineGlobalLocation()
 
 					{
 
-						ReportError::ParentClassNotDefined(sym->GetDecl(),ext);
+						ReportError::IdentifierNotDeclared(static_cast<ClassDecl*>(sym->GetDecl())->GetExtendClass(),LookingForClass);
+
+//						ReportError::ParentClassNotDefined(sym->GetDecl(),ext);
 
 						/* just try to handle it as a base class */
 
@@ -624,13 +630,33 @@ void SymTable::DetermineClassLocation(ClassDecl* parent,ClassDecl* me)
 
 		{
 
-			//	link the parent's location to this symbol table
-
-			sym->LinkLocation(symParent->GetLocation());
-
 			if(sym->IsMethod())	//	symbol is method)
 
 			{
+
+				if(! CheckOverideMethod(sym->GetDecl(),symParent->GetDecl())) // check the signature
+
+				{
+
+					ReportError::OverrideMismatch(sym->GetDecl()); // just ignore this error to detect more erros
+
+					sym->SetLocation(vtbRelative,methodoffset);	   // simulate it as a new found method
+
+					sym->GetDecl()->DetermineLocation();
+
+					methodoffset+=sym->GetSize();
+
+					continue;
+
+				}
+
+			
+
+				//	link the parent's location to this symbol table
+
+				sym->LinkLocation(symParent->GetLocation());
+
+				
 
 				sym->GetDecl()->DetermineLocation();			// determine the method's local variables' locations
 
@@ -786,9 +812,141 @@ int SymTable::DetermineLocalLocation(int start,int increase)
 
 
 
+bool mainFunctionFound;
+
+
+
+void SymTable::Check()
+
+{
+
+	mainFunctionFound=false;
+
+	Assert(NULL==parent);		// must be the program scope symtable
+
+	Iterator<Symbol*> iter=tbl.GetIterator();
+
+	Symbol* sym;
+
+	while(NULL!=(sym=iter.GetNextValue()))
+
+	{
+
+		Assert(sym);
+
+		sym->GetDecl()->Check(this);
+
+	}
+
+	if(!mainFunctionFound)
+
+		ReportError::NoMainFound();
+
+}
+
+
+
+const char* labelIntTypeObject="Int_Type";
+
+const char* labelDoubleTypeObject="Double_Type";
+
+const char* labelBoolTypeObject="Bool_Type";
+
+const char* labelStringTypeObject="String_Type";
+
+
+
+#ifdef CYGWIN
+
+const char* ehValue="_exception_value";
+
+const char* ehType="_exception_type";
+
+const char* ehDim="_exception_type_dim";
+
+#else
+
+const char* ehValue="exception_value";
+
+const char* ehType="exception_type";
+
+const char* ehDim="exception_type_dim";
+
+#endif
+
+
+
+Location* ehValueLoc=new Location(gpRelative,0,ehValue);
+
+Location* ehTypeLoc=new Location(gpRelative,0,ehType);
+
+Location* ehDimLoc=new Location(gpRelative,0,ehDim);
+
+
+
+BuiltInException bie[]={
+
+	{"IndexOutOfBoundException","Runtime Exception: Index Out Of Bound\\n"},
+
+	{"NewObjectFailureException", "Runtime Exception: New Operation Failed\\n"},
+
+	{"ArraySizeException", "Runtime Exception: NewArray Got Invalid Size\\n"},
+
+/* add more runtime exception here */
+
+	{"UnKnownException", "Runtime Exception: Unhandled Exception Caught\\n"}
+
+};
+
+
+
+int bie_size=sizeof(bie)/sizeof(BuiltInException);
+
+
+
 void SymTable::GenCode(CodeGenerator* cg)
 
 {
+
+	/* Generate all the internal basic type object */
+
+	cg->GenTypeObject(labelIntTypeObject,"Integer","0");
+
+	cg->GenTypeObject(labelDoubleTypeObject,"Double","0");
+
+	cg->GenTypeObject(labelBoolTypeObject,"Boolean","0");
+
+	cg->GenTypeObject(labelStringTypeObject,"String","0");
+
+
+
+	/* Generate all the builtin exception type object */
+
+	for(int i=0;i<bie_size-1;i++)
+
+	{
+
+		char typeLabel[100];
+
+		strcpy(typeLabel,bie[i].typeName);	
+
+		strcat(typeLabel,"_Type");
+
+		cg->GenTypeObject(typeLabel,bie[i].typeName,"0");
+
+	}
+
+
+
+	/* Compiler generates these three global variable to support exception handling */
+
+	cg->GenGlobalVar(ehValue);
+
+	cg->GenGlobalVar(ehType);
+
+	cg->GenGlobalVar(ehDim);
+
+
 
 	Iterator<Symbol*> iter=tbl.GetIterator();
 
@@ -808,7 +966,57 @@ void SymTable::GenCode(CodeGenerator* cg)
 
 		{
 
-			cg->GenVTable(static_cast<ClassDecl*>(sym->GetDecl())->GetVtableName(),static_cast<ClassDecl*>(sym->GetDecl())->GetVtable());
+			char typeName[100];
+
+			char typeLabel[100];
+
+			char parenttypeLabel[100];
+
+			const char* parentType=static_cast<ClassDecl*>(sym->GetDecl())->GetExtendClassName();
+
+			const char* nameType=static_cast<ClassDecl*>(sym->GetDecl())->GetClassName();
+
+
+
+			strcpy(typeLabel,nameType);
+
+			strcat(typeLabel,"_Type");
+
+			strcpy(typeName,"Class_");
+
+			strcat(typeName,nameType);
+
+			if(parentType)
+
+			{
+
+				strcpy(parenttypeLabel,parentType);
+
+				strcat(parenttypeLabel,"_Type");
+
+			}
+
+			else
+
+			{
+
+				strcpy(parenttypeLabel,"0");
+
+			}
+
+
+
+			cg->GenTypeObject(typeLabel,typeName,parenttypeLabel);
+
+			
+
+			cg->GenVTableWithType(static_cast<ClassDecl*>(sym->GetDecl())->GetVtableName(),static_cast<ClassDecl*>(sym->GetDecl())->GetVtable(),typeLabel);
+
+			
+
+//			cg->GenVTable(static_cast<ClassDecl*>(sym->GetDecl())->GetVtableName(),static_cast<ClassDecl*>(sym->GetDecl())->GetVtable());
+
+
 
 			sym->GetDecl()->GetSymTable()->GenClassCode(static_cast<ClassDecl*>(sym->GetDecl()),cg);
 
@@ -900,7 +1108,15 @@ const char* NameMangling(ClassDecl* decl,const char* func)
 
 		char* buf=new char[strlen(func)+2];
 
+#ifdef CYGWIN
+
 		strcpy(buf,"_");
+
+#else
+
+		buf[0]='\0';
+
+#endif
 
 		strcat(buf,func);
 
@@ -937,6 +1153,56 @@ const char* NameMangling(ClassDecl* decl,const char* func)
 	strcat(buf,func);
 
 	return buf;
+
+}
+
+
+
+/* check the signature of overided funtion
+
+ * return true if two functions' signature are the same
+
+ * (parameter declaration and return type)
+
+ */
+
+bool CheckOverideMethod(Decl* fn,Decl* fnOverided)
+
+{
+
+	FnDecl* childFn=static_cast<FnDecl*>(fn);
+
+	FnDecl* parentFn=static_cast<FnDecl*>(fnOverided);
+
+
+
+	if(!childFn->GetType()->IsEquivalentTo(parentFn->GetType()))
+
+		return false;
+
+	
+
+	List<VarDecl*>* childFormals=childFn->GetFormals();
+
+	List<VarDecl*>* parentFormals=parentFn->GetFormals();
+
+	if(childFormals->NumElements() != parentFormals->NumElements())
+
+		return false;
+
+	for(int i=0;i<childFormals->NumElements();i++)
+
+	{
+
+		if(! childFormals->Nth(i)->GetType()->IsEquivalentTo(
+
+				parentFormals->Nth(i)->GetType()))
+
+			return false;
+
+	}
+
+	return true;
 
 }
 
@@ -981,6 +1247,16 @@ void BuildSymTable()
 	program->BuildSymTable(0);		
 
 	program->DetermineLocation();
+
+}
+
+
+
+void TypeCheck()
+
+{
+
+	GetGlobalSymTable()->Check();
 
 }
 

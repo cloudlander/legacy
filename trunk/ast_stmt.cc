@@ -8,13 +8,25 @@
 #include "ast_expr.h"
 #include "utility.h"
 #include "symtable.h"
+#include "errors.h"
 
 /*  implemention of PP4 start */
 extern int localoffset;		// for stmtblock offset determination
-	
+
+extern Location* ehValueLoc;
+extern Location* ehTypeLoc;
+extern Location* ehDimLoc;
+
+extern const char* labelIntTypeObject;
+extern const char* labelDoubleTypeObject;
+extern const char* labelBoolTypeObject;
+extern const char* labelStringTypeObject;
+
 List<char*> exitLabelStack;	// for break stmt 
 
 Location* testExpr=NULL;			// for switch stmt
+
+List<char*> tryExitLabelStack;	// for try stmt
 
 void Program::BuildSymTable(SymTable* parent)
 {
@@ -40,6 +52,11 @@ void Program::DetermineLocation()
 	DEBUGLOCATION(symtable)
 	DEBUGLOCATIONEND(symtable)
 	
+}
+
+bool ExprStmt::Check(SymTable* symtbl)
+{
+	return expr->Check(symtbl);
 }
 
 void StmtBlock::BuildSymTable(SymTable* parent)
@@ -70,6 +87,20 @@ void StmtBlock::DetermineLocation()
 	
 }
 
+bool StmtBlock::Check(SymTable* symtbl)
+{
+	Assert(symtbl);
+	bool ret=true;
+	int i;
+	for(i=0;i<decls->NumElements();i++)
+		if(false==decls->Nth(i)->Check(symtable))
+			ret=false;
+	for(i=0;i<stmts->NumElements();i++)
+		if(false==stmts->Nth(i)->Check(symtable))
+			ret=false;
+	return ret;
+}
+
 Location* StmtBlock::GenTac(CodeGenerator* cg,SymTable* symtbl)
 {
 	Assert(cg && symtbl);
@@ -92,6 +123,28 @@ void IfStmt::DetermineLocation()
 	body->DetermineLocation();
 	if(elseBody)
 		elseBody->DetermineLocation();
+}
+
+bool IfStmt::Check(SymTable* symtbl)
+{
+	bool ret=true;
+	Type* testtype=test->GetType(symtbl);	// error should have been reported
+	Assert(testtype);
+	if(testtype->IsEquivalentTo(Type::errorType))	// bypasee
+		ret=false;
+	else if(!testtype->IsEquivalentTo(Type::boolType))
+	{	
+		ReportError::TestNotBoolean(test);
+		ret=false;
+	}
+		
+	if(elseBody)
+	{
+	   ret=body->Check(symtbl) && ret;
+	   return elseBody->Check(symtbl) && ret;
+	}
+	else
+		return body->Check(symtbl) && ret;
 }
 
 Location* IfStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
@@ -134,6 +187,21 @@ void WhileStmt::DetermineLocation()
 	body->DetermineLocation();
 }
 
+bool WhileStmt::Check(SymTable* symtbl)
+{
+	bool ret=true;
+	Type* testtype=test->GetType(symtbl);	// error should have been reported
+	Assert(testtype);
+	if(testtype->IsEquivalentTo(Type::errorType))	// bypasee
+		ret=false;
+	else if(!testtype->IsEquivalentTo(Type::boolType))
+	{	
+		ReportError::TestNotBoolean(test);
+		ret=false;
+	}
+	return body->Check(symtbl) && ret;
+}
+
 Location* WhileStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 {
 	Assert(cg && symtbl);
@@ -170,6 +238,27 @@ void ForStmt::DetermineLocation()
 	body->DetermineLocation();
 }
 
+bool ForStmt::Check(SymTable* symtbl)
+{
+	bool ret=true;
+	Type* inittype=init->GetType(symtbl);
+	Assert(inittype);
+	Type* testtype=test->GetType(symtbl);
+	Assert(testtype);
+	if(!testtype->IsEquivalentTo(Type::boolType))
+	{	
+		ReportError::TestNotBoolean(test);
+		ret=false;
+	}
+	Type* steptype=step->GetType(symtbl);
+	Assert(steptype);
+	ret=!inittype->IsEquivalentTo(Type::errorType) && ret;
+	ret=!testtype->IsEquivalentTo(Type::errorType) && ret;
+	ret=!steptype->IsEquivalentTo(Type::errorType) && ret;
+	
+	return body->Check(symtbl) && ret;
+}
+
 // for stmt's scope not very sure
 Location* ForStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 {
@@ -197,6 +286,22 @@ Location* ForStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	return NULL;
 }
 	
+bool BreakStmt::Check(SymTable* symtbl)
+{
+	Node* node=parent;
+	while(NULL!=node)
+	{
+		if(typeid(*node)==typeid(DefaultStmt) ||
+		   typeid(*node)==typeid(CaseStmt) ||
+		   typeid(*node)==typeid(ForStmt) ||
+		   typeid(*node)==typeid(WhileStmt))
+			return true;
+		node=node->GetParent();
+	}
+	ReportError::BreakOutsideLoop(this);
+	return false;
+}
+
 Location* BreakStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 {
 	Assert(cg && symtbl);
@@ -209,6 +314,51 @@ Location* BreakStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	return NULL;
 }
 
+bool ReturnStmt::Check(SymTable* symtbl)
+{
+	bool ret=true;
+	Type* rettype;
+	
+	if(expr)
+		rettype=expr->GetType(symtbl);
+	if(expr && rettype->IsEquivalentTo(Type::errorType))
+		ret=false;
+	
+	Node* node=this->parent;
+	FnDecl* decl;
+	while(node)
+	{
+		if(typeid(FnDecl)==typeid(*node))
+		{
+			decl=static_cast<FnDecl*>(node);
+			break;
+		}
+		node=node->GetParent();
+	}
+
+	Type* fnType=decl->GetType();
+	if(!rettype->IsEquivalentTo(Type::voidType) && fnType->IsEquivalentTo(Type::voidType))
+	{
+		ReportError::ReturnMismatch(this,rettype,Type::voidType);
+		ret=false;
+	}
+	else if(expr) // check return type 
+	{
+		if(!rettype->IsEquivalentTo(fnType) && 
+		   !rettype->IsCompatibleTo(fnType))
+		{
+			ReportError::ReturnMismatch(this,rettype,fnType);
+			ret=false;
+		}
+	}
+	else if(NULL==expr && !fnType->IsEquivalentTo(Type::voidType))
+	{
+		ReportError::ReturnMismatch(this,Type::voidType,fnType);
+		ret=false;
+	}
+	return ret;
+}
+
 Location* ReturnStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 {
 	Assert(cg && symtbl);
@@ -217,6 +367,34 @@ Location* ReturnStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 		tmp=cg->GenLoad(tmp,0,symtbl);
 	cg->GenReturn(tmp);
 	return NULL;
+}
+
+bool PrintStmt::Check(SymTable* symtbl)
+{
+	bool ret=true;
+	Assert(symtbl);
+	if(NULL==args)
+		return true;
+	for(int i=0;i<args->NumElements();i++)
+	{
+		Type* argType=args->Nth(i)->GetType(symtbl);
+		if(argType->IsEquivalentTo(Type::errorType))
+		{
+			ret=false;	
+			continue;
+		}
+		if(!argType->IsEquivalentTo(Type::intType) && 
+//		   !argType->IsEquivalentTo(Type::doubleType) &&
+		   !argType->IsEquivalentTo(Type::stringType) && 
+		   !argType->IsEquivalentTo(Type::boolType) &&
+	/* Add object address print support, just like ansi C's "%x" style */
+		   ! (typeid(NamedType)==typeid(*argType)) )
+		{
+			ReportError::PrintArgMismatch(args->Nth(i), i+1, argType);
+			ret=false;
+		}
+	}
+	return ret;
 }
 
 Location* PrintStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
@@ -254,30 +432,82 @@ void TryStmt::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL!=parent);
 	Assert(NULL==symtable);
+/*
 	symtable=new SymTable(parent,"Try Scope");
 	DEBUGSCOPEBEGIN(symtable)
+*/
 	int i;
 	for(i=0;i<stmts->NumElements();i++)
-		stmts->Nth(i)->BuildSymTable(symtable);
+		stmts->Nth(i)->BuildSymTable(parent);
 	for(i=0;i<catchblocks->NumElements();i++)
-		catchblocks->Nth(i)->BuildSymTable(symtable);
+		catchblocks->Nth(i)->BuildSymTable(parent);
+/*
 	DEBUGSCOPE(symtable)
 	DEBUGSCOPEEND(symtable)
+*/
 }
 
 void TryStmt::DetermineLocation()
 {
+/*
 	Assert(NULL!=symtable);
 	DEBUGLOCATIONBEGIN(symtable)
 	localoffset=symtable->DetermineLocalLocation(localoffset,-1);
+*/
 	int i;
 	for(i=0;i<stmts->NumElements();i++)
 		stmts->Nth(i)->DetermineLocation();
 	for(i=0;i<catchblocks->NumElements();i++)
 		catchblocks->Nth(i)->DetermineLocation();
+/*
 	DEBUGLOCATION(symtable)
 	DEBUGLOCATIONEND(symtable)
+*/	
+}
+
+bool TryStmt::Check(SymTable* symtbl)
+{
+	bool ret=true;
+	int i;
+	for(i=0;i<stmts->NumElements();i++)
+		if(! stmts->Nth(i)->Check(symtbl))
+			ret=false;
+	for(i=0;i<catchblocks->NumElements();i++)
+		if(! catchblocks->Nth(i)->Check(symtbl))
+			ret=false;
+	return ret;
+}
+
+Location* TryStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	char* labelCatchBlock=cg->NewLabel();
+	char* labelExitTry=cg->NewLabel();
+
+	cg->GenBeginTry(labelCatchBlock);
+
+	int i;
+	for(i=0;i<stmts->NumElements();i++)
+		stmts->Nth(i)->GenTac(cg,symtbl);
 	
+	cg->GenEndTry();
+
+	tryExitLabelStack.Append(labelExitTry);
+
+	cg->GenGoto(labelExitTry);
+	
+	cg->GenLabel(labelCatchBlock);
+
+	for(i=0;i<catchblocks->NumElements();i++)
+		catchblocks->Nth(i)->GenTac(cg,symtbl);
+	
+	/* rethrow the same exception if no matching found */
+	cg->GenThrow();
+	
+	cg->GenLabel(labelExitTry);
+
+	tryExitLabelStack.RemoveAt(tryExitLabelStack.NumElements()-1);
+	
+	return NULL;
 }
 
 void CatchStmt::BuildSymTable(SymTable* parent)
@@ -286,13 +516,12 @@ void CatchStmt::BuildSymTable(SymTable* parent)
 	Assert(NULL==symtable);
 	symtable=new SymTable(parent,"CatchStmt Scope");
 	DEBUGSCOPEBEGIN(symtable)
+	exception->BuildSymTable(symtable);
 	int i;
 	for(i=0;i<actions->NumElements();i++)
 		actions->Nth(i)->BuildSymTable(symtable);
 	DEBUGSCOPE(symtable)
 	DEBUGSCOPEEND(symtable)
-	
-
 }
 
 void CatchStmt::DetermineLocation()
@@ -305,8 +534,179 @@ void CatchStmt::DetermineLocation()
 		actions->Nth(i)->DetermineLocation();
 	DEBUGLOCATION(symtable)
 	DEBUGLOCATIONEND(symtable)
-	
 }
+
+bool CatchStmt::Check(SymTable* symtbl)
+{
+	Assert(NULL!=symtable);
+	Type* ehType=exception->GetType();
+	bool ret=true;
+	
+	Type* tmpType;
+	
+	if(ehType->IsEquivalentTo(Type::errorType))
+		ret=false;	
+	else
+	{
+		tmpType=ehType;
+	
+		while(typeid(ArrayType)==typeid(*tmpType))
+			tmpType=static_cast<ArrayType*>(tmpType)->GetElemType();
+		
+		if(typeid(NamedType)==typeid(*tmpType))
+		{
+			if(!tmpType->Check(symtbl))			// error should have been reported
+				ret=false;
+		}
+	}
+
+	int i;
+	for(i=0;i<actions->NumElements();i++)
+		if(false==actions->Nth(i)->Check(symtable))
+			ret=false;
+	return ret;
+}
+
+Location* CatchStmt::GenTac(CodeGenerator* cg, SymTable* symtbl)
+{
+	Assert(NULL!=symtable);
+	Type* ehType=exception->GetType();
+	Location* typematch=NULL;
+	Location* typeobject=NULL;
+	Location* typedim=NULL;
+	
+	Type* tmpType=ehType;
+
+	while(typeid(ArrayType)==typeid(*tmpType))
+		tmpType=static_cast<ArrayType*>(tmpType)->GetElemType();
+	
+	if(typeid(NamedType)==typeid(*tmpType))
+	{
+		char typeLabel[100];
+		const char* name=static_cast<NamedType*>(tmpType)->GetName();
+		strcpy(typeLabel,name);	
+		strcat(typeLabel,"_Type");
+		typeobject=cg->GenLoadLabel(typeLabel,symtable);
+	}
+	else if(tmpType->IsEquivalentTo(Type::intType))
+	{
+		typeobject=cg->GenLoadLabel(labelIntTypeObject,symtable);
+	}
+	else if(tmpType->IsEquivalentTo(Type::doubleType))
+	{
+		typeobject=cg->GenLoadLabel(labelDoubleTypeObject,symtable);
+	}
+	else if(tmpType->IsEquivalentTo(Type::boolType))
+	{
+		typeobject=cg->GenLoadLabel(labelBoolTypeObject,symtable);
+	}
+	else if(tmpType->IsEquivalentTo(Type::stringType))
+	{
+		typeobject=cg->GenLoadLabel(labelStringTypeObject,symtable);
+	}
+	else
+		Assert(0);
+
+	if(typeid(ArrayType)==typeid(*ehType))
+		typedim=cg->GenLoadConstant(static_cast<ArrayType*>(ehType)->GetDim(),symtable);
+	else
+		typedim=cg->GenLoadConstant(0,symtable);
+
+	typematch=cg->GenThunkCall(IsKindOf,typeobject,typedim,symtbl);
+
+	char* catchEnd=cg->NewLabel();
+	
+	cg->GenIfZ(typematch,catchEnd);
+	
+	cg->GenAssign(symtable->Find(exception->GetName())->GetLocation(),ehValueLoc);
+
+	int i;
+	for(i=0;i<actions->NumElements();i++)
+		actions->Nth(i)->GenTac(cg,symtable);
+
+	cg->GenGoto(tryExitLabelStack.Nth(tryExitLabelStack.NumElements()-1));
+	
+	cg->GenLabel(catchEnd);
+	return NULL;
+}
+
+bool ThrowStmt::Check(SymTable* symtbl)
+{
+	bool ret=true;
+	Type *ehType=exception->GetType(symtbl);
+	if(ehType->IsEquivalentTo(Type::errorType))
+		ret=false;
+	if(ehType->IsEquivalentTo(Type::nullType))
+	{
+		ReportError::ThrowNullNotAllowed(exception);
+		ret=false;
+	}
+	return ret;
+}
+
+Location* ThrowStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Location* tmp=exception->GenTac(cg,symtbl);
+	if(tmp->IsPointer())
+		tmp=cg->GenLoad(tmp,0,symtbl);
+	cg->GenAssign(ehValueLoc,tmp);
+	
+	Location* typeobject=NULL;
+	Location* typedim=NULL;
+	
+	Type* ehType=exception->GetType(symtbl);
+
+	Assert(! ehType->IsEquivalentTo(Type::nullType));
+	
+	Type* tmpType=ehType;
+
+	while(typeid(ArrayType)==typeid(*tmpType))
+		tmpType=static_cast<ArrayType*>(tmpType)->GetElemType();
+	
+	if(typeid(NamedType)==typeid(*ehType) && typeid(NamedType)==typeid(*tmpType))		// only determine type object dynamiclly for object
+	{
+		Location *vtableaddr=cg->GenLoad(ehValueLoc,0,symtbl);
+		typeobject=cg->GenLoad(vtableaddr,-4,symtbl);
+//		cg->GenBuiltInCall(PrintInt,ehTypeLoc,NULL,symtbl);
+	}
+	else if(typeid(ArrayType)==typeid(*ehType) && typeid(NamedType)==typeid(*tmpType))	// staticly for array
+	{
+		char typeLabel[100];
+		const char* name=static_cast<NamedType*>(tmpType)->GetName();
+		strcpy(typeLabel,name);	
+		strcat(typeLabel,"_Type");
+		typeobject=cg->GenLoadLabel(typeLabel,symtbl);
+	}
+	else if(tmpType->IsEquivalentTo(Type::intType))
+	{
+		typeobject=cg->GenLoadLabel(labelIntTypeObject,symtbl);
+	}
+	else if(tmpType->IsEquivalentTo(Type::doubleType))
+	{
+		typeobject=cg->GenLoadLabel(labelDoubleTypeObject,symtbl);
+	}
+	else if(tmpType->IsEquivalentTo(Type::boolType))
+	{
+		typeobject=cg->GenLoadLabel(labelBoolTypeObject,symtbl);
+	}
+	else if(tmpType->IsEquivalentTo(Type::stringType))
+	{
+		typeobject=cg->GenLoadLabel(labelStringTypeObject,symtbl);
+	}
+	else
+		Assert(0);
+
+	cg->GenAssign(ehTypeLoc,typeobject);
+	if(typeid(ArrayType)==typeid(*ehType))
+		typedim=cg->GenLoadConstant(static_cast<ArrayType*>(ehType)->GetDim(),symtbl);
+	else
+		typedim=cg->GenLoadConstant(0,symtbl);
+	cg->GenAssign(ehDimLoc,typedim);
+	
+	cg->GenThrow();
+	return NULL;
+}
+
 
 /* 
  * SwitchStmt doesn't create a new scope( see parser.y for detail)
@@ -322,6 +722,18 @@ void SwitchStmt::DetermineLocation()
 {
 	Assert(NULL==symtable);
 	body->DetermineLocation();
+}
+
+bool SwitchStmt::Check(SymTable* symtbl)
+{
+	bool ret=true;
+	Type* testtype=test->GetType(symtbl);
+	if(!testtype->IsEquivalentTo(Type::intType))
+	{
+		ReportError::SwitchOnlyAcceptInteger(test);
+		ret=false;
+	}
+	return body->Check(symtbl) && ret;
 }
 
 Location* SwitchStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
@@ -364,6 +776,19 @@ void SwitchBody::DetermineLocation()
 		defaultStmt->DetermineLocation();
 }
 
+bool SwitchBody::Check(SymTable* symtbl)
+{
+	bool ret=true;
+	int i;
+	for(i=0;i<CaseStmtList->NumElements();i++)
+		if(false==CaseStmtList->Nth(i)->Check(symtbl))
+			ret=false;
+	if(defaultStmt)
+		if(false==defaultStmt->Check(symtbl))
+			ret=false;
+	return ret;
+}
+
 Location* SwitchBody::GenTac(CodeGenerator* cg,SymTable* symtbl)
 {
 	int i;
@@ -385,6 +810,18 @@ void CaseStmt::DetermineLocation()
 {
 	Assert(NULL==symtable);
 	body->DetermineLocation();
+}
+
+bool CaseStmt::Check(SymTable* symtbl)
+{
+	bool ret=true;
+	Type* testtype=test->GetType(symtbl);
+	if(!testtype->IsEquivalentTo(Type::intType))
+	{
+		ReportError::SwitchOnlyAcceptInteger(test);
+		ret=false;
+	}
+	return body->Check(symtbl) && ret;
 }
 
 Location* CaseStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
@@ -411,6 +848,11 @@ void DefaultStmt::DetermineLocation()
 {
 	Assert(NULL==symtable);
 	body->DetermineLocation();
+}
+
+bool DefaultStmt::Check(SymTable* symtbl)
+{
+	return body->Check(symtbl);
 }
 
 Location* DefaultStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)

@@ -34,8 +34,20 @@ int main(int argc, char *argv[])
     InitScanner();
     InitParser();
     yyparse();
+	
+    if(ReportError::NumErrors())
+		return -1;
+
 	BuildSymTable();
-	GenCode();
-    return (ReportError::NumErrors() == 0? 0 : -1);
+
+	TypeCheck();
+
+    if(ReportError::NumErrors() == 0)
+	{
+		GenCode();
+		return 0;
+	}
+	else
+		return -1;
 }
 

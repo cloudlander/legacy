@@ -12,6 +12,7 @@
 #include "ast.h"
 #include "list.h"
 #include <iostream>
+class SymTable;
 
 class Type : public Node 
 {
@@ -30,6 +31,7 @@ class Type : public Node
     void PrintChildren(int indentLevel);
 	
 	virtual bool IsCompatibleTo(Type* other);
+	bool Check(SymTable*){return true;}
 };
 
 class NamedType : public Type 
@@ -44,7 +46,7 @@ class NamedType : public Type
     void PrintChildren(int indentLevel);
 //  for symbol table usage
 	char* GetName(){return id->GetName();}
-
+	Identifier* GetIdentifier(){return id;}
 	bool IsEquivalentTo(Type* other)
 	{
 		if(Type::IsEquivalentTo(other))
@@ -56,6 +58,7 @@ class NamedType : public Type
 	}
 	// check if this NamedType is sub class of "other"
 	bool IsCompatibleTo(Type* other);
+	bool Check(SymTable*);
 };
 
 class ArrayType : public Type 
@@ -81,6 +84,9 @@ class ArrayType : public Type
 	}
 
 	bool IsCompatibleTo(Type* other){return false;}
+	bool Check(SymTable*);
+	/* return the dimension of this array */
+	int GetDim();
 };
 
  

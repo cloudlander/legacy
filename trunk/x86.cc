@@ -281,7 +281,7 @@ void X86::Emit(const char *fmt, ...)
 
 void X86::EmitDeclareGlobal(const char* s)
 {
-#ifndef NOCYGWIN
+#ifdef CYGWIN
 	Emit(".comm %s , %d",s,4);
 #else
 	Emit(".comm %s , %d , %d",s,4,4);
@@ -596,6 +596,7 @@ void X86::EmitLCall(Location *dst, const char *label)
 */
 
 	SpillAllDirtyRegisters();
+	/*
 	if (!strcmp(label, "_ReadInt")) {
 		Emit("# the next 2 instructions make %%ebx = %%esp - %%ebp");
 		Emit("movl\t%%esp, %%ebx");	
@@ -747,6 +748,9 @@ void X86::EmitLCall(Location *dst, const char *label)
 	else {
 	  	EmitCallInstr(dst, label, true);
 	}
+	*/
+
+	EmitCallInstr(dst,label,true);
 
     	// handle return value  
 	if (dst != NULL) {
@@ -862,6 +866,52 @@ void X86::EmitVTable(const char *label, List<const char*> *methodLabels)
   Emit(".text");
 }
 
+void X86::EmitVTableWithType(const char* label, List<const char*> *methodLabels, const char* typeName)
+{
+  Emit(".data");
+  Emit(".align 4");
+  Emit(".long\t%s\t# type object pointer\n",typeName);
+  Emit("%s:\t# label for class %s vtable", label, label);
+  for (int i = 0; i < methodLabels->NumElements(); i++)
+    Emit(".long\t%s\n", methodLabels->Nth(i));
+  Emit(".text");
+}
+
+void X86::EmitTypeObject(const char* l,const char* tn,const char* pn)
+{
+	Emit(".data");
+	Emit("asz%s: .asciz\t\"%s\"\t# typeName\n",tn,tn);
+	Emit(".align 4");
+	Emit("%s:\t#label of %s's type object",l,tn);
+	Emit(".long\tasz%s\t# typeName\n",tn);
+	Emit(".long\t%s\t# parent's type object\n",pn);
+	Emit(".text");
+}
+
+void X86::EmitBeginTry(const char* label)
+{
+	Emit("pushl %%edi\n");
+	Emit("pushl %%ebp\n");
+	Emit("pushl $%s\n",label);
+	Emit("movl %%esp,%%edi\n");
+}
+
+void X86::EmitEndTry()
+{
+	Emit("movl 8(%%esp),%%edi\n");
+	Emit("addl $12,%%esp\n");
+}
+
+void X86::EmitThrow()
+{
+	SpillAllDirtyRegisters();
+	Emit("movl %%edi,%%esp\n");
+	Emit("movl (%%esp),%%edx\n");
+	Emit("movl 4(%%esp),%%ebp\n");
+	Emit("movl 8(%%esp),%%edi\n");
+	Emit("addl $12,%%esp\n");
+	Emit("jmp *%%edx\n");
+}
 
 /* Method: EmitPreamble
  * --------------------
@@ -872,14 +922,23 @@ void X86::EmitVTable(const char *label, List<const char*> *methodLabels)
 void X86::EmitPreamble()
 {
   Emit("# standard Curry preamble");
+  /*
   Emit(".section .data");
   Emit("%s: .asciz \"%s\"", "_IntStyle", "%d");
   Emit("%s: .asciz \"%s\"", "_DoubleStyle", "%f");
   Emit("%s: .asciz \"%s\"", "_True",  "TRUE");
   Emit("%s: .asciz \"%s\"", "_False", "FALSE");
+  */
+
+#ifdef CYGWIN
   Emit(".text");
   Emit(".globl _main");
-  Emit(".type _main, @function");
+#else
+  Emit(".text");
+  Emit(".globl main");
+#endif
+
+//  Emit(".type _main, @function");
 }
 
 
@@ -934,7 +993,9 @@ X86::X86() {
   regs[ecx] = (RegContents){false, NULL, "%ecx", true};
   regs[edx] = (RegContents){false, NULL, "%edx", true};
   regs[esi]  = (RegContents){false, NULL, "%esi",  true};
-  regs[edi]  = (RegContents){false, NULL, "%edi",  true};
+  
+  //regs[edi]  = (RegContents){false, NULL, "%edi",  true};
+  regs[edi]  = (RegContents){false, NULL, "%edi",  false};
 
   regs[ebp] = (RegContents){false, NULL, "%ebp", false};
   regs[esp] = (RegContents){false, NULL, "%esp", false};

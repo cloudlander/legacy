@@ -21,6 +21,7 @@ class Type;
 class NamedType;
 class Identifier;
 class Stmt;
+class SymTable;
 
 class Decl : public Node 
 {
@@ -46,6 +47,9 @@ class VarDecl : public Decl
 
 	void BuildSymTable(SymTable*);
 	Type* GetType(){return type;}
+
+	const char* GetName(){return id->GetName();}
+	bool Check(SymTable*);
 };
 
 class ClassDecl : public Decl 
@@ -72,7 +76,8 @@ class ClassDecl : public Decl
 	int GetMethodOffset(){return methodoffset;}
 	void SetVarOffset(int v){varoffset=v;}
 	void SetMethodOffset(int m){methodoffset=m;}
-	const char* GetExtendClass();
+	Identifier* GetExtendClass(){return extends->GetIdentifier();}
+	const char* GetExtendClassName();
 	const char* GetClassName();
 	void BuildSymTable(SymTable*);
 	void DetermineLocation();
@@ -82,6 +87,7 @@ class ClassDecl : public Decl
 	void SetVtableName(const char* n){vtableName=n;}
 	
 	Type* GetType(){Assert(0);return NULL;}
+	bool Check(SymTable*);
 };
 
 /*
@@ -127,6 +133,10 @@ class FnDecl : public Decl
 
 	void GenCode(CodeGenerator* cg);
 	Type* GetType(){return returnType;}
+
+	void GenTopExceptionHandler(CodeGenerator*);
+	bool Check(SymTable*);
+	List<VarDecl*>* GetFormals(){return formals;}
 };
 
 #endif

@@ -15,23 +15,39 @@ Type* ArithmeticExpr::GetType(SymTable* symtbl)
 {
 	if(type) return type;
 
-	Type *lefttype,*righttype;
+	Type *lefttype=NULL,*righttype;
 	if(left)
+	{
 		lefttype=left->GetType(symtbl);
+		Assert(lefttype);
+		if(lefttype->IsEquivalentTo(Type::errorType))
+			type=Type::errorType;
+	}
+
 	Assert(right);
 	righttype=right->GetType(symtbl);
+	Assert(righttype);
+	if(righttype->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
 
-	if(left && lefttype->IsEquivalentTo(Type::intType) &&
+	if(type && type->IsEquivalentTo(Type::errorType))
+		return type;
+	
+	if(NULL!=left && (lefttype->IsEquivalentTo(Type::intType) &&			// bug fixed '(' and ")' issue
 	   righttype->IsEquivalentTo(Type::intType) ||
 	   lefttype->IsEquivalentTo(Type::doubleType) &&
-	   righttype->IsEquivalentTo(Type::doubleType)) 
+	   righttype->IsEquivalentTo(Type::doubleType))) 
 		return type=lefttype;
-	else if(NULL==left && righttype->IsEquivalentTo(Type::intType) ||
-			righttype->IsEquivalentTo(Type::doubleType))
+	else if(NULL==left && ( righttype->IsEquivalentTo(Type::intType) ||		// bug fixed '(' and ')' issue
+			righttype->IsEquivalentTo(Type::doubleType)) )
 		return type=righttype;
 	else
 	{
-		Failure("type not match");
+//		Failure("type not match");
+		if(left)
+			ReportError::IncompatibleOperands(op,lefttype,righttype);
+		else
+			ReportError::IncompatibleOperand(op,righttype);
 		return type=Type::errorType;
 	}
 }
@@ -43,8 +59,18 @@ Type* RelationalExpr::GetType(SymTable* symtbl)
 	Type *lefttype,*righttype;
 	Assert(left);
 	lefttype=left->GetType(symtbl);
+	Assert(lefttype);
+	if(lefttype->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
+
 	Assert(right);
 	righttype=right->GetType(symtbl);
+	Assert(righttype);
+	if(righttype->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
+	
+	if(type && type->IsEquivalentTo(Type::errorType))
+		return type;
 
 	if(lefttype->IsEquivalentTo(Type::intType) &&
 	   righttype->IsEquivalentTo(Type::intType) ||
@@ -53,7 +79,8 @@ Type* RelationalExpr::GetType(SymTable* symtbl)
 		return type=Type::boolType;
 	else
 	{
-		Failure("type not match");
+//		Failure("type not match");
+		ReportError::IncompatibleOperands(op,lefttype,righttype);
 		return type=Type::errorType;
 	}
 }
@@ -65,8 +92,18 @@ Type* EqualityExpr::GetType(SymTable* symtbl)
 	Type *lefttype,*righttype;
 	Assert(left);
 	lefttype=left->GetType(symtbl);
+	Assert(lefttype);
+	if(lefttype->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
+	
 	Assert(right);
 	righttype=right->GetType(symtbl);
+	Assert(righttype);
+	if(righttype->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
+
+	if(type && type->IsEquivalentTo(Type::errorType))
+		return type;
 
 	if(lefttype->IsEquivalentTo(righttype))
 		return type=Type::boolType;
@@ -74,7 +111,8 @@ Type* EqualityExpr::GetType(SymTable* symtbl)
 		return type=Type::boolType;
 	if(righttype->IsCompatibleTo(lefttype))
 		return type=Type::boolType;
-	Failure("type not match");
+//	Failure("type not match");
+	ReportError::IncompatibleOperands(op,lefttype,righttype);
 	return type=Type::errorType;
 }
 	
@@ -84,10 +122,22 @@ Type* LogicalExpr::GetType(SymTable* symtbl)
 
 	Type *lefttype,*righttype;
 	if(left)
+	{
 		lefttype=left->GetType(symtbl);
+		Assert(lefttype);
+		if(lefttype->IsEquivalentTo(Type::errorType))
+			type=Type::errorType;
+	}
+
 	Assert(right);
 	righttype=right->GetType(symtbl);
+	Assert(righttype);
+	if(righttype->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
 	
+	if(type && type->IsEquivalentTo(Type::errorType))
+		return type;
+
 	if(left && lefttype->IsEquivalentTo(Type::boolType)
 			&& righttype->IsEquivalentTo(Type::boolType))
 		return type=Type::boolType;
@@ -95,7 +145,12 @@ Type* LogicalExpr::GetType(SymTable* symtbl)
 		if(righttype->IsEquivalentTo(Type::boolType))
 			return type=Type::boolType;
 
-	Failure("type not match");
+//	Failure("type not match");
+	if(left)
+		ReportError::IncompatibleOperands(op,lefttype,righttype);
+	else
+		ReportError::IncompatibleOperand(op,righttype);
+
 	return type=Type::errorType;	
 }
 
@@ -106,13 +161,24 @@ Type* AssignExpr::GetType(SymTable* symtbl)
 	Type *lefttype,*righttype;
 	Assert(left);
 	lefttype=left->GetType(symtbl);
+	Assert(lefttype);
+	if(lefttype->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
+	
 	Assert(right);
 	righttype=right->GetType(symtbl);
+	Assert(righttype);
+	if(righttype->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
+
+	if(type && type->IsEquivalentTo(Type::errorType))
+		return type;
 
 	if(righttype->IsEquivalentTo(lefttype) ||
 		righttype->IsCompatibleTo(lefttype))
 		return type=lefttype;
-	Failure("type not match");
+//	Failure("type not match");
+	ReportError::IncompatibleOperands(op,lefttype,righttype);
 	return type=Type::errorType;
 }
 
@@ -139,11 +205,26 @@ Type* ArrayAccess::GetType(SymTable* symtbl)
 
 	Assert(base);
 	Type* basetype=base->GetType(symtbl);
+	Assert(basetype);
+	if(basetype->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
+	  
+	Type* subscriptType=subscript->GetType(symtbl);
+	if(!subscriptType->IsEquivalentTo(Type::intType))
+	{
+		ReportError::SubscriptNotInteger(subscript);
+		type=Type::errorType;
+	}
+
+	if(type && type->IsEquivalentTo(Type::errorType))
+		return type;
+
 	if(typeid(ArrayType) == typeid(*basetype))
 		return type=static_cast<ArrayType*>(basetype)->GetElemType();
 	else
 	{
-		Failure("array type not match");
+//		Failure("array type not match");
+		ReportError::BracketsOnNonArray(base);
 		return type=Type::errorType;
 	}
 }
@@ -156,22 +237,40 @@ Type* FieldAccess::GetType(SymTable* symtbl)
 	if(base)
 	{
 		basetype=base->GetType(symtbl);
+		Assert(basetype);
+		if(basetype->IsEquivalentTo(Type::errorType))
+			return type=Type::errorType;
+
 		if(typeid(NamedType)!=typeid(*basetype))
 		{
-			Failure("base not object type");
+//			Failure("base not object type");
+			ReportError::FieldNotFoundInBase(field,basetype);
 			return type=Type::errorType;
 		}
 		const char* classname=static_cast<NamedType*>(basetype)->GetName();			
 		Symbol* symclass=GetGlobalSymTable()->Find(classname);
-		if(NULL==symclass)
-		{
+		if(NULL==symclass)			// seems never happening
+		{	
 			Failure("type of base is an invalid class");
 			return type=Type::errorType;
 		}
 		Symbol* symfield=symclass->GetDecl()->GetSymTable()->Find(field->GetName(),true);
 		if(NULL==symfield || ! symfield->IsClassVar())
 		{
-			Failure("field not found in class");
+//			Failure("field not found in class");
+			ReportError::FieldNotFoundInBase(field,basetype);
+			return type=Type::errorType;
+		}
+		/* should check the accessibility of field */
+		Symbol* symthis=symtbl->Find("this",true);
+		if(NULL==symthis)	// FieldAccess should be in Method
+		{
+			ReportError::InaccessibleField(field,basetype);
+			return type=Type::errorType;
+		}
+		if(! symthis->GetDecl()->GetType()->IsCompatibleTo(basetype)) // check if the basetype is in its subclass
+		{
+			ReportError::InaccessibleField(field,basetype);
 			return type=Type::errorType;
 		}
 		return type=symfield->GetDecl()->GetType();
@@ -179,6 +278,7 @@ Type* FieldAccess::GetType(SymTable* symtbl)
 	else
 	{
 		Symbol* symfield=symtbl->Find(field->GetName(),true);
+ #if 0
 		if(NULL==symfield)	// try "this" as base , this seems omittable !!!!
 		{
 			Symbol* symthis=symtbl->Find("this",true);
@@ -203,37 +303,81 @@ Type* FieldAccess::GetType(SymTable* symtbl)
 			}
 			return type=symfield->GetDecl()->GetType();
 		}
+#endif
+		if(NULL==symfield)
+		{
+			ReportError::IdentifierNotDeclared(field,LookingForVariable);
+			return type=Type::errorType;
+		}
+		else if(!symfield->IsClassVar() && !symfield->IsGlobalVar() && !symfield->IsLocalVar())
+		{
+			ReportError::IdentifierNotDeclared(field,LookingForVariable);
+			return type=Type::errorType;
+		}
+
 		return type=symfield->GetDecl()->GetType();
 	}
 }
 
+void Call::CheckActuals(Decl* fnDecl,SymTable* symtbl)
+{
+	FnDecl* callee=static_cast<FnDecl*>(fnDecl);
+	List<VarDecl*>* calleeFormals=callee->GetFormals();
+	/* check the actual parameters */
+	if(calleeFormals->NumElements() != actuals->NumElements())
+	{
+		ReportError::NumArgsMismatch(field, calleeFormals->NumElements(), actuals->NumElements());
+		return;
+	}
+	
+	Type* actualType;
+	
+	for(int i=0;i<calleeFormals->NumElements();i++)
+	{
+		actualType=actuals->Nth(i)->GetType(symtbl);
+		if(! calleeFormals->Nth(i)->GetType()->IsEquivalentTo(actualType) && 
+		   ! actualType->IsCompatibleTo(calleeFormals->Nth(i)->GetType()))
+			ReportError::ArgMismatch(actuals->Nth(i),i+1,actualType,calleeFormals->Nth(i)->GetType());
+	}
+}
 
 Type* Call::GetType(SymTable* symtbl)
 {
 	if(type) return type;
 
+	/* bug fixed: must check all the actuals first */
+	for(int i=0;i<actuals->NumElements();i++)
+		actuals->Nth(i)->Check(symtbl);
+	
 	Type* basetype;
 	if(base)
 	{
 		basetype=base->GetType(symtbl);
+		Assert(basetype);
+		if(basetype->IsEquivalentTo(Type::errorType))
+			return type=Type::errorType;
+
 		if(typeid(ArrayType)==typeid(*basetype))
 		{
 			if(0==strcmp("length",field->GetName()))
 				return type=Type::intType;
 			else
 			{
-				Failure("length could only occur under array");
-				return type=Type::voidType;
+//				Failure("length could only occur under array");
+				ReportError::FieldNotFoundInBase(field,basetype);
+				return type=Type::errorType;
 			}
 		}
 		if(typeid(NamedType)!=typeid(*basetype))
 		{
-			Failure("base not object type");
+//			Failure("base not object type");
+//			ReportError::CallMethodOnNonObject(base);
+			ReportError::FieldNotFoundInBase(field,basetype);
 			return type=Type::errorType;
 		}
 		const char* classname=static_cast<NamedType*>(basetype)->GetName();			
 		Symbol* symclass=GetGlobalSymTable()->Find(classname);
-		if(NULL==symclass)
+		if(NULL==symclass)		// seems never happening
 		{
 			Failure("type of base is an invalid class");
 			return type=Type::errorType;
@@ -241,19 +385,35 @@ Type* Call::GetType(SymTable* symtbl)
 		Symbol* symfield=symclass->GetDecl()->GetSymTable()->Find(field->GetName(),true);
 		if(NULL==symfield || ! symfield->IsMethod())
 		{
-			Failure("field not found in class");
+//			Failure("field not found in class");
+			ReportError::FieldNotFoundInBase(field,basetype);
 			return type=Type::errorType;
 		}
-		return type=symfield->GetDecl()->GetType();
+		
+		CheckActuals(symfield->GetDecl(),symtbl);
+	
+		type=symfield->GetDecl()->GetType();
+		if(type->IsEquivalentTo(Type::errorType))		// maybe this method has unmatched return type
+			return type=Type::errorType;
+		return type;
+	
 	}
 	else
 	{
 		Symbol* symfield=symtbl->Find(field->GetName(),true);
 		if(NULL==symfield)	// try "this" as base
 		{
-			Failure("field not found in class");
+//			Failure("field not found in class");
+			ReportError::IdentifierNotDeclared(field,LookingForFunction);
+			return type=Type::errorType;
+		}else if(!symfield->IsFunction() && !symfield->IsMethod())
+		{
+			ReportError::IdentifierNotDeclared(field,LookingForFunction);
 			return type=Type::errorType;
 		}
+		
+		CheckActuals(symfield->GetDecl(),symtbl);
+
 		return type=symfield->GetDecl()->GetType();
 	}
 }
@@ -264,21 +424,37 @@ Type* ConditionalExpr::GetType(SymTable* symtbl)
 	Type *expr1type,*expr2type,*expr3type;
 	expr1type=expr1->GetType(symtbl);
 	Assert(expr1type);
+	if(expr1type->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
+	
 	expr2type=expr2->GetType(symtbl);
 	Assert(expr2type);
+	if(expr2type->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
+			
 	expr3type=expr3->GetType(symtbl);
 	Assert(expr3type);
+	if(expr3type->IsEquivalentTo(Type::errorType))
+		type=Type::errorType;
+
+ 	if(type && type->IsEquivalentTo(Type::errorType))
+		return type;
 
 	if(!expr1type->IsEquivalentTo(Type::boolType))
 	{
-		Failure("conditional expr1 not bool type!");
+//		Failure("conditional expr1 not bool type!");
+		ReportError::TestNotBoolean(expr1);
 		return type=Type::errorType;
 	}
-	if(expr2type->IsEquivalentTo(expr3type))
+	if(expr2type->IsEquivalentTo(expr3type) || 
+	   expr3type->IsCompatibleTo(expr2type) )
 		return type=expr2type;
+	else if(expr2type->IsCompatibleTo(expr3type))
+		return type=expr3type;
 	else
 	{
-		Failure("conditional expr2's type not equal to expr3's type");
+//		Failure("conditional expr2's type not equal to expr3's type");
+		ReportError::ConditionalExprUnmatch(expr2,expr3);
 		return type=Type::errorType;
 	}
 }
@@ -451,6 +627,14 @@ Location* ExprStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	return expr->GenTac(cg,symtbl);
 }
 
+bool NewExpr::Check(SymTable* symtbl)
+{
+	Type* ctype=GetType(symtbl);
+	if(false==ctype->Check(symtbl))	// error should have been reported
+		return false;
+	return true;
+}
+
 Location* NewExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
 {
 	Assert(cg && symtbl);
@@ -463,6 +647,17 @@ Location* NewExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	Location* sizeofclass=cg->GenLoadConstant(classsize,symtbl);
 	Location* vtableaddr=cg->GenLoadLabel(vtaddr,symtbl);
 	return cg->GenThunkCall(NewClass,sizeofclass,vtableaddr ,symtbl);
+}
+
+bool NewArrayExpr::Check(SymTable* symtbl)
+{
+	Type* sizeType=size->GetType(symtbl);
+	if(!sizeType->IsEquivalentTo(Type::intType))
+	{
+		ReportError::NewArraySizeNotInteger(size);
+		return false;
+	}
+	return true;
 }
 
 Location* NewArrayExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
@@ -508,6 +703,7 @@ Location* This::GenTac(CodeGenerator* cg,SymTable* symtbl)
 		return NULL;
 	}
 }
+
 
 Location* Call::GenTac(CodeGenerator* cg,SymTable* symtbl)
 {
@@ -723,6 +919,9 @@ Location* ArrayAccess::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	if(baseaddr->IsPointer())
 		baseaddr=cg->GenLoad(baseaddr,0,symtbl);
 
+	/* check index bound */
+	cg->GenThunkCall(CheckIndex,baseaddr,subscriptaddr,symtbl);
+	
 	Location* elemsize=cg->GenLoadConstant(4,symtbl);
 	Location* stepsize=cg->GenBinaryOp("*",subscriptaddr,elemsize,symtbl);
 	Location* elemaddr=cg->GenBinaryOp("+",baseaddr,stepsize,symtbl);
