@@ -15,6 +15,7 @@ void main() {
 	if (false) {
 	    string b;
       }
+	tester(-1);
   }
 
 }
