@@ -229,7 +229,7 @@ class CatchStmt : public Stmt
 	void BuildSymTable(SymTable*);
 	void DetermineLocation();
 
-//	Location* GenTac(CodeGenerator*,SymTable*);
+	Location* GenTac(CodeGenerator*,SymTable*);
 };
 
 class TryStmt : public Stmt
@@ -245,7 +245,7 @@ class TryStmt : public Stmt
 	void BuildSymTable(SymTable*);
 	void DetermineLocation();
 
-//	Location* GenTac(CodeGenerator*,SymTable*);
+	Location* GenTac(CodeGenerator*,SymTable*);
 };
 
 class ThrowStmt : public Stmt
@@ -256,7 +256,8 @@ class ThrowStmt : public Stmt
 	  ThrowStmt(yyltype loc, Expr *excpt);
 	  const char *GetPrintNameForNode() { return "ThrowStmt"; }
 	  void PrintChildren(int indentLevel);
-//	Location* GenTac(CodeGenerator*,SymTable*);
+
+	  Location* GenTac(CodeGenerator*,SymTable*);
 };
 
 

@@ -23,7 +23,7 @@ typedef enum { ReadInt, ReadDouble, ReadLine, ReadBool,
                           PrintInt, PrintDouble, PrintString, PrintBool,
                           Alloc, StringEqual, Halt, NumBuiltIns } BuiltIn;
 
-typedef enum { NewClass , NewArray , ArrayLength , EqualString , NumThunks } Thunk;
+typedef enum { NewClass , NewArray , ArrayLength , EqualString , IsKindOf , CheckIndex , NumThunks } Thunk;
 
 class CodeGenerator {
   private:
@@ -166,8 +166,16 @@ class CodeGenerator {
          // is tagged with a label of the class name, so when you later
          // need access to the vtable, you use LoadLabel of class name.
     void GenVTable(const char *className, List<const char*> *methodLabels);
+	
+		 // Generates vtable with type infomation
+	void GenVTableWithType(const char* className, List<const char*> *methodLabels,const char* typeName);
+		 // Generates type object
+	void GenTypeObject(const char* label,const char* TypeName,const char* parentName);
 
-
+	void GenBeginTry(const char* labelCatchBlock);
+	void GenEndTry(const char* labelExitTry);
+	void GenThrow();
+	
 	void GenGlobalVar(const char* var);
 
          // Emits the final "object code" for the program by

@@ -253,6 +253,7 @@ class ACall: public Instruction {
 };
 
 class VTable: public Instruction {
+ protected:
     List<const char *> *methodLabels;
     const char *label;
  public:
@@ -261,5 +262,43 @@ class VTable: public Instruction {
     void EmitSpecific(X86 *x86);
 };
 
+class VTableWithType: public VTable {
+	const char* typeName;
+ public:
+	VTableWithType(const char* labelForTable, List<const char*> *methodLabels,const char* tn);
+	void Print();
+	void EmitSpecific(X86 *x86);
+};
 
+class TypeObject: public Instruction {
+	const char* label;
+	const char* typeName;
+	const char* parentName;
+ public:
+	TypeObject(const char* label,const char* typeName,const char* parentName);
+	void Print();
+	void EmitSpecific(X86 *x86);
+};
+
+class BeginTry: public Instruction {
+	const char* labelCatchBlock;
+ public:
+	BeginTry(const char* labelCatchBlock);
+	void Print();
+	void EmitSpecific(X86 *x86);
+};
+
+class EndTry: public Instruction {
+	const char* labelExitTry;
+ public:
+	EndTry(const char* labelExitTry);
+	void Print();
+	void EmitSpecific(X86 *x86);
+};
+
+class Throw: public Instruction {
+ public:
+	void Print();
+	void EmitSpecific(X86 *x86);
+};	
 #endif

@@ -142,6 +142,11 @@ const char* NameMangling(ClassDecl*,const char*);
 void OverideMethod(List<const char*>* vtable,int offset,ClassDecl* decl,const char* func);
 const char* GetMangledMethod(List<const char*>* vtable,int offset);
 
+typedef struct tagBuiltInException{
+	const char* typeName;
+	const char* errMsg;
+}BuiltInException;
+
 #define DEBUGSCOPEBEGIN(X)		{if(IsDebugOn("scope")) (X)->dump_begin();}
 #define DEBUGSCOPEEND(X)		{if(IsDebugOn("scope")) (X)->dump_end();}
 #define DEBUGSCOPE(X)			{if(IsDebugOn("scope")) (X)->dump();}

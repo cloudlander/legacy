@@ -46,6 +46,8 @@ class VarDecl : public Decl
 
 	void BuildSymTable(SymTable*);
 	Type* GetType(){return type;}
+
+	const char* GetName(){return id->GetName();}
 };
 
 class ClassDecl : public Decl 
@@ -127,6 +129,8 @@ class FnDecl : public Decl
 
 	void GenCode(CodeGenerator* cg);
 	Type* GetType(){return returnType;}
+
+	void GenTopExceptionHandler(CodeGenerator*);
 };
 
 #endif

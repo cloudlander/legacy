@@ -81,6 +81,9 @@ class ArrayType : public Type
 	}
 
 	bool IsCompatibleTo(Type* other){return false;}
+
+	/* return the dimension of this array */
+	int GetDim();
 };
 
  

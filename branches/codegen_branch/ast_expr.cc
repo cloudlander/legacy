@@ -15,16 +15,16 @@ Type* ArithmeticExpr::GetType(SymTable* symtbl)
 {
 	if(type) return type;
 
-	Type *lefttype,*righttype;
+	Type *lefttype=NULL,*righttype;
 	if(left)
 		lefttype=left->GetType(symtbl);
 	Assert(right);
 	righttype=right->GetType(symtbl);
 
-	if(left && lefttype->IsEquivalentTo(Type::intType) &&
+	if(NULL!=left && (lefttype->IsEquivalentTo(Type::intType) &&
 	   righttype->IsEquivalentTo(Type::intType) ||
 	   lefttype->IsEquivalentTo(Type::doubleType) &&
-	   righttype->IsEquivalentTo(Type::doubleType)) 
+	   righttype->IsEquivalentTo(Type::doubleType))) 
 		return type=lefttype;
 	else if(NULL==left && righttype->IsEquivalentTo(Type::intType) ||
 			righttype->IsEquivalentTo(Type::doubleType))
@@ -723,6 +723,9 @@ Location* ArrayAccess::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	if(baseaddr->IsPointer())
 		baseaddr=cg->GenLoad(baseaddr,0,symtbl);
 
+	/* check index bound */
+	cg->GenThunkCall(CheckIndex,baseaddr,subscriptaddr,symtbl);
+	
 	Location* elemsize=cg->GenLoadConstant(4,symtbl);
 	Location* stepsize=cg->GenBinaryOp("*",subscriptaddr,elemsize,symtbl);
 	Location* elemaddr=cg->GenBinaryOp("+",baseaddr,stepsize,symtbl);

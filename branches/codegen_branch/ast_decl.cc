@@ -141,15 +141,19 @@ void FnDecl::DetermineLocation()
 
 void FnDecl::GenCode(CodeGenerator* cg)
 {
-	BeginMainFunc* pm;
-	BeginFunc* pf;
+	BeginMainFunc* pm=NULL;
+	BeginFunc* pf=NULL;
 	if(0==strcmp("main",id->GetName()))
 		pm=cg->GenBeginMainFunc();
 	else
 		pf=cg->GenBeginFunc();
+
 	localoffset=localOffset;
 	
-	body->GenTac(cg,formalTable);
+	if(pm)
+		GenTopExceptionHandler(cg);
+	else
+		body->GenTac(cg,formalTable);
 	
 	frameSize=-(4+localoffset);
 
@@ -158,6 +162,56 @@ void FnDecl::GenCode(CodeGenerator* cg)
 	else
 		pf->SetFrameSize(frameSize);
 	cg->GenEndFunc();
+}
+
+extern int bie_size;
+extern BuiltInException bie[];
+
+void FnDecl::GenTopExceptionHandler(CodeGenerator* cg)
+{
+	char* labelCatchBlock=cg->NewLabel();
+	char* labelExitTry=cg->NewLabel();
+
+	cg->GenBeginTry(labelCatchBlock);
+
+	body->GenTac(cg,formalTable);
+	
+	cg->GenEndTry(labelExitTry);
+
+	cg->GenGoto(labelExitTry);
+	
+	cg->GenLabel(labelCatchBlock);
+
+	Location* typematch=NULL;
+	Location* typeobject=NULL;
+	Location* typedim=NULL;
+	int i;
+	for(i=0;i<bie_size-1;i++)
+	{
+		char typeLabel[100];
+		strcpy(typeLabel,bie[i].typeName);	
+		strcat(typeLabel,"_Type");
+		typeobject=cg->GenLoadLabel(typeLabel,formalTable);
+		
+		typedim=cg->GenLoadConstant(0,formalTable);
+
+		typematch=cg->GenThunkCall(IsKindOf,typeobject,typedim,formalTable);
+
+		char* catchEnd=cg->NewLabel();
+	
+		cg->GenIfZ(typematch,catchEnd);
+
+		cg->GenBuiltInCall(PrintString,cg->GenLoadConstant(bie[i].errMsg,formalTable),NULL,formalTable);
+
+		cg->GenGoto(labelExitTry);
+	
+		cg->GenLabel(catchEnd);
+	}
+
+	/* catch the unhandled exception if no matching found */
+	cg->GenBuiltInCall(PrintString,cg->GenLoadConstant(bie[i].errMsg,formalTable),NULL,formalTable);
+	
+	cg->GenLabel(labelExitTry);
 }
 
 Decl::Decl(Identifier *n) : Node(*n->GetLocation()) {

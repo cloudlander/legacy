@@ -786,9 +786,95 @@ int SymTable::DetermineLocalLocation(int start,int increase)
 
 
 
+const char* labelIntTypeObject="Int_Type";
+
+const char* labelDoubleTypeObject="Double_Type";
+
+const char* labelBoolTypeObject="Bool_Type";
+
+const char* labelStringTypeObject="String_Type";
+
+
+
+const char* ehValue="_exception_value";
+
+const char* ehType="_exception_type";
+
+const char* ehDim="_exception_type_dim";
+
+
+
+Location* ehValueLoc=new Location(gpRelative,0,ehValue);
+
+Location* ehTypeLoc=new Location(gpRelative,0,ehType);
+
+Location* ehDimLoc=new Location(gpRelative,0,ehDim);
+
+
+
+BuiltInException bie[]={
+
+	{"IndexOutOfBoundException","Runtime Exception: Index Out Of Bound"},
+
+	{"NewObjectFailureException", "Runtime Exception: New Operation Failed"},
+
+	{"ArraySizeException", "Runtime Exception: NewArray Got Invalid Size"},
+
+/* add more runtime exception here */
+
+	{"UnKnownException", "Runtime Exception: Unhandled Exception Caught"}
+
+};
+
+
+
+int bie_size=sizeof(bie)/sizeof(BuiltInException);
+
+
+
 void SymTable::GenCode(CodeGenerator* cg)
 
 {
+
+	/* Generate all the internal basic type object */
+
+	cg->GenTypeObject(labelIntTypeObject,"Integer","0");
+
+	cg->GenTypeObject(labelDoubleTypeObject,"Double","0");
+
+	cg->GenTypeObject(labelBoolTypeObject,"Boolean","0");
+
+	cg->GenTypeObject(labelStringTypeObject,"String","0");
+
+
+
+	/* Generate all the builtin exception type object */
+
+	for(int i=0;i<bie_size-1;i++)
+
+	{
+
+		char typeLabel[100];
+
+		strcpy(typeLabel,bie[i].typeName);	
+
+		strcat(typeLabel,"_Type");
+
+		cg->GenTypeObject(typeLabel,bie[i].typeName,"0");
+
+	}
+
+
+
+	/* Compiler generates these three global variable to support exception handling */
+
+	cg->GenGlobalVar(ehValue);
+
+	cg->GenGlobalVar(ehType);
+
+	cg->GenGlobalVar(ehDim);
+
+
 
 	Iterator<Symbol*> iter=tbl.GetIterator();
 
@@ -808,7 +894,57 @@ void SymTable::GenCode(CodeGenerator* cg)
 
 		{
 
-			cg->GenVTable(static_cast<ClassDecl*>(sym->GetDecl())->GetVtableName(),static_cast<ClassDecl*>(sym->GetDecl())->GetVtable());
+			char typeName[100];
+
+			char typeLabel[100];
+
+			char parenttypeLabel[100];
+
+			const char* parentType=static_cast<ClassDecl*>(sym->GetDecl())->GetExtendClass();
+
+			const char* nameType=static_cast<ClassDecl*>(sym->GetDecl())->GetClassName();
+
+
+
+			strcpy(typeLabel,nameType);
+
+			strcat(typeLabel,"_Type");
+
+			strcpy(typeName,"Class_");
+
+			strcat(typeName,nameType);
+
+			if(parentType)
+
+			{
+
+				strcpy(parenttypeLabel,parentType);
+
+				strcat(parenttypeLabel,"_Type");
+
+			}
+
+			else
+
+			{
+
+				strcpy(parenttypeLabel,"0");
+
+			}
+
+
+
+			cg->GenTypeObject(typeLabel,typeName,parenttypeLabel);
+
+			
+
+			cg->GenVTableWithType(static_cast<ClassDecl*>(sym->GetDecl())->GetVtableName(),static_cast<ClassDecl*>(sym->GetDecl())->GetVtable(),typeLabel);
+
+			
+
+//			cg->GenVTable(static_cast<ClassDecl*>(sym->GetDecl())->GetVtableName(),static_cast<ClassDecl*>(sym->GetDecl())->GetVtable());
+
+
 
 			sym->GetDecl()->GetSymTable()->GenClassCode(static_cast<ClassDecl*>(sym->GetDecl()),cg);
 

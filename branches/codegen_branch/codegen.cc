@@ -259,6 +259,8 @@ static struct _thunk {
    {"_NewArray", 2, true},
    {"_ArrayLength", 1, true},
    {"_EqualString", 2, true},
+   {"_IsKindOf", 2, true},
+   {"_CheckIndex", 2, false},
    };
 
 
@@ -291,6 +293,31 @@ Location * CodeGenerator::GenThunkCall(Thunk tn, Location *arg1, Location* arg2,
 void CodeGenerator::GenVTable(const char *className, List<const char *> *methodLabels)
 {
   code->Append(new VTable(className, methodLabels));
+}
+
+void CodeGenerator::GenVTableWithType(const char* className, List<const char*> *methodLabels,const char* typeName)
+{
+  code->Append(new VTableWithType(className, methodLabels,typeName));
+}
+
+void CodeGenerator::GenTypeObject(const char* label,const char* TypeName,const char* parentName)
+{
+  code->Append(new TypeObject(label,TypeName,parentName));
+}
+
+void CodeGenerator::GenBeginTry(const char* l)
+{
+  code->Append(new BeginTry(l));
+}
+
+void CodeGenerator::GenEndTry(const char* l)
+{
+  code->Append(new EndTry(l));
+}
+
+void CodeGenerator::GenThrow()
+{
+  code->Append(new Throw);
 }
 
 void CodeGenerator::GenGlobalVar(const char* var)

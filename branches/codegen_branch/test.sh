@@ -6,11 +6,11 @@ do
 
 	echo "TESTING $prefix"
 
-	./cuc < $src | cyg.sh > $prefix.s
+	./cuc < $src | ./cyg.sh > $prefix.s
 
 	gcc $prefix.s thunk.c -o $prefix
 
-	./$prefix | tee log
+	./$prefix | tee -a log
 
 done
 

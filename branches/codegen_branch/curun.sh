@@ -8,7 +8,7 @@ prefix=${src%.*}
 
 echo "./cuc $param < $src > .$prefix.s"
 
-./cuc $param < $src |  cyg.sh > .$prefix.s
+./cuc $param < $src |  ./cyg.sh > .$prefix.s
 
 if [ $? -eq 0 ]
 
@@ -16,7 +16,9 @@ then
 
 	echo "gcc .$prefix.s thunk.c -o $prefix.exe"
 
-	gcc .$prefix.s thunk.c -o $prefix.exe
+#	gcc .$prefix.s thunk.c -ffixed-edi -o $prefix.exe
+
+	gcc .$prefix.s thunk.c  -o $prefix.exe
 
 	chmod +x $prefix.exe
 

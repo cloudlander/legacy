@@ -44,7 +44,18 @@ bool NamedType::IsCompatibleTo(Type* other)
 	return false;
 }
 
-
+int ArrayType::GetDim()
+{
+	Type* elem;
+	int d=1;
+	elem=elemType;
+	while(typeid(*elem)==typeid(ArrayType))
+	{
+		d++;
+		elem=static_cast<ArrayType*>(elem)->GetElemType();
+	}
+	return d;
+}
 
 /* Class constants
  * ---------------

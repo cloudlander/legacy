@@ -11,10 +11,21 @@
 
 /*  implemention of PP4 start */
 extern int localoffset;		// for stmtblock offset determination
-	
+
+extern Location* ehValueLoc;
+extern Location* ehTypeLoc;
+extern Location* ehDimLoc;
+
+extern const char* labelIntTypeObject;
+extern const char* labelDoubleTypeObject;
+extern const char* labelBoolTypeObject;
+extern const char* labelStringTypeObject;
+
 List<char*> exitLabelStack;	// for break stmt 
 
 Location* testExpr=NULL;			// for switch stmt
+
+List<char*> tryExitLabelStack;	// for try stmt
 
 void Program::BuildSymTable(SymTable* parent)
 {
@@ -254,30 +265,69 @@ void TryStmt::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL!=parent);
 	Assert(NULL==symtable);
+/*
 	symtable=new SymTable(parent,"Try Scope");
 	DEBUGSCOPEBEGIN(symtable)
+*/
 	int i;
 	for(i=0;i<stmts->NumElements();i++)
-		stmts->Nth(i)->BuildSymTable(symtable);
+		stmts->Nth(i)->BuildSymTable(parent);
 	for(i=0;i<catchblocks->NumElements();i++)
-		catchblocks->Nth(i)->BuildSymTable(symtable);
+		catchblocks->Nth(i)->BuildSymTable(parent);
+/*
 	DEBUGSCOPE(symtable)
 	DEBUGSCOPEEND(symtable)
+*/
 }
 
 void TryStmt::DetermineLocation()
 {
+/*
 	Assert(NULL!=symtable);
 	DEBUGLOCATIONBEGIN(symtable)
 	localoffset=symtable->DetermineLocalLocation(localoffset,-1);
+*/
 	int i;
 	for(i=0;i<stmts->NumElements();i++)
 		stmts->Nth(i)->DetermineLocation();
 	for(i=0;i<catchblocks->NumElements();i++)
 		catchblocks->Nth(i)->DetermineLocation();
+/*
 	DEBUGLOCATION(symtable)
 	DEBUGLOCATIONEND(symtable)
+*/	
+}
+
+Location* TryStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	char* labelCatchBlock=cg->NewLabel();
+	char* labelExitTry=cg->NewLabel();
+
+	cg->GenBeginTry(labelCatchBlock);
+
+	int i;
+	for(i=0;i<stmts->NumElements();i++)
+		stmts->Nth(i)->GenTac(cg,symtbl);
 	
+	cg->GenEndTry(labelExitTry);
+
+	tryExitLabelStack.Append(labelExitTry);
+
+	cg->GenGoto(labelExitTry);
+	
+	cg->GenLabel(labelCatchBlock);
+
+	for(i=0;i<catchblocks->NumElements();i++)
+		catchblocks->Nth(i)->GenTac(cg,symtbl);
+	
+	/* rethrow the same exception if no matching found */
+	cg->GenThrow();
+	
+	cg->GenLabel(labelExitTry);
+
+	tryExitLabelStack.RemoveAt(tryExitLabelStack.NumElements()-1);
+	
+	return NULL;
 }
 
 void CatchStmt::BuildSymTable(SymTable* parent)
@@ -286,13 +336,12 @@ void CatchStmt::BuildSymTable(SymTable* parent)
 	Assert(NULL==symtable);
 	symtable=new SymTable(parent,"CatchStmt Scope");
 	DEBUGSCOPEBEGIN(symtable)
+	exception->BuildSymTable(symtable);
 	int i;
 	for(i=0;i<actions->NumElements();i++)
 		actions->Nth(i)->BuildSymTable(symtable);
 	DEBUGSCOPE(symtable)
 	DEBUGSCOPEEND(symtable)
-	
-
 }
 
 void CatchStmt::DetermineLocation()
@@ -305,8 +354,131 @@ void CatchStmt::DetermineLocation()
 		actions->Nth(i)->DetermineLocation();
 	DEBUGLOCATION(symtable)
 	DEBUGLOCATIONEND(symtable)
-	
 }
+
+Location* CatchStmt::GenTac(CodeGenerator* cg, SymTable* symtbl)
+{
+	Assert(NULL!=symtable);
+	Type* ehType=exception->GetType();
+	Location* typematch=NULL;
+	Location* typeobject=NULL;
+	Location* typedim=NULL;
+	
+	Type* tmpType=ehType;
+
+	while(typeid(ArrayType)==typeid(*tmpType))
+		tmpType=static_cast<ArrayType*>(tmpType)->GetElemType();
+	
+	if(typeid(NamedType)==typeid(*tmpType))
+	{
+		char typeLabel[100];
+		const char* name=static_cast<NamedType*>(tmpType)->GetName();
+		strcpy(typeLabel,name);	
+		strcat(typeLabel,"_Type");
+		typeobject=cg->GenLoadLabel(typeLabel,symtable);
+	}
+	else if(tmpType->IsEquivalentTo(Type::intType))
+	{
+		typeobject=cg->GenLoadLabel(labelIntTypeObject,symtable);
+	}
+	else if(tmpType->IsEquivalentTo(Type::doubleType))
+	{
+		typeobject=cg->GenLoadLabel(labelDoubleTypeObject,symtable);
+	}
+	else if(tmpType->IsEquivalentTo(Type::boolType))
+	{
+		typeobject=cg->GenLoadLabel(labelBoolTypeObject,symtable);
+	}
+	else if(tmpType->IsEquivalentTo(Type::stringType))
+	{
+		typeobject=cg->GenLoadLabel(labelStringTypeObject,symtable);
+	}
+	else
+		Assert(0);
+
+	if(typeid(ArrayType)==typeid(*ehType))
+		typedim=cg->GenLoadConstant(static_cast<ArrayType*>(ehType)->GetDim(),symtable);
+	else
+		typedim=cg->GenLoadConstant(0,symtable);
+
+	typematch=cg->GenThunkCall(IsKindOf,typeobject,typedim,symtbl);
+
+	char* catchEnd=cg->NewLabel();
+	
+	cg->GenIfZ(typematch,catchEnd);
+	
+	cg->GenAssign(symtable->Find(exception->GetName())->GetLocation(),ehValueLoc);
+
+	int i;
+	for(i=0;i<actions->NumElements();i++)
+		actions->Nth(i)->GenTac(cg,symtable);
+
+	cg->GenGoto(tryExitLabelStack.Nth(tryExitLabelStack.NumElements()-1));
+	
+	cg->GenLabel(catchEnd);
+	return NULL;
+}
+
+Location* ThrowStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Location* tmp=exception->GenTac(cg,symtbl);
+	if(tmp->IsPointer())
+		tmp=cg->GenLoad(tmp,0,symtbl);
+	cg->GenAssign(ehValueLoc,tmp);
+	
+	Location* typeobject=NULL;
+	Location* typedim=NULL;
+	
+	Type* ehType=exception->GetType(symtbl);
+	Type* tmpType=ehType;
+
+	while(typeid(ArrayType)==typeid(*tmpType))
+		tmpType=static_cast<ArrayType*>(tmpType)->GetElemType();
+	
+	if(typeid(NamedType)==typeid(*ehType) && typeid(NamedType)==typeid(*tmpType))		// only determine type object dynamiclly for object
+	{
+		Location *vtableaddr=cg->GenLoad(ehValueLoc,0,symtbl);
+		typeobject=cg->GenLoad(vtableaddr,-4,symtbl);
+//		cg->GenBuiltInCall(PrintInt,ehTypeLoc,NULL,symtbl);
+	}
+	else if(typeid(ArrayType)==typeid(*ehType) && typeid(NamedType)==typeid(*tmpType))	// staticly for array
+	{
+		char typeLabel[100];
+		const char* name=static_cast<NamedType*>(tmpType)->GetName();
+		strcpy(typeLabel,name);	
+		strcat(typeLabel,"_Type");
+		typeobject=cg->GenLoadLabel(typeLabel,symtbl);
+	}
+	else if(tmpType->IsEquivalentTo(Type::intType))
+	{
+		typeobject=cg->GenLoadLabel(labelIntTypeObject,symtbl);
+	}
+	else if(tmpType->IsEquivalentTo(Type::doubleType))
+	{
+		typeobject=cg->GenLoadLabel(labelDoubleTypeObject,symtbl);
+	}
+	else if(tmpType->IsEquivalentTo(Type::boolType))
+	{
+		typeobject=cg->GenLoadLabel(labelBoolTypeObject,symtbl);
+	}
+	else if(tmpType->IsEquivalentTo(Type::stringType))
+	{
+		typeobject=cg->GenLoadLabel(labelStringTypeObject,symtbl);
+	}
+	else
+		Assert(0);
+
+	cg->GenAssign(ehTypeLoc,typeobject);
+	if(typeid(ArrayType)==typeid(*ehType))
+		typedim=cg->GenLoadConstant(static_cast<ArrayType*>(ehType)->GetDim(),symtbl);
+	else
+		typedim=cg->GenLoadConstant(0,symtbl);
+	cg->GenAssign(ehDimLoc,typedim);
+	
+	cg->GenThrow();
+	return NULL;
+}
+
 
 /* 
  * SwitchStmt doesn't create a new scope( see parser.y for detail)
