@@ -80,7 +80,7 @@ LONG GetRegValue(HKEY key, LPCTSTR subkey, LPCTSTR name,LPTSTR retdata)
         TCHAR data[MAX_PATH];
 		DWORD type=REG_SZ;
         RegQueryValueEx(hkey,name,NULL,&type, (LPBYTE)data, (LPDWORD)&datasize);
-        _tcscpy(retdata,data);
+        _tcsncpy(retdata,data,MAX_PATH);
         RegCloseKey(hkey);
     }
 	
@@ -306,6 +306,7 @@ done:
 		pQueue->IncDonePages(numPages);
 		pQueue->IncFinishJobs();
 		pQueue->Update();
+		TRACE("%s,%d\n",curJob->filePath,curJob->status);
 #ifdef SHOW_TIME_LEFT
 		curTickCount=GetTickCount();
 		curTickCount-=lastTickCount;
@@ -315,7 +316,7 @@ done:
 		}
 #endif
 	}
-
+	
 	return DONE;
 }
 
@@ -475,6 +476,11 @@ BOOL CWorkQueue::FetchCompareJobs(CStdioFile& stdf)
 			ju=new JobUnit;
 
 			ju->compareMd5=szBuf.Left(32);
+
+			if(m_szRootDir!=_T("") && _T(':')==str[1] && _T('\\')==str[2])
+			{
+				m_szRootDir=_T("");
+			}
 			ju->fileName=str.Right(str.GetLength() - str.ReverseFind(_T('\\')) -1);
 			ju->filePath=m_szRootDir+str;
 
@@ -769,7 +775,12 @@ void CWorkQueue::ShowResult()
 				succ++;
 			}
 			else
+			{
+				CString s;
+				s.Format("%s,%d",m_vecJobs[i]->filePath,m_vecJobs[i]->status);
+				AfxMessageBox(s);
 				errors++;
+			}
 		}
 		CString s1,s2,s3,s4;
 		s1.Format(_T("%d"),succ);
@@ -787,7 +798,9 @@ void CWorkQueue::ShowResult()
 				succ++;
 			}
 			else
+			{
 				errors++;
+			}
 		}
 		CString s1,s2;
 		s1.Format(_T("%d"),succ);
