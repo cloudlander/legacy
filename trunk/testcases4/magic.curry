@@ -56,7 +56,7 @@ void magic_other(int l,int[][] d){
 }                                                                                                                       
                                                                                                                         
 void generate(int l,int[][] d){                                                                                     
-    if (l%2)                                                                                                            
+    if (l%2>0)                                                                                                            
         magic_odd(l,d);                                                                                                 
     else if (l%4==0)                                                                                                    
         magic_4k(l,d);                                                                                                  
