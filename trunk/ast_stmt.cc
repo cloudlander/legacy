@@ -70,80 +70,41 @@ void IfStmt::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL!=parent);
 	Assert(NULL==symtable);
-	symtable=new SymTable(parent,"IfStmtBlock Scope");
-	DEBUGSCOPEBEGIN(symtable)
-	body->BuildSymTable(symtable);
-	DEBUGSCOPE(symtable)
-	DEBUGSCOPEEND(symtable)
+	body->BuildSymTable(parent);
 	if(elseBody)
-	{
-		elsetable=new SymTable(parent,"ElseBlock Scope");
-		DEBUGSCOPEBEGIN(elsetable)
-		elseBody->BuildSymTable(elsetable);
-		DEBUGSCOPE(elsetable)
-		DEBUGSCOPEEND(elsetable)
-	}
+		elseBody->BuildSymTable(parent);
 }
 
 void IfStmt::DetermineLocation()
 {
-	Assert(NULL!=symtable);
-	DEBUGLOCATIONBEGIN(symtable)
-	localoffset=symtable->DetermineLocalLocation(localoffset,-1);
-	DEBUGLOCATION(symtable)
-	DEBUGLOCATIONEND(symtable)
+	body->DetermineLocation();
 	if(elseBody)
-	{
-		DEBUGLOCATIONBEGIN(elsetable)
-		localoffset=elsetable->DetermineLocalLocation(localoffset,-1);
-		DEBUGLOCATION(elsetable)
-		DEBUGLOCATIONEND(elsetable)
-	}	
+		elseBody->DetermineLocation();
 }
 
 void WhileStmt::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL!=parent);
 	Assert(NULL==symtable);
-	symtable=new SymTable(parent,"WhileStmt Scope");
-	DEBUGSCOPEBEGIN(symtable)
-	body->BuildSymTable(symtable);
-	DEBUGSCOPE(symtable)
-	DEBUGSCOPEEND(symtable)
-	
+	body->BuildSymTable(parent);
 }
 
 void WhileStmt::DetermineLocation()
 {
-	Assert(NULL!=symtable);
-	DEBUGLOCATIONBEGIN(symtable)
-	localoffset=symtable->DetermineLocalLocation(localoffset,-1);
 	body->DetermineLocation();
-	DEBUGLOCATION(symtable)
-	DEBUGLOCATIONEND(symtable)
-	
 }
+
 
 void ForStmt::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL!=parent);
 	Assert(NULL==symtable);
-	symtable=new SymTable(parent,"ForStmt Scope");
-	DEBUGSCOPEBEGIN(symtable)
-	body->BuildSymTable(symtable);
-	DEBUGSCOPE(symtable)
-	DEBUGSCOPEEND(symtable)
+	body->BuildSymTable(parent);
 }
 
 void ForStmt::DetermineLocation()
 {
-	Assert(NULL!=symtable);
-	DEBUGLOCATIONBEGIN(symtable)
-	localoffset=symtable->DetermineLocalLocation(localoffset,-1);
 	body->DetermineLocation();
-	DEBUGLOCATION(symtable)
-	DEBUGLOCATIONEND(symtable)
-	
 }
 
 void TryStmt::BuildSymTable(SymTable* parent)
@@ -243,21 +204,13 @@ void CaseStmt::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL!=parent);
 	Assert(NULL==symtable);
-	symtable=new SymTable(parent,"CaseStmt Scope");
-	DEBUGSCOPEBEGIN(symtable)
 	body->BuildSymTable(parent);	
-	DEBUGSCOPE(symtable)
-	DEBUGSCOPEEND(symtable)
 }
 
 void CaseStmt::DetermineLocation()
 {
 	Assert(NULL!=symtable);
-	DEBUGLOCATIONBEGIN(symtable)
-	localoffset=symtable->DetermineLocalLocation(localoffset,-1);
 	body->DetermineLocation();
-	DEBUGLOCATION(symtable)
-	DEBUGLOCATIONEND(symtable)
 }
 
 
@@ -265,22 +218,13 @@ void DefaultStmt::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL!=parent);
 	Assert(NULL==symtable);
-	symtable=new SymTable(parent,"DefaultStmt Scope");
-	DEBUGSCOPEBEGIN(symtable)
 	body->BuildSymTable(parent);	
-	DEBUGSCOPE(symtable)
-	DEBUGSCOPEEND(symtable)
-	
 }
 
 void DefaultStmt::DetermineLocation()
 {
 	Assert(NULL!=symtable);
-	DEBUGLOCATIONBEGIN(symtable)
-	localoffset=symtable->DetermineLocalLocation(localoffset,-1);
 	body->DetermineLocation();
-	DEBUGLOCATION(symtable)
-	DEBUGLOCATIONEND(symtable)
 }
 
 Program::Program(List<Decl*> *d) {
