@@ -17,12 +17,13 @@
 #include <stdlib.h>
 #include "list.h"
 #include "tac.h"
- 
-
+class SymTable;
 // These codes are used to identify the built-in functions
 typedef enum { ReadInt, ReadDouble, ReadLine, ReadBool,
                           PrintInt, PrintDouble, PrintString, PrintBool,
                           Alloc, StringEqual, Halt, NumBuiltIns } BuiltIn;
+
+typedef enum { NewClass , NewArray , ArrayLength , EqualString , NumThunks } Thunk;
 
 class CodeGenerator {
   private:
@@ -52,8 +53,8 @@ class CodeGenerator {
          // Creates and returns a Location for a new uniquely named
          // temp variable. Does not generate any Tac instructions
     Location *GenTempVar();
-         // just for debug         
-    Location *GenTempVar(const char* flag);
+	
+    Location *GenTempVar(SymTable* symtbl);
 
          // Generates Tac instructions to load a constant value. Creates
          // a new temp var to hold the result. The constant 
@@ -67,14 +68,15 @@ class CodeGenerator {
     Location *GenLoadConstant(int value);
     Location *GenLoadConstant(const char *str);
     
-         // the following two function are just  for debug
-    Location *GenLoadConstant(int value,  const char* flag);
-    Location *GenLoadConstant(const char *str, const char * flag);
+    Location *GenLoadConstant(int value,  SymTable* symtbl);
+    Location *GenLoadConstant(const char *str, SymTable* symtbl);
 
     Location *GenLoadLabel(const char *label);
 
+    Location *GenLoadLabel(const char *label,SymTable* symtbl);
          // Generates Tac instructions to copy value from one location to another
-    void GenAssign(Location *dst, Location *src);
+//   void GenAssign(Location *dst, Location *src);
+    Location* GenAssign(Location *dst, Location *src);
 
          // Generates Tac instructions to dereference addr and store value
          // into that memory location. addr should hold a valid memory address
@@ -90,14 +92,14 @@ class CodeGenerator {
          // temporary variable where the result was stored. The optional
          // offset argument can be used to offset the addr by a positive or
          // negative number of bytes. If not given, 0 is assumed.
-    Location *GenLoad(Location *addr, int offset = 0);
+    Location *GenLoad(Location *addr, int offset , SymTable* symtbl);
 
     
          // Generates Tac instructions to perform one of the binary ops
          // identified by string name, such as "+" or "==".  Returns a
          // Location object for the new temporary where the result
          // was stored.
-    Location *GenBinaryOp(const char *opName, Location *op1, Location *op2, const char* flag =  NULL);
+    Location *GenBinaryOp(const char *opName, Location *op1, Location *op2, SymTable* symtbl);
 
     
          // Generates the Tac instruction for pushing a single
@@ -117,14 +119,14 @@ class CodeGenerator {
          // true,  a new temp var is created, the fn result is stored 
          // there and that Location is returned. If false, no temp is
          // created and NULL is returned
-    Location *GenLCall(const char *label, bool fnHasReturnValue, const char*  flag = NULL);
+    Location *GenLCall(const char *label, bool fnHasReturnValue, SymTable* symtbl );
 
          // Generates the Tac instructions for ACall, a jump to an
          // address computed at runtime. Works similarly to LCall,
          // described above, in terms of return type.
          // The fnAddr Location is expected to hold the address of
          // the code to jump to (typically it was read from the vtable)
-    Location *GenACall(Location *fnAddr, bool fnHasReturnValue);
+    Location *GenACall(Location *fnAddr, bool fnHasReturnValue, SymTable* symtbl);
 
          // Generates the Tac instructions to call one of
          // the built-in functions (Read, Print, Alloc, etc.) Although
@@ -135,9 +137,11 @@ class CodeGenerator {
          // for the new temp var holding the result.  For those
          // built-ins with no return value (Print/Halt), no temporary
          // is created and NULL is returned.
-    Location *GenBuiltInCall(BuiltIn b, Location *arg1 = NULL, Location *arg2 = NULL, const char* flag =  NULL);
+    Location *GenBuiltInCall(BuiltIn b, Location *arg1 , Location *arg2, SymTable* symtbl );
 
     
+	Location *GenThunkCall(Thunk t, Location *arg1, Location* arg2, SymTable* symtbl);
+	
          // These methods generate the Tac instructions for various
          // control flow (branches, jumps, returns, labels)
          // One minor detail to mention is that you can pass NULL
@@ -163,6 +167,8 @@ class CodeGenerator {
          // need access to the vtable, you use LoadLabel of class name.
     void GenVTable(const char *className, List<const char*> *methodLabels);
 
+
+	void GenGlobalVar(const char* var);
 
          // Emits the final "object code" for the program by
          // translating the sequence of Tac instructions into their mips

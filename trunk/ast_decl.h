@@ -15,6 +15,7 @@
 #include "ast.h"
 #include "list.h"
 #include "ast_type.h"
+#include "codegen.h"
 
 class Type;
 class NamedType;
@@ -124,6 +125,7 @@ class FnDecl : public Decl
 	void SetMangledName(const char* n){Assert(n);mangledName=n;}
 	const char* GetMangledName(){Assert(mangledName);return mangledName;}
 
+	void GenCode(CodeGenerator* cg);
 	Type* GetType(){return returnType;}
 };
 

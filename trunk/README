@@ -266,11 +266,17 @@
 
 
 
-3.	类型系统
+3.	类型系统和类型检查
 
 	每个expr有一个type，当且仅当所有的subexpr的类型一致(curry不支持类型转换,NamedType和null
 
-	必须type compatibal)
+	必须type compatibal). 类型系统并不作为一个独立的pass来调用，而是分布在各个expr中，
+
+	仅当要获取expr的类型时才建立类型信息. 这样做的好处是使symantic和codegen可以独立(当然
+
+	这仅对本project而言). type checking和codegen都需要得到某个expr的具体类型才可以方便的
+
+	进行处理。
 
 	
 
@@ -278,11 +284,47 @@
 
 	
 
+4.  代码生成
+
+	curry中的所有符号在gentac之前就已经确定好了location，但并未处理Class的变量的内存位置。
+
+	这一步在codegen中完成。
+
+	由于所有的变量访问都通过FieldAccess，所有的函数调用都通过Call。
+
+	所以，区分curry的两种变量位置:直接和间接(Point), 这一属性通过Location::IsPointer得到。
+
+	具体的说，只要一个变量必须通过一个相对的偏移才可以得出它的物理地址，则它就是间接的。
+
+	比如类变量，数组元素就是这样的变量。如果某个Expr生成的结果是Pointer，那么就要先Dereference
+
+	取得实际的变量地址，才可以进一步运算。FieldAccess和Call的实现基本上遵循这一规则。
 
 
 
+	codegen的总体框架还是从全局的Symbol Table开始，先生成所有的vtable，全局变量，和全局
+
+	函数，碰到类时，就进入生成method的代码。遍历语法树生成函数的代码时，在用到临时变量的
+
+	地方，同时会增加本函数的localoffset，最后的localoffset即为本函数的stacksize.
 
 
 
+	codegen不检查symantics，但是强制检查所有的expr不是errorType，遇错即退出。因此未打开
 
+	语义检查的情况下，codegen只能处理完全正确的程序。
+
+
+
+	New,NewArray等均用外部的C程序代码实现，为此增加了thunk.c文件，该文件需要和curry生成的
+
+	汇编程序一起编译，否则会有连接错误. 浮点支持和所有的builtin都可以用类似方法实现。
+
+
+
+5.	外部.c程序和.s的全局变量之间的共享
+
+	.c 程序声明extern ... .s中使用.comm或者.data LABEL: .long(.asciz) ...但是这样共享的
+
+	都是值，如果需要得到字符串的地址(在printf时需要),则要取共享变量地址。
 

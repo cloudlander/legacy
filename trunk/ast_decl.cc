@@ -139,6 +139,27 @@ void FnDecl::DetermineLocation()
 	localOffset=localoffset;
 }
 
+void FnDecl::GenCode(CodeGenerator* cg)
+{
+	BeginMainFunc* pm;
+	BeginFunc* pf;
+	if(0==strcmp("main",id->GetName()))
+		pm=cg->GenBeginMainFunc();
+	else
+		pf=cg->GenBeginFunc();
+	localoffset=localOffset;
+	
+	body->GenTac(cg,formalTable);
+	
+	frameSize=-(4+localoffset);
+
+	if(0==strcmp("main",id->GetName()))
+		pm->SetFrameSize(frameSize);
+	else
+		pf->SetFrameSize(frameSize);
+	cg->GenEndFunc();
+}
+
 Decl::Decl(Identifier *n) : Node(*n->GetLocation()) {
     Assert(n != NULL);
     (id=n)->SetParent(this); 

@@ -10,7 +10,11 @@
 #include "symtable.h"
 
 /*  implemention of PP4 start */
-extern int localoffset;
+extern int localoffset;		// for stmtblock offset determination
+	
+List<char*> exitLabelStack;	// for break stmt 
+
+Location* testExpr=NULL;			// for switch stmt
 
 void Program::BuildSymTable(SymTable* parent)
 {
@@ -66,6 +70,14 @@ void StmtBlock::DetermineLocation()
 	
 }
 
+Location* StmtBlock::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	for(int i=0;i<stmts->NumElements();i++)
+		stmts->Nth(i)->GenTac(cg,symtable);
+	return NULL;
+}
+
 void IfStmt::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL!=parent);
@@ -82,6 +94,34 @@ void IfStmt::DetermineLocation()
 		elseBody->DetermineLocation();
 }
 
+Location* IfStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Location* testresult=test->GenTac(cg,symtbl);
+
+	if(testresult->IsPointer())
+		testresult=cg->GenLoad(testresult,0,symtbl);
+
+	char* thenlabel=NULL;
+	char* ifend=cg->NewLabel();
+	if(elseBody)
+	{
+		thenlabel=cg->NewLabel();
+		cg->GenIfZ(testresult,thenlabel);
+	}
+	else
+		cg->GenIfZ(testresult,ifend);
+	body->GenTac(cg,symtbl);	
+	if(elseBody)
+	{
+		cg->GenGoto(ifend);		
+		cg->GenLabel(thenlabel);
+		elseBody->GenTac(cg,symtbl);
+	}
+	cg->GenLabel(ifend);
+	return NULL;
+}
+
 void WhileStmt::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL!=parent);
@@ -92,6 +132,29 @@ void WhileStmt::BuildSymTable(SymTable* parent)
 void WhileStmt::DetermineLocation()
 {
 	body->DetermineLocation();
+}
+
+Location* WhileStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	char* whileend=cg->NewLabel();
+	char* whilebegin=cg->NewLabel();
+
+	exitLabelStack.Append(whileend);
+
+	cg->GenLabel(whilebegin);
+	Location* testresult=test->GenTac(cg,symtbl);
+	
+	if(testresult->IsPointer())
+		testresult=cg->GenLoad(testresult,0,symtbl);
+
+	cg->GenIfZ(testresult,whileend);
+	body->GenTac(cg,symtbl);
+	cg->GenGoto(whilebegin);
+	cg->GenLabel(whileend);
+
+	exitLabelStack.RemoveAt(exitLabelStack.NumElements()-1);
+	return NULL;
 }
 
 
@@ -106,6 +169,86 @@ void ForStmt::DetermineLocation()
 {
 	body->DetermineLocation();
 }
+
+// for stmt's scope not very sure
+Location* ForStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	init->GenTac(cg,symtbl);
+	char* forend=cg->NewLabel();
+	char* forbegin=cg->NewLabel();
+	
+	exitLabelStack.Append(forend);
+	
+	cg->GenLabel(forbegin);
+	Location* testresult=test->GenTac(cg,symtbl);
+	
+	if(testresult->IsPointer())
+		testresult=cg->GenLoad(testresult,0,symtbl);
+
+	cg->GenIfZ(testresult,forend);
+	body->GenTac(cg,symtbl);
+	step->GenTac(cg,symtbl);
+	cg->GenGoto(forbegin);
+	cg->GenLabel(forend);
+
+	exitLabelStack.RemoveAt(exitLabelStack.NumElements()-1);
+	
+	return NULL;
+}
+	
+Location* BreakStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	if(0==exitLabelStack.NumElements())
+	{
+		Failure("break not valid");
+		return NULL;
+	}
+	cg->GenGoto(exitLabelStack.Nth(exitLabelStack.NumElements()-1));
+	return NULL;
+}
+
+Location* ReturnStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Location* tmp=expr->GenTac(cg,symtbl);
+	if(tmp && tmp->IsPointer())
+		tmp=cg->GenLoad(tmp,0,symtbl);
+	cg->GenReturn(tmp);
+	return NULL;
+}
+
+Location* PrintStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	if(NULL==args)
+		return NULL;
+	for(int i=0;i<args->NumElements();i++)
+	{
+		Type* argType=args->Nth(i)->GetType(symtbl);
+		Assert(!argType->IsEquivalentTo(Type::errorType));
+		Location* tmp=args->Nth(i)->GenTac(cg,symtbl);
+		if(tmp->IsPointer())
+			tmp=cg->GenLoad(tmp,0,symtbl);
+		if(argType->IsEquivalentTo(Type::intType))
+			cg->GenBuiltInCall(PrintInt,tmp,NULL,symtbl);
+		else if(argType->IsEquivalentTo(Type::doubleType))
+			cg->GenBuiltInCall(PrintDouble,tmp,NULL,symtbl);
+		else if(argType->IsEquivalentTo(Type::stringType))
+			cg->GenBuiltInCall(PrintString,tmp,NULL,symtbl);
+		else if(argType->IsEquivalentTo(Type::boolType))
+			cg->GenBuiltInCall(PrintBool,tmp,NULL,symtbl);
+	/* Add object address print support, just like ansi C's "%x" style */
+		else if(typeid(NamedType)==typeid(*argType))
+			cg->GenBuiltInCall(PrintInt,tmp,NULL,symtbl);
+	/* Pending ..  Add array print support */
+		else
+			Assert(0);
+	}
+	return NULL;
+}
+	
 
 void TryStmt::BuildSymTable(SymTable* parent)
 {
@@ -181,6 +324,25 @@ void SwitchStmt::DetermineLocation()
 	body->DetermineLocation();
 }
 
+Location* SwitchStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(!test->GetType(symtbl)->IsEquivalentTo(Type::errorType));
+	Assert(test->GetType(symtbl)->IsEquivalentTo(Type::intType));
+	testExpr=test->GenTac(cg,symtbl);
+	if(testExpr->IsPointer())
+		testExpr=cg->GenLoad(testExpr,0,symtbl);
+	
+	char* switchexit=cg->NewLabel();
+	exitLabelStack.Append(switchexit);
+			
+	body->GenTac(cg,symtbl);
+	cg->GenLabel(switchexit);
+	
+	exitLabelStack.RemoveAt(exitLabelStack.NumElements()-1);
+
+	return NULL;
+}
+
 void SwitchBody::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL!=parent);
@@ -188,7 +350,8 @@ void SwitchBody::BuildSymTable(SymTable* parent)
 	int i;
 	for(i=0;i<CaseStmtList->NumElements();i++)
 		CaseStmtList->Nth(i)->BuildSymTable(parent);
-	defaultStmt->BuildSymTable(parent);
+	if(defaultStmt)
+		defaultStmt->BuildSymTable(parent);
 }
 
 void SwitchBody::DetermineLocation()
@@ -197,7 +360,18 @@ void SwitchBody::DetermineLocation()
 	int i;
 	for(i=0;i<CaseStmtList->NumElements();i++)
 		CaseStmtList->Nth(i)->DetermineLocation();
-	defaultStmt->DetermineLocation();
+	if(defaultStmt)
+		defaultStmt->DetermineLocation();
+}
+
+Location* SwitchBody::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	int i;
+	for(i=0;i<CaseStmtList->NumElements();i++)
+		CaseStmtList->Nth(i)->GenTac(cg,symtbl);
+	if(defaultStmt)
+		defaultStmt->GenTac(cg,symtbl);
+	return NULL;
 }
 
 void CaseStmt::BuildSymTable(SymTable* parent)
@@ -209,11 +383,23 @@ void CaseStmt::BuildSymTable(SymTable* parent)
 
 void CaseStmt::DetermineLocation()
 {
-	Assert(NULL!=symtable);
+	Assert(NULL==symtable);
 	body->DetermineLocation();
 }
 
-
+Location* CaseStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(testExpr);
+	Location* tmp=test->GenTac(cg,symtbl);
+	Location* equal=cg->GenBinaryOp("==",testExpr,tmp,symtbl);
+	char* caseexit=cg->NewLabel();
+	cg->GenIfZ(equal,caseexit);
+	body->GenTac(cg,symtbl);
+	cg->GenGoto(caseexit);
+	cg->GenLabel(caseexit);
+	return NULL;
+}
+	
 void DefaultStmt::BuildSymTable(SymTable* parent)
 {
 	Assert(NULL!=parent);
@@ -223,9 +409,19 @@ void DefaultStmt::BuildSymTable(SymTable* parent)
 
 void DefaultStmt::DetermineLocation()
 {
-	Assert(NULL!=symtable);
+	Assert(NULL==symtable);
 	body->DetermineLocation();
 }
+
+Location* DefaultStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	body->GenTac(cg,symtbl);
+	cg->GenGoto(exitLabelStack.Nth(exitLabelStack.NumElements()-1));
+	return NULL;
+}
+
+
+//////////////////////////////////////////////////
 
 Program::Program(List<Decl*> *d) {
     Assert(d != NULL);

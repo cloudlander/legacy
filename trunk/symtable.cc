@@ -738,7 +738,7 @@ int SymTable::DetermineParamLocation(int start,int increase)
 
 	int offset=start;
 
-	for(i=orderedList.NumElements()-1;i>=0;i--)	//	foreach symbol in symbol table in backward order
+	for(i=0;i<orderedList.NumElements();i++)	//	foreach symbol in symbol table in order
 
 	{
 
@@ -781,6 +781,82 @@ int SymTable::DetermineLocalLocation(int start,int increase)
 	}
 
 	return offset;
+
+}
+
+
+
+void SymTable::GenCode(CodeGenerator* cg)
+
+{
+
+	Iterator<Symbol*> iter=tbl.GetIterator();
+
+	Symbol* sym;
+
+	while(NULL!=(sym=iter.GetNextValue()))
+
+	{
+
+		Assert(sym->GetLocation());
+
+		if(sym->IsGlobalVar())
+
+			cg->GenGlobalVar(sym->GetName());
+
+		else if(sym->IsClass())
+
+		{
+
+			cg->GenVTable(static_cast<ClassDecl*>(sym->GetDecl())->GetVtableName(),static_cast<ClassDecl*>(sym->GetDecl())->GetVtable());
+
+			sym->GetDecl()->GetSymTable()->GenClassCode(static_cast<ClassDecl*>(sym->GetDecl()),cg);
+
+		}
+
+		else if(sym->IsFunction())
+
+		{
+
+			cg->GenLabel(static_cast<FnDecl*>(sym->GetDecl())->GetMangledName());
+
+			static_cast<FnDecl*>(sym->GetDecl())->GenCode(cg);
+
+		}
+
+		else
+
+			Assert(0);
+
+	}
+
+}
+
+
+
+void SymTable::GenClassCode(ClassDecl* decl,CodeGenerator* cg)
+
+{
+
+	Iterator<Symbol*> iter=tbl.GetIterator();
+
+	Symbol* sym;
+
+	while(NULL!=(sym=iter.GetNextValue()))
+
+	{
+
+		if(sym->IsMethod())
+
+		{
+
+			cg->GenLabel(GetMangledMethod(decl->GetVtable(),sym->GetLocation()->GetOffset()));
+
+			static_cast<FnDecl*>(sym->GetDecl())->GenCode(cg);
+
+		}
+
+	}
 
 }
 
@@ -894,8 +970,6 @@ const char* GetMangledMethod(List<const char*>* vtable,int offset)
 
  * recursively build all scopes's symbol tables.
 
- * perform redefination checking only
-
  * 
 
  */
@@ -911,4 +985,24 @@ void BuildSymTable()
 }
 
 
+
+/* 
+
+ * Generate TAC code
+
+ * 
+
+ */
+
+void GenCode()
+
+{
+
+	CodeGenerator* cg=new CodeGenerator;
+
+	GetGlobalSymTable()->GenCode(cg);
+
+	cg->DoFinalCodeGen();
+
+}
 

@@ -44,7 +44,9 @@ class Location
     const char *variableName;
     Segment segment;
     int offset;
-	  
+	 
+    bool isPointer;		// whether this location contains another memory address(for LValue usage)
+
   public:
     Location(Segment seg, int offset, const char *name);
 
@@ -55,6 +57,9 @@ class Location
 //just for debug
     void SetSegment(Segment s)    { segment = s;}
     void SetOffset(int o)                   { offset = o; }
+	
+	void SetPointer(){isPointer=true;}
+	bool IsPointer(){return isPointer;}
 };
  
 
@@ -92,8 +97,16 @@ class Instruction {
   class ACall;
   class VTable;
 
+  class DeclareGlobal;
 
-
+class DeclareGlobal: public Instruction {
+	private:
+		char* str;
+	public:
+		DeclareGlobal(const char* s);
+		void EmitSpecific(X86 *x86);
+};
+  
 class LoadConstant: public Instruction {
     Location *dst;
     int val;
@@ -144,7 +157,7 @@ class Store: public Instruction {
 class BinaryOp: public Instruction {
 
   public:
-    typedef enum {Add, Sub, Mul, Div, Mod, Eq, Less, And, Or, NumOps} OpCode;
+    typedef enum {Add, Sub, Mul, Div, Mod, Eq, Less, And, Or, LessThan, NotEq, Not,NumOps} OpCode;
     static char * opName[NumOps];
     static OpCode OpCodeForName(const char *name);
     

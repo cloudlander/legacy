@@ -39,6 +39,7 @@
 #include <iostream>
 #include "location.h"
 #include "utility.h"
+#include "codegen.h"
 
 using namespace std;
 
@@ -81,6 +82,16 @@ class Node
 	{
 		if(IsDebugOn("location"))
 			fprintf(stderr," ----- DetermineLocation in %s  ------\n",GetPrintNameForNode());
+	}
+	
+	virtual Location* GenTac(CodeGenerator* cg,SymTable* symtable)
+	{
+	    if (GetLocation()) 
+        	printf("%*d", 2, GetLocation()->first_line);
+    	else 
+	        printf("%*s", 2,"");
+		Failure(" --- GenTac in %s ---\n",GetPrintNameForNode());
+		return NULL;
 	}
 
 };

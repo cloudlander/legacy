@@ -6,10 +6,13 @@
  */
 
 #include "codegen.h"
+#include "symtable.h"
 #include <string.h>
 #include "tac.h"
 #include "x86.h"
-  
+
+extern int localoffset;  
+
 CodeGenerator::CodeGenerator()
 {
   code = new List<Instruction*>();
@@ -39,14 +42,19 @@ Location *CodeGenerator::GenTempVar()
 }
 
 // just for debug
-Location *CodeGenerator::GenTempVar(const char* flag)
+Location *CodeGenerator::GenTempVar(SymTable* symtbl)
 {
   static int nextTempNum;
-  char temp[10];
+  char* temp=new char[10];
   Location *result = NULL;
   sprintf(temp, "_tmp%d", nextTempNum++);
-  result = new Location(fpRelative, 0, temp);
-  return result;
+//  result = new Location(fpRelative, 0, temp);
+  symtbl->Append(temp,NULL);
+  Symbol* sym=symtbl->Find(temp);
+  Assert(sym);
+  sym->SetLocation(fpRelative,localoffset);
+  localoffset-=VarSize;
+  return sym->GetLocation();
 }
 
 Location *CodeGenerator::GenLoadConstant(int value)
@@ -57,9 +65,9 @@ Location *CodeGenerator::GenLoadConstant(int value)
 }
 
 // just for debug
-Location *CodeGenerator::GenLoadConstant(int value,  const char* flag)
+Location *CodeGenerator::GenLoadConstant(int value,  SymTable* symtbl)
 {
-  Location *result = GenTempVar(flag);
+  Location *result = GenTempVar(symtbl);
   code->Append(new LoadConstant(result, value));
   return result;
 }
@@ -72,30 +80,36 @@ Location *CodeGenerator::GenLoadConstant(const char *s)
 } 
 
 // just for debug
-Location *CodeGenerator::GenLoadConstant(const char *s, const char* flag)
+Location *CodeGenerator::GenLoadConstant(const char *s, SymTable* symtbl)
 {
-  Location *result = GenTempVar(flag);
+  Location *result = GenTempVar(symtbl);
   code->Append(new LoadStringConstant(result, s));
   return result;
 } 
 
-Location *CodeGenerator::GenLoadLabel(const char *label)
+Location *CodeGenerator::GenLoadLabel(const char *label, SymTable* symtbl)
 {
-  Location *result = GenTempVar();
+  Location *result = GenTempVar(symtbl);
   code->Append(new LoadLabel(result, label));
   return result;
 } 
 
-
+// modify to return dst
+/*
 void CodeGenerator::GenAssign(Location *dst, Location *src)
 {
   code->Append(new Assign(dst, src));
 }
-
-
-Location *CodeGenerator::GenLoad(Location *ref, int offset)
+*/
+Location* CodeGenerator::GenAssign(Location *dst, Location *src)
 {
-  Location *result = GenTempVar();
+  code->Append(new Assign(dst, src));
+  return dst;
+}
+
+Location *CodeGenerator::GenLoad(Location *ref, int offset,SymTable* symtbl)
+{
+  Location *result = GenTempVar(symtbl);
   code->Append(new Load(result, ref, offset));
   return result;
 }
@@ -107,14 +121,14 @@ void CodeGenerator::GenStore(Location *dst,Location *src, int offset)
 
 
 Location *CodeGenerator::GenBinaryOp(const char *opName, Location *op1,
-									   Location *op2, const char* flag)
+									   Location *op2, SymTable* symtbl)
 {
   Location *result;
   
-  if (flag == NULL)
+  if (symtbl == NULL)
     result = GenTempVar();
   else
-    result = GenTempVar(flag);
+    result = GenTempVar(symtbl);
   
   code->Append(new BinaryOp(BinaryOp::OpCodeForName(opName), result, op1, op2));
   return result;
@@ -172,24 +186,24 @@ void CodeGenerator::GenPopParams(int numBytesOfParams)
     code->Append(new PopParams(numBytesOfParams));
 }
 
-Location *CodeGenerator::GenLCall(const char *label, bool fnHasReturnValue, const char*  flag)
+Location *CodeGenerator::GenLCall(const char *label, bool fnHasReturnValue, SymTable* symtbl)
 {
   Location *result = NULL;
 
-  if (flag == NULL) {
+  if (symtbl == NULL) {
 	  if (fnHasReturnValue) result = GenTempVar();
   }
   else {
-	  if (fnHasReturnValue) result = GenTempVar(flag);
+	  if (fnHasReturnValue) result = GenTempVar(symtbl);
   }
   
   code->Append(new LCall(label, result));
   return result;
 }
 
-Location *CodeGenerator::GenACall(Location *fnAddr, bool fnHasReturnValue)
+Location *CodeGenerator::GenACall(Location *fnAddr, bool fnHasReturnValue,SymTable* symtbl)
 {
-  Location *result = fnHasReturnValue ? GenTempVar() : NULL;
+  Location *result = fnHasReturnValue ? GenTempVar(symtbl) : NULL;
   code->Append(new ACall(fnAddr, result));
   return result;
 }
@@ -212,17 +226,17 @@ static struct _builtin {
    {"_StringEqual", 2, true},
    {"_Halt", 0, false}};
 
-Location *CodeGenerator::GenBuiltInCall(BuiltIn bn,Location *arg1, Location *arg2, const char*  flag)
+Location *CodeGenerator::GenBuiltInCall(BuiltIn bn,Location *arg1, Location *arg2, SymTable* symtbl)
 {
   Assert(bn >= 0 && bn < NumBuiltIns);
   struct _builtin *b = &builtins[bn];
   Location *result = NULL;
 
-  if (flag == NULL) {
+  if (symtbl == NULL) {
 	  if (b->hasReturn) result = GenTempVar();
   }
   else {
-	  if (b->hasReturn) result = GenTempVar(flag);
+	  if (b->hasReturn) result = GenTempVar(symtbl);
   }
 
                 // verify appropriate number of non-NULL arguments given
@@ -236,10 +250,52 @@ Location *CodeGenerator::GenBuiltInCall(BuiltIn bn,Location *arg1, Location *arg
   return result;
 }
 
+static struct _thunk {
+  const char *label;
+  int numArgs;
+  bool hasReturn;
+} thunks[] =
+ {{"_NewClass", 2, true},
+   {"_NewArray", 2, true},
+   {"_ArrayLength", 1, true},
+   {"_EqualString", 2, true},
+   };
+
+
+Location * CodeGenerator::GenThunkCall(Thunk tn, Location *arg1, Location* arg2, SymTable* symtbl)
+{
+	Assert(tn >=0 && tn < NumThunks);
+	struct _thunk* t = &thunks[tn];
+	Location *result=NULL;
+
+  	if (symtbl == NULL) {
+	  if (t->hasReturn) result = GenTempVar();
+	}
+	else {
+	  if (t->hasReturn) result = GenTempVar(symtbl);
+	}
+
+                // verify appropriate number of non-NULL arguments given
+  Assert((t->numArgs == 0 && !arg1 && !arg2)
+	|| (t->numArgs == 1 && arg1 && !arg2)
+	|| (t->numArgs == 2 && arg1 && arg2));
+  
+  if (arg2) code->Append(new PushParam(arg2));
+  if (arg1) code->Append(new PushParam(arg1));
+  code->Append(new LCall(t->label, result));
+  GenPopParams(VarSize*t->numArgs);
+  return result;
+}
+
 
 void CodeGenerator::GenVTable(const char *className, List<const char *> *methodLabels)
 {
   code->Append(new VTable(className, methodLabels));
+}
+
+void CodeGenerator::GenGlobalVar(const char* var)
+{
+  code->Append(new DeclareGlobal(var));
 }
 
 

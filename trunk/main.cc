@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
     InitParser();
     yyparse();
 	BuildSymTable();
+	GenCode();
     return (ReportError::NumErrors() == 0? 0 : -1);
 }
 

@@ -37,8 +37,8 @@
 			if (reason == ForRead) {                 			// load current value
 				if (var->GetSegment() == fpRelative) {
 				       Assert(var->GetOffset() % 4 == 0); 	// all (local) variables are 4 bytes
-					Emit("movl\t%d(%%ebp), %s\t# Load %s to %s from %s%+d", -var->GetOffset(), regs[reg].name,
-					        var->GetName(), regs[reg].name, "%ebp", -var->GetOffset());
+					Emit("movl\t%d(%%ebp), %s\t# Load %s to %s from %s%+d", var->GetOffset(), regs[reg].name,
+					        var->GetName(), regs[reg].name, "%ebp", var->GetOffset());
 				}
 				else {
 					Emit("movl\t%s, %s\t# Load %s to %s", var->GetName(), regs[reg].name, 
@@ -96,8 +96,8 @@ X86::Register X86::GetRegister(Location *var, Reason reason, Register avoid1, Re
   	if (reason == ForRead) {                 			// load current value
 	     	if (var->GetSegment() == fpRelative) {
 	  		Assert(var->GetOffset() % 4 == 0); 	// all variables are 4 bytes
-	         	Emit("movl\t%d(%%ebp), %s\t# Load %s to %s from %s%+d", -var->GetOffset(), regs[reg].name,
-		  	        var->GetName(), regs[reg].name, "%ebp", -var->GetOffset());
+	         	Emit("movl\t%d(%%ebp), %s\t# Load %s to %s from %s%+d", var->GetOffset(), regs[reg].name,
+		  	        var->GetName(), regs[reg].name, "%ebp", var->GetOffset());
      		}
      		else {
        		Emit("movl\t%s, %s\t# Load %s to %s", var->GetName(), regs[reg].name, 
@@ -203,8 +203,8 @@ void X86::SpillRegister(Register reg)
     if (var->GetSegment() == fpRelative) {
       Assert(var->GetOffset() % 4 == 0); // all variables are 4 bytes in size		
       Emit("movl\t%s, %d(%s)\t# spill %s from %s to %s%+d", regs[reg].name,
-	  	-var->GetOffset(), "%ebp", var->GetName(), regs[reg].name,
-		"%ebp", -var->GetOffset());
+	  	var->GetOffset(), "%ebp", var->GetName(), regs[reg].name,
+		"%ebp", var->GetOffset());
     }
     else {
       Emit("movl\t%s, %s\t# spill %s from %s", regs[reg].name,
@@ -279,7 +279,14 @@ void X86::Emit(const char *fmt, ...)
   if (buf[strlen(buf)-1] != '\n') printf("\n"); // end with a newline
 }
 
-
+void X86::EmitDeclareGlobal(const char* s)
+{
+#ifndef NOCYGWIN
+	Emit(".comm %s , %d",s,4);
+#else
+	Emit(".comm %s , %d , %d",s,4,4);
+#endif
+}
 
 /* Method: EmitLoadConstant
  * ------------------------
@@ -434,6 +441,44 @@ void X86::EmitBinaryOp(BinaryOp::OpCode code, Location *dst, Location *op1, Loca
 		Emit("movl\t%%eax, %s", regs[rDst].name);  	
 		BindVarWithRegister(dst, eax, ForWrite);			
 	}		
+	else if (!strcmp(NameForTac(code), "sltle")) {
+		rLeft = GetRegister(op1);
+		rRight = GetRegister(op2, rLeft);
+		rDst = GetRegisterForWrite(dst, rLeft, rRight);
+		Emit("cmpl\t%s, %s", regs[rRight].name, regs[rLeft].name);
+		SpillRegister(eax);
+		Emit("movl\t$0, %%eax");  					
+		Emit("setle\t%%al");  			
+		Emit("movl\t%%eax, %s", regs[rDst].name);  	
+		BindVarWithRegister(dst, eax, ForWrite);			
+	}		
+	else if (!strcmp(NameForTac(code), "sneql")) {
+		rLeft = GetRegister(op1);
+		rRight = GetRegister(op2, rLeft);
+		rDst = GetRegisterForWrite(dst, rLeft, rRight);
+		Emit("cmpl\t%s, %s", regs[rRight].name, regs[rLeft].name);
+		SpillRegister(eax);
+		Emit("movl\t$0, %%eax");  					
+		Emit("setnz\t%%al");  			
+		Emit("movl\t%%eax, %s", regs[rDst].name);  	
+		BindVarWithRegister(dst, eax, ForWrite);					
+	}		
+	else if (!strcmp(NameForTac(code), "notl")) {
+		/*
+		rLeft = GetRegister(op1);
+		rRight = GetRegister(op2, rLeft);
+		rDst = GetRegisterForWrite(dst, rLeft, rRight);
+		Emit("cmpl\t%s, %s", regs[rRight].name, regs[rLeft].name);
+		SpillRegister(eax);
+		Emit("movl\t$0, %%eax");  					
+		Emit("setnz\t%%al");  			
+		Emit("movl\t%%eax, %s", regs[rDst].name);  	
+		*/
+		rRight=GetRegister(op2);
+		Emit("notl\t%s",regs[rRight].name);
+		Emit("andl\t$0x1, %s",regs[rRight].name);
+		BindVarWithRegister(dst, rRight, ForWrite);					
+	}		
 	else {
 		rLeft = GetRegister(op1);
 		rRight = GetRegister(op2, rLeft);
@@ -521,7 +566,7 @@ void X86::EmitCallInstr(Location *result, const char *fn, bool isLabel)
 
   if (result != NULL) {
     Register r1 = GetRegisterForWrite(result);
-    Emit("movl\t%s, %s\t# copy function return value from %eax", regs[eax].name, regs[r1].name);
+    Emit("movl\t%s, %s\t# copy function return value from %%eax", regs[eax].name, regs[r1].name);
   }
 }
 
@@ -739,7 +784,7 @@ void X86::EmitPopParams(int bytes)
  void X86::EmitReturn(Location *returnVal)
 { 
   if (returnVal != NULL) 
-    Emit("movl\t%s, %%eax\t# assign return value into %eax",
+    Emit("movl\t%s, %%eax\t# assign return value into %%eax",
 	     regs[GetRegister(returnVal)].name);
   SpillForEndFunction();
   Emit("leave");
@@ -833,8 +878,8 @@ void X86::EmitPreamble()
   Emit("%s: .asciz \"%s\"", "_True",  "TRUE");
   Emit("%s: .asciz \"%s\"", "_False", "FALSE");
   Emit(".text");
-  Emit(".globl main");
-  Emit(".type main, @function");
+  Emit(".globl _main");
+  Emit(".type _main, @function");
 }
 
 
@@ -876,8 +921,12 @@ X86::X86() {
   x86Name[BinaryOp::Eq]	= 	"seql";
   x86Name[BinaryOp::Less]	= 	"sltl";
   
-
-
+  // add other needed operation 
+  x86Name[BinaryOp::LessThan] = "sltle";
+  x86Name[BinaryOp::NotEq] = "sneql";
+  x86Name[BinaryOp::Not] = "notl";
+  
+  
   regs[zero] = (RegContents){false, NULL, "%zero", false};
  
   regs[eax] = (RegContents){false, NULL, "%eax", true};

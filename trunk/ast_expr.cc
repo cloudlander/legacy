@@ -9,6 +9,8 @@
 #include "errors.h"
 
 // code implementation for type system/checking and code gen
+Location* dummy_loc=new Location(fpRelative,0,"blah");		// used as a dummy operand
+
 Type* ArithmeticExpr::GetType(SymTable* symtbl)
 {
 	if(type) return type;
@@ -182,7 +184,7 @@ Type* FieldAccess::GetType(SymTable* symtbl)
 			Symbol* symthis=symtbl->Find("this",true);
 			if(NULL==symthis)
 			{
-				Failure("symbol not found");
+				Failure("symbol:%s (%d,%d) not found",field->GetName(),location->first_line,location->first_column);
 				return type=Type::errorType;
 			}
 			Type* basetype=symthis->GetDecl()->GetType();
@@ -281,6 +283,500 @@ Type* ConditionalExpr::GetType(SymTable* symtbl)
 	}
 }
 
+Location* IntConstant::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	return cg->GenLoadConstant(value,symtbl);
+}
+
+Location* DoubleConstant::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Failure("DOUBLE NOT SUPPORT!");
+	return NULL;
+}
+
+Location* BoolConstant::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	return cg->GenLoadConstant(value ? 1 : 0,symtbl);
+}
+
+Location* StringConstant::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	return cg->GenLoadConstant(value,symtbl);
+}
+
+Location* NullConstant::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	return cg->GenLoadConstant(0,symtbl);
+}
+
+Location* ArithmeticExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+	Location *lhs,*rhs;
+	if(left)
+	{
+		lhs=left->GenTac(cg,symtbl);
+		if(lhs->IsPointer())
+			lhs=cg->GenLoad(lhs,0,symtbl);
+	}
+	else
+		lhs=cg->GenLoadConstant(0,symtbl);
+	rhs=right->GenTac(cg,symtbl);
+	
+	if(rhs->IsPointer())
+		rhs=cg->GenLoad(rhs,0,symtbl);
+
+	return cg->GenBinaryOp(op->GetOperName(),lhs,rhs,symtbl);
+}
+
+
+Location* RelationalExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+	Location *lhs,*rhs;
+	lhs=left->GenTac(cg,symtbl);
+	
+	if(lhs->IsPointer())
+		lhs=cg->GenLoad(lhs,0,symtbl);
+
+	rhs=right->GenTac(cg,symtbl);
+	
+	if(rhs->IsPointer())
+		rhs=cg->GenLoad(rhs,0,symtbl);
+
+
+	const char* opname=op->GetOperName();
+	if(0==strncmp(">=",opname,2))
+		return cg->GenBinaryOp("<=",rhs,lhs,symtbl);
+	if(0==strncmp("<=",opname,2))
+		return cg->GenBinaryOp("<=",lhs,rhs,symtbl);
+	if(0==strncmp("<",opname,1))
+		return cg->GenBinaryOp("<",lhs,rhs,symtbl);
+	if(0==strncmp(">",opname,1))
+		return cg->GenBinaryOp("<",rhs,lhs,symtbl);
+	Failure("SHOULD NOT REACH HERE");
+	return NULL;
+}
+
+Location* EqualityExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+	Location *lhs,*rhs;
+	lhs=left->GenTac(cg,symtbl);
+	
+	if(lhs->IsPointer())
+		lhs=cg->GenLoad(lhs,0,symtbl);
+
+	rhs=right->GenTac(cg,symtbl);
+	
+	if(rhs->IsPointer())
+		rhs=cg->GenLoad(rhs,0,symtbl);
+
+	if(left->GetType(symtbl)->IsEquivalentTo(Type::stringType) &&
+	  right->GetType(symtbl)->IsEquivalentTo(Type::stringType))		// string == string
+	{
+//		return cg->GenBuiltInCall(StringEqual,lhs,rhs,symtbl);
+		if(0==strcmp("==",op->GetOperName()))
+			return cg->GenThunkCall(EqualString,lhs,rhs,symtbl);
+		else
+			return cg->GenBinaryOp("!", dummy_loc,cg->GenThunkCall(EqualString,lhs,rhs,symtbl),symtbl);
+	}
+	return cg->GenBinaryOp(op->GetOperName(),lhs,rhs,symtbl);
+}
+
+
+Location* LogicalExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+	Location *lhs,*rhs;
+	Assert(right);
+	rhs=right->GenTac(cg,symtbl);
+
+	if(rhs->IsPointer())
+		rhs=cg->GenLoad(rhs,0,symtbl);
+	
+	if(NULL==left)
+		return cg->GenBinaryOp(op->GetOperName(),dummy_loc,rhs,symtbl);
+	else
+	{
+		lhs=left->GenTac(cg,symtbl);
+		if(lhs->IsPointer())
+			lhs=cg->GenLoad(lhs,0,symtbl);
+	}
+	return cg->GenBinaryOp(op->GetOperName(),lhs,rhs,symtbl);
+}
+
+Location* AssignExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+	Location *lvalue,*rvalue;
+	Assert(typeid(FieldAccess)==typeid(*left) ||
+		   typeid(ArrayAccess)==typeid(*left));
+//	lvalue=left->GenTac(cg,symtbl);	
+	rvalue=right->GenTac(cg,symtbl);
+	lvalue=left->GenTac(cg,symtbl);
+	Location* derefRvalue=NULL;
+	if(rvalue->IsPointer())
+		derefRvalue=cg->GenLoad(rvalue,0,symtbl);
+	if(lvalue->IsPointer())
+	{
+		if(NULL==derefRvalue)
+			cg->GenStore(lvalue,rvalue,0);
+		else
+			cg->GenStore(lvalue,derefRvalue,0);
+		return lvalue;
+	}
+	else
+		if(NULL==derefRvalue)
+			return cg->GenAssign(lvalue,rvalue);
+		else
+			return cg->GenAssign(lvalue,derefRvalue);
+//	return cg->GenAssign(lvalue,rvalue);	
+}
+	
+Location* ExprStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(expr);
+	return expr->GenTac(cg,symtbl);
+}
+
+Location* NewExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(cType);
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+	Assert(typeid(ClassDecl)==typeid(*(symtbl->Find(cType->GetName(),true)->GetDecl())));
+	int classsize=static_cast<ClassDecl*>(symtbl->Find(cType->GetName(),true)->GetDecl())->GetVarOffset();
+	const char* vtaddr=static_cast<ClassDecl*>(symtbl->Find(cType->GetName(),true)->GetDecl())->GetVtableName();
+	Assert(classsize>=4);
+	Location* sizeofclass=cg->GenLoadConstant(classsize,symtbl);
+	Location* vtableaddr=cg->GenLoadLabel(vtaddr,symtbl);
+	return cg->GenThunkCall(NewClass,sizeofclass,vtableaddr ,symtbl);
+}
+
+Location* NewArrayExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(size && elemType);
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+	Location* arraysize=size->GenTac(cg,symtbl);
+	
+	if(arraysize->IsPointer())
+		arraysize=cg->GenLoad(arraysize,0,symtbl);
+	{
+		// in current implementation, all array/basic type are 4 bytes
+		Location *typesize=cg->GenLoadConstant(4,symtbl);
+		return cg->GenThunkCall(NewArray,arraysize,typesize,symtbl);
+	}
+}		
+	
+Location* ReadLineExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	return cg->GenBuiltInCall(ReadLine,NULL,NULL,symtbl);
+}
+
+
+Location* ReadIntegerExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	return cg->GenBuiltInCall(ReadInt,NULL,NULL,symtbl);
+}
+
+Location* This::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+	if(typeid(NamedType)==typeid(*GetType(symtbl)))
+	{
+		return symtbl->Find("this",true)->GetLocation();
+	}
+	else
+	{
+		Failure("not vaild this");
+		return NULL;
+	}
+}
+
+Location* Call::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(field && actuals);
+
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+
+	Location* baseaddr=NULL;
+	
+	int vfuncOffset;
+	
+	// check if it has return value
+	bool hasretval=false;
+	Type* basetype;
+	
+	if(base)
+	{
+		basetype=base->GetType(symtbl);
+		if(typeid(NamedType)==typeid(*basetype))	// virtual call
+		{
+			const char* classname=static_cast<NamedType*>(basetype)->GetName();
+			Symbol* symclass=GetGlobalSymTable()->Find(classname);
+			Assert(symclass);
+			SymTable* symtblclass=symclass->GetDecl()->GetSymTable();
+			Assert(symtblclass->Find(field->GetName(),true));
+			
+			vfuncOffset=symtblclass->Find(field->GetName(),true)->GetLocation()->GetOffset();
+			hasretval= ! static_cast<FnDecl*>(symtblclass->Find(field->GetName(),true)->GetDecl())->
+									GetType()->IsEquivalentTo(Type::voidType);
+			baseaddr=base->GenTac(cg,symtbl);
+		}	
+		else if(typeid(ArrayType)==typeid(*basetype))	// array.length
+		{
+			baseaddr=base->GenTac(cg,symtbl);
+			if(baseaddr->IsPointer())
+				baseaddr=cg->GenLoad(baseaddr,0,symtbl);
+			return cg->GenThunkCall(ArrayLength,baseaddr,NULL,symtbl);
+		}
+		else
+			Assert(0);
+	}
+	else
+	{
+		Symbol* symfunc=symtbl->Find(field->GetName(),true);
+		if(symfunc && symfunc->IsMethod())	// this.call
+		{
+			vfuncOffset=symfunc->GetLocation()->GetOffset();
+			hasretval= ! static_cast<FnDecl*>(symfunc->GetDecl())->
+									GetType()->IsEquivalentTo(Type::voidType);
+			baseaddr=symtbl->Find("this",true)->GetLocation();
+		}
+		else if(symfunc && symfunc->IsFunction())	// global function call
+		{
+			hasretval= ! static_cast<FnDecl*>(symfunc->GetDecl())->
+									GetType()->IsEquivalentTo(Type::voidType);
+		}
+		else if(symfunc)
+		{
+			Failure("illegal call");
+			return NULL;
+		}
+	}
+	Location* result=NULL;	
+	int i;
+	Location* paramArray[20];
+	Location* paramtmp;
+	for(i=0;i<actuals->NumElements();i++)
+	{
+		paramtmp=actuals->Nth(i)->GenTac(cg,symtbl);
+		if(paramtmp->IsPointer())
+			paramArray[i]=cg->GenLoad(paramtmp,0,symtbl);
+		else
+			paramArray[i]=paramtmp;
+	}
+
+	if(baseaddr)	// virtual call
+	{
+		Location* vtbaddr;
+		Location* indaddr;
+		if(baseaddr->IsPointer())
+		{
+			indaddr=cg->GenLoad(baseaddr,0,symtbl);
+			vtbaddr=cg->GenLoad(indaddr,0,symtbl);
+		}
+		else			
+			vtbaddr=cg->GenLoad(baseaddr,0,symtbl);
+//		Location *vfuncaddr=cg->GenLoad(vtbaddr,vfuncOffset,symtbl);
+		Location *vfuncOffsetLoc=cg->GenLoadConstant(vfuncOffset,symtbl);
+		Location *vfuncaddr=cg->GenLoad(cg->GenBinaryOp("+",vtbaddr,vfuncOffsetLoc,symtbl),0,symtbl);
+		if(baseaddr->IsPointer())
+			cg->GenPushParam(indaddr);
+		else
+			cg->GenPushParam(baseaddr);
+		i=actuals->NumElements()-1;
+		for(;i>=0;i--)
+			cg->GenPushParam(paramArray[i]);
+		
+		result=cg->GenACall(vfuncaddr,hasretval,symtbl);
+	}
+	else
+	{
+		// check if it's builtin call, currently only support print/readline/readint builtins
+		if(NULL==GetGlobalSymTable()->Find(field->GetName(),true))
+		{
+			Assert(0);
+			return new Location(fpRelative,1000,"BBB");
+		}
+		
+		Assert(GetGlobalSymTable()->Find(field->GetName(),true));
+		i=actuals->NumElements()-1;
+		for(;i>=0;i--)
+			cg->GenPushParam(paramArray[i]);
+
+		// global function call
+		result=cg->GenLCall(static_cast<FnDecl*>(GetGlobalSymTable()->Find(field->GetName(),true)->GetDecl())->GetMangledName(),hasretval,symtbl);
+		
+	}
+	if(baseaddr)	
+		cg->GenPopParams(4 * (actuals->NumElements()+1));
+	else
+		cg->GenPopParams(4 * actuals->NumElements());
+	return result;
+
+}
+		
+		
+Location* FieldAccess::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(field);
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+
+
+	int fieldoffset;
+	Location* baseaddr=NULL;
+	if(base)
+	{
+		Type* basetype;
+		basetype=base->GetType(symtbl);
+		if(typeid(NamedType)==typeid(*basetype))
+		{
+			const char* classname=static_cast<NamedType*>(basetype)->GetName();
+			Symbol* symclass=GetGlobalSymTable()->Find(classname);
+			Assert(symclass);
+			SymTable* symtblclass=symclass->GetDecl()->GetSymTable();
+			Assert(symtblclass->Find(field->GetName(),true));
+			
+			fieldoffset=symtblclass->Find(field->GetName(),true)->GetLocation()->GetOffset();
+			baseaddr=base->GenTac(cg,symtbl);
+		}
+		else
+		{
+			Failure("field not found!");
+			return NULL;
+		}
+	}
+	else
+	{
+		Symbol* sym;
+		if(NULL!=(sym=symtbl->Find(field->GetName(),true)))
+		{
+			if(sym->IsClassVar())
+			{
+				fieldoffset=sym->GetLocation()->GetOffset();
+				baseaddr=symtbl->Find("this",true)->GetLocation();
+			}
+			else if(sym->IsLocalVar())
+			{
+				return sym->GetLocation();
+			}
+			else if(sym->IsGlobalVar())
+			{
+			}
+		}
+		else
+		{
+			Failure("sym not found");
+			return NULL;
+		}
+	}
+	if(baseaddr)
+	{
+		if(baseaddr->IsPointer())
+			baseaddr=cg->GenLoad(baseaddr,0,symtbl);
+
+		Location* fieldoff=cg->GenLoadConstant(fieldoffset,symtbl);
+		Location* tmp=cg->GenBinaryOp("+",baseaddr,fieldoff,symtbl);
+		tmp->SetPointer();
+		return tmp;
+//		return cg->GenLoad(baseaddr,fieldoffset,symtbl);
+	}
+	else
+	{
+		return symtbl->Find(field->GetName(),true)->GetLocation();
+//		return cg->GenLoad(symtbl->Find(field->GetName(),true)->GetLocation(),0,symtbl);
+	}
+}	
+
+Location* ArrayAccess::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(base && subscript);
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+
+	Location* subscriptaddr=subscript->GenTac(cg,symtbl);
+
+	if(subscriptaddr->IsPointer())
+		subscriptaddr=cg->GenLoad(subscriptaddr,0,symtbl);
+	
+	Location* baseaddr=base->GenTac(cg,symtbl);
+	
+	if(baseaddr->IsPointer())
+		baseaddr=cg->GenLoad(baseaddr,0,symtbl);
+
+	Location* elemsize=cg->GenLoadConstant(4,symtbl);
+	Location* stepsize=cg->GenBinaryOp("*",subscriptaddr,elemsize,symtbl);
+	Location* elemaddr=cg->GenBinaryOp("+",baseaddr,stepsize,symtbl);
+	
+	elemaddr->SetPointer();
+	return elemaddr;	
+//	return cg->GenLoad(elemaddr,0,symtbl);
+}
+
+
+Location* ConditionalExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
+{
+	Assert(cg && symtbl);
+	Assert(expr1 && expr2 && expr3);
+	Assert(!GetType(symtbl)->IsEquivalentTo(Type::errorType));
+
+	Location* testresult=expr1->GenTac(cg,symtbl);
+
+	if(testresult->IsPointer())
+		testresult=cg->GenLoad(testresult,0,symtbl);
+	
+	Location* result=cg->GenTempVar(symtbl);
+
+	char* thenlabel=NULL;
+	char* ifend=cg->NewLabel();
+	if(expr3)
+	{
+		thenlabel=cg->NewLabel();
+		cg->GenIfZ(testresult,thenlabel);
+	}
+	else
+		cg->GenIfZ(testresult,ifend);
+
+	Location* tmpresult=expr2->GenTac(cg,symtbl);
+	if(tmpresult->IsPointer())
+		tmpresult=cg->GenLoad(tmpresult,0,symtbl);
+	
+	cg->GenAssign(result,tmpresult);	
+
+	if(expr3)
+	{
+		cg->GenGoto(ifend);		
+		cg->GenLabel(thenlabel);
+		
+		Location* tmpexpr3=expr3->GenTac(cg,symtbl);
+		if(tmpexpr3->IsPointer())
+			tmpexpr3=cg->GenLoad(tmpexpr3,0,symtbl);
+		
+		cg->GenAssign(result, tmpexpr3);
+	}
+	cg->GenLabel(ifend);
+	return result;
+}
+	
 /////////////////////////////////////////////
 
 IntConstant::IntConstant(yyltype loc, int val) : Expr(loc) {

@@ -6,6 +6,7 @@
 #include "ast_decl.h"
 #include "tac.h"
 #include "utility.h"
+#include "codegen.h"
 
 // curry only contains these 6 types of symbol
 typedef enum {NOTDETERMINED,GlobalVar,LocalVar,ClassVar,Class,Method,Function} SymType;
@@ -130,6 +131,9 @@ class SymTable
 		int DetermineLocalLocation(int,int);			// for function/method
 		int DetermineParamLocation(int,int);			// for function/method's parameters
 
+		/* Generate TAC code */
+		void GenCode(CodeGenerator*);
+		void GenClassCode(ClassDecl*,CodeGenerator*);
 };
 
 SymTable* GetGlobalSymTable();
