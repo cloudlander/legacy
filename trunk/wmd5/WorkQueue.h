@@ -71,7 +71,7 @@ public:
 		}
 		m_nFinishJobs=m_vecJobs.size();
 	}
-	inline void IncFinishJobs(int i=1)
+	inline void IncFinishJobs(ULONG i=1)
 	{
 		EnterCriticalSection(&stat_cs);
 		m_nFinishJobs+=i;
@@ -87,19 +87,23 @@ public:
 	CWmd5Dlg* m_pDlg;
 	CString m_szRootDir;
 
-#ifdef SHOW_TIME_LEFT
-	CStatic* m_pTime;
-	unsigned int m_nDonePages;
-	inline void IncDonePages(int i)
+	inline void IncDonePages(LONGLONG i=1)
 	{
 		EnterCriticalSection(&stat_cs);
 		m_nDonePages+=i;
 		LeaveCriticalSection(&stat_cs);
-	}
+
+		/* fine progressing pending */
+//		m_pUpdater->SetPos(m_nDonePages);
+}
+
+#ifdef SHOW_TIME_LEFT
+	CStatic* m_pTime;
 #endif
 
-	int m_nFinishJobs;
-	unsigned int m_nTotPages;
+	ULONG m_nFinishJobs;
+	LONGLONG m_nDonePages;
+	LONGLONG m_nTotPages;
 protected:
 	DWORD m_SysAllocPages;
 	BOOL FetchCompareJobs(CStdioFile&);

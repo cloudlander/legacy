@@ -8,6 +8,7 @@
 #include "wmd5dlg.h"
 #include "md5.h"
 #include "tipdlg.h"
+#include "filefindex.h"
 #ifdef _DEBUG
 #undef THIS_FILE
 static char THIS_FILE[]=__FILE__;
@@ -120,7 +121,8 @@ UINT WorkThread(LPVOID param)
 	LONGLONG length_read;
 	LONGLONG file_size;
 #else
-	unsigned int numPages,length_read,file_size;file_size;	// suppress warning msg
+	LONGLONG numPages,file_size;file_size;	// suppress warning msg
+	unsigned int length_read;
 #endif
 
 	unsigned char* pbuf;
@@ -310,10 +312,10 @@ done:
 		}
 		thisWork->m_pUpdater->m_pJobList->Scroll(CSize(0,10));
 		pQueue->IncFinishJobs();
+		pQueue->IncDonePages(numPages);
 		pQueue->Update();
 		TRACE("%s,%d\n",curJob->filePath,curJob->status);
 #ifdef SHOW_TIME_LEFT
-		pQueue->IncDonePages(numPages);
 		curTickCount=GetTickCount();
 		curTickCount-=lastTickCount;
 		if(curTickCount>10 && numPages>=2)
@@ -456,7 +458,7 @@ bool CWorkQueue::Initialize(MyCommandLineInfo* cmdline,CWmd5Dlg* dlg)
 		w=new WorkControl;
 		w->m_pUpdater->m_pJobList=&dlg->m_JobList;
 		w->m_pThread=AfxBeginThread(&WorkThread,reinterpret_cast<LPVOID>(w),THREAD_PRIORITY_NORMAL,0,CREATE_SUSPENDED);
-		w->m_pThread->m_bAutoDelete=TRUE;
+		w->m_pThread->m_bAutoDelete=FALSE;	// if set TRUE, error will occur on MultiCore/HT machines
 		w->m_pQueue=this;
 		w->m_PageSize=m_SysAllocPages;
 		m_vecThreads.push_back(w);
@@ -468,7 +470,7 @@ BOOL CWorkQueue::FetchCompareJobs(CStdioFile& stdf)
 {
 	CString szBuf;
 	CString str;
-	CFileFind finder;
+	CFileFindEx finder;
 	while(stdf.ReadString(szBuf))
 	{
 		if(CANCELED==status)
@@ -526,7 +528,7 @@ BOOL CWorkQueue::FetchCompareJobs(CStdioFile& stdf)
 				finder.FindNextFile();
 				if(! finder.IsDots() && ! finder.IsDirectory())
 				{
-					file_size=finder.GetLength64();
+					finder.GetLength64(file_size);
 					if(0==file_size)	
 						ju->status=SKIPPED;
 				}
@@ -559,7 +561,7 @@ BOOL CWorkQueue::FetchMd5Jobs(CStdioFile& stdf)
 	BOOL driverpath=FALSE;
 	CString str;
 	CString szBuf;
-	CFileFind finder;
+	CFileFindEx finder;
 	m_szRootDir="";			// should detect the root dir
 	while(stdf.ReadString(szBuf))
 	{
@@ -592,11 +594,13 @@ BOOL CWorkQueue::FetchMd5Jobs(CStdioFile& stdf)
 		}
 		else		// add new file to job queue
 		{
+			LONGLONG file_size;
 			JobUnit* ju;
 			ju=new JobUnit;
 			ju->fileName=finder.GetFileName();
 			ju->filePath=finder.GetFilePath();
-			ju->filePages=finder.GetLength64()/m_SysAllocPages + (finder.GetLength64()%m_SysAllocPages > 0);
+			finder.GetLength64(file_size);
+			ju->filePages=file_size/m_SysAllocPages + (file_size%m_SysAllocPages > 0);
 			m_nTotPages+=ju->filePages;
 			m_pDlg->m_JobList.InsertItem(m_vecJobs.size(),"Ready");
 			m_pDlg->m_JobList.SetItemText(m_vecJobs.size(),1,ju->fileName);
@@ -610,7 +614,7 @@ BOOL CWorkQueue::FetchMd5Jobs(CStdioFile& stdf)
 
 BOOL CWorkQueue::FetchJobs(CString& dir)
 {
-	CFileFind finder;
+	CFileFindEx finder;
 	CString strWildcard = dir;
 	strWildcard+=_T("\\*");
 
@@ -639,11 +643,13 @@ BOOL CWorkQueue::FetchJobs(CString& dir)
 		}
 		else		// add new file to job queue
 		{
+			LONGLONG file_size;
 			JobUnit* ju;
 			ju=new JobUnit;
 			ju->fileName=finder.GetFileName();
 			ju->filePath=finder.GetFilePath();
-			ju->filePages=finder.GetLength64()/m_SysAllocPages + (finder.GetLength64()%m_SysAllocPages > 0);
+			finder.GetLength64(file_size);
+			ju->filePages=file_size/m_SysAllocPages + (file_size%m_SysAllocPages > 0);
 			m_nTotPages+=ju->filePages;
 			m_pDlg->m_JobList.InsertItem(m_vecJobs.size(),"Ready");
 			m_pDlg->m_JobList.SetItemText(m_vecJobs.size(),1,ju->fileName);
@@ -674,6 +680,7 @@ JobUnit* CWorkQueue::GetNextJob(int &index)
 void CWorkQueue::Run()
 {
 	m_pUpdater->SetRange(0,m_vecJobs.size());	
+//	m_pUpdater->SetRange(0,m_nTotPages);
 	for(int i=0;i<m_vecThreads.size();i++)
 		m_vecThreads[i]->m_pThread->ResumeThread();
 	CString str;
@@ -791,7 +798,11 @@ void CWorkQueue::Wait()
 	HANDLE* waitArray=new HANDLE[m_vecThreads.size()];
 	for(int i=0;i<m_vecThreads.size();i++)
 		waitArray[i]=m_vecThreads[i]->m_pThread->m_hThread;
-	WaitForMultipleObjects(m_vecThreads.size(),waitArray,TRUE,INFINITE);
+	//if CWinThread::m_bAutoDelete is set true, error will occur on MultiCore/HT machines
+	//when only 1 job is active and other threads kill themselves, causing handle invalid
+	DWORD retVal=WaitForMultipleObjects(m_vecThreads.size(),waitArray,TRUE,INFINITE);
+	if(WAIT_OBJECT_0 != retVal)
+		DisplayErrorText();
 }
 
 void CWorkQueue::ShowResult()
