@@ -44,7 +44,13 @@ UINT QueueThread(LPVOID param)
 {
 	struct queue_param* p=(queue_param*)param;
 	CWorkQueue* pQueue=new CWorkQueue;
-	pQueue->Initialize(p->cmdinfo,p->dlg);
+
+	if(false==pQueue->Initialize(p->cmdinfo,p->dlg))
+	{
+		pQueue->m_pDlg->SendMessage(WM_DESTROY);
+		return 1;
+	}
+
 	pQueue->Run();
 	pQueue->Wait();
 	pQueue->Update();
