@@ -4,8 +4,8 @@
  */
 
 #include "errors.h"
-#include <iostream>
-#include <strstream>
+#include <ostream>
+#include <sstream>
 #include <stdarg.h>
 #include <stdio.h>
 #include "scanner.h" // for GetLineNumbered
@@ -57,60 +57,60 @@ void ReportError::InvalidDirective(int linenum) {
 }
 
 void ReportError::LongIdentifier(yyltype *loc, const char *ident) {
-    ostrstream s;
+    ostringstream s;
     s << "Identifier too long: \"" << ident << "\"" << '\0';
-    OutputError(loc, s.str());
+    OutputError(loc, s.str().c_str());
 }
 
 void ReportError::UntermString(yyltype *loc, const char *str) {
-    ostrstream s;
+    ostringstream s;
     s << "Unterminated string constant: " << str << '\0';
-    OutputError(loc, s.str());
+    OutputError(loc, s.str().c_str());
 }
 
 void ReportError::UnrecogChar(yyltype *loc, char ch) {
-    ostrstream s;
+    ostringstream s;
     s << "Unrecognized char: '" << ch << "'" << '\0';
-    OutputError(loc, s.str());
+    OutputError(loc, s.str().c_str());
 }
 
 void ReportError::DeclConflict(Decl *decl, Decl *prevDecl) {
-    ostrstream s;
+    ostringstream s;
     s << "Declaration of '" << decl << "' here conflicts with declaration on line " 
       << prevDecl->GetLocation()->first_line << '\0';
-    OutputError(decl->GetLocation(), s.str());
+    OutputError(decl->GetLocation(), s.str().c_str());
 }
   
 void ReportError::OverrideMismatch(Decl *fnDecl) {
-    ostrstream s;
+    ostringstream s;
     s << "Method '" << fnDecl << "' must match inherited type signature" << '\0';
-    OutputError(fnDecl->GetLocation(), s.str());
+    OutputError(fnDecl->GetLocation(), s.str().c_str());
 }
 
 void ReportError::InterfaceNotImplemented(Decl *cd, Type *interfaceType) {
-    ostrstream s;
+    ostringstream s;
     s << "Class '" << cd << "' does not implement entire interface '" << interfaceType << "'" << '\0';
-    OutputError(interfaceType->GetLocation(), s.str());
+    OutputError(interfaceType->GetLocation(), s.str().c_str());
 }
 
 void ReportError::IdentifierNotDeclared(Identifier *ident, reasonT whyNeeded) {
-    ostrstream s;
+    ostringstream s;
     static const char *names[] =  {"type", "class", "interface", "variable", "function"};
     Assert(whyNeeded >= 0 && whyNeeded <= sizeof(names)/sizeof(names[0]));
     s << "No declaration found for "<< names[whyNeeded] << " '" << ident << "'" << '\0';
-    OutputError(ident->GetLocation(), s.str());
+    OutputError(ident->GetLocation(), s.str().c_str());
 }
 
 void ReportError::IncompatibleOperands(Operator *op, Type *lhs, Type *rhs) {
-    ostrstream s;
+    ostringstream s;
     s << "Incompatible operands: " << lhs << " " << op << " " << rhs << '\0';
-    OutputError(op->GetLocation(), s.str());
+    OutputError(op->GetLocation(), s.str().c_str());
 }
      
 void ReportError::IncompatibleOperand(Operator *op, Type *rhs) {
-    ostrstream s;
+    ostringstream s;
     s << "Incompatible operand: " << op << " " << rhs << '\0';
-    OutputError(op->GetLocation(), s.str());
+    OutputError(op->GetLocation(), s.str().c_str());
 }
 
 void ReportError::ThisOutsideClassScope(This *th) {
@@ -130,41 +130,41 @@ void ReportError::NewArraySizeNotInteger(Expr *sizeExpr) {
 }
 
 void ReportError::NumArgsMismatch(Identifier *fnIdent, int numExpected, int numGiven) {
-    ostrstream s;
+    ostringstream s;
     s << "Function '"<< fnIdent << "' expects " << numExpected << " argument" << (numExpected==1?"":"s") 
       << " but " << numGiven << " given" << '\0';
-    OutputError(fnIdent->GetLocation(), s.str());
+    OutputError(fnIdent->GetLocation(), s.str().c_str());
 }
 
 void ReportError::ArgMismatch(Expr *arg, int argIndex, Type *given, Type *expected) {
-  ostrstream s;
+  ostringstream s;
   s << "Incompatible argument " << argIndex << ": " << given << " given, " << expected << " expected" << '\0';
-  OutputError(arg->GetLocation(), s.str());
+  OutputError(arg->GetLocation(), s.str().c_str());
 }
 
 void ReportError::ReturnMismatch(ReturnStmt *rStmt, Type *given, Type *expected) {
-    ostrstream s;
+    ostringstream s;
     s << "Incompatible return: " << given << " given, " << expected << " expected" << '\0';
-    OutputError(rStmt->GetLocation(), s.str());
+    OutputError(rStmt->GetLocation(), s.str().c_str());
 }
 
 void ReportError::FieldNotFoundInBase(Identifier *field, Type *base) {
-    ostrstream s;
+    ostringstream s;
     s << base << " has no such field '" << field <<"'" <<'\0';
-    OutputError(field->GetLocation(), s.str());
+    OutputError(field->GetLocation(), s.str().c_str());
 }
      
 void ReportError::InaccessibleField(Identifier *field, Type *base) {
-    ostrstream s;
+    ostringstream s;
     s  << base << " field '" << field << "' only accessible within class scope" << '\0';
-    OutputError(field->GetLocation(), s.str());
+    OutputError(field->GetLocation(), s.str().c_str());
 }
 
 void ReportError::PrintArgMismatch(Expr *arg, int argIndex, Type *given) {
-    ostrstream s;
+    ostringstream s;
     s << "Incompatible argument " << argIndex << ": " << given
         << " given, int/bool/string expected" << '\0';
-    OutputError(arg->GetLocation(), s.str());
+    OutputError(arg->GetLocation(), s.str().c_str());
 }
 
 void ReportError::TestNotBoolean(Expr *expr) {
