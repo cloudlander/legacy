@@ -31,6 +31,8 @@ class MyCommandLineInfo;
 class CWorkQueue  
 {
 public:
+	void ResumeWork();
+	void SuspendWork();
 	void ShowResult();
 	void Wait();
 #ifdef SHOW_TIME_LEFT
@@ -46,7 +48,12 @@ public:
 	
 	bool Initialize(MyCommandLineInfo* cmdline,CWmd5Dlg* dlg);
 
-	inline STATUS GetStatus(){return status;
+	inline STATUS GetStatus(){
+		STATUS s;
+		EnterCriticalSection(&stat_cs);
+		s=status;
+		LeaveCriticalSection(&stat_cs);
+		return s;
 	}
 	inline void SetStatus(STATUS s){
 		ASSERT(s==CANCELED || s==DONE);
@@ -70,28 +77,29 @@ public:
 		m_nFinishJobs+=i;
 		LeaveCriticalSection(&stat_cs);
 	}
+	
+		
+	vector<WorkControl*> m_vecThreads;
+	vector<JobUnit*> m_vecJobs;
+	volatile STATUS status;
+	MODE mode;
+	CQueueProgresser* m_pUpdater;
+	CWmd5Dlg* m_pDlg;
+	CString m_szRootDir;
+
+#ifdef SHOW_TIME_LEFT
+	CStatic* m_pTime;
+	unsigned int m_nDonePages;
 	inline void IncDonePages(int i)
 	{
 		EnterCriticalSection(&stat_cs);
 		m_nDonePages+=i;
 		LeaveCriticalSection(&stat_cs);
 	}
-	
-		
-	vector<WorkControl*> m_vecThreads;
-	vector<JobUnit*> m_vecJobs;
-	STATUS status;
-	MODE mode;
-	CQueueProgresser* m_pUpdater;
-	CWmd5Dlg* m_pDlg;
-	CString m_szRootDir;
-#ifdef SHOW_TIME_LEFT
-	CStatic* m_pTime;
 #endif
 
 	int m_nFinishJobs;
 	unsigned int m_nTotPages;
-	unsigned int m_nDonePages;
 protected:
 	DWORD m_SysAllocPages;
 	BOOL FetchCompareJobs(CStdioFile&);

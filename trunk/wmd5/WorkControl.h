@@ -36,8 +36,8 @@ public:
 	CString filePath;
 	CString digest;
 	CString compareMd5;
-	STATUS status;	
-	unsigned int filePages;
+	volatile STATUS status;	
+	LONGLONG filePages;
 
 	/*  main thread and worker will touch status */
 	inline void SetStatus(STATUS s)

@@ -120,7 +120,7 @@ UINT WorkThread(LPVOID param)
 	LONGLONG length_read;
 	LONGLONG file_size;
 #else
-	unsigned int numPages,length_read,file_size;
+	unsigned int numPages,length_read,file_size;file_size;	// suppress warning msg
 #endif
 
 	unsigned char* pbuf;
@@ -145,7 +145,7 @@ UINT WorkThread(LPVOID param)
 			return DONE;
 		}
 
-		if(curJob && CANCELED==curJob->status)
+		if(curJob && CANCELED==curJob->GetStatus() || SKIPPED==curJob->GetStatus())
 		{
 			goto done;
 		}
@@ -191,7 +191,7 @@ UINT WorkThread(LPVOID param)
 #ifdef USE_MEMORY_MAP
 		while(length_read+incSize <= file_size)
 		{
-			if(SKIPPED==curJob->status)
+			if(SKIPPED==curJob->GetStatus())
 				break;
 //			md5sess->SessionUpdate(pbuf+length_read,incSize);
 //*
@@ -221,13 +221,17 @@ UINT WorkThread(LPVOID param)
 			curJob->SetStatus(FAILURE);
 			goto done;
 		}
+
+/*
 		fseek(file,0,SEEK_END);
 		file_size=ftell(file);
 		fseek(file,0,SEEK_SET);
 		numPages=file_size/incSize+((file_size%incSize)>0);
+*/
+		numPages=curJob->filePages;
 		while (length_read = fread (pbuf, 1, incSize, file))
 		{
-			if(SKIPPED==curJob->status || CANCELED==curJob->status)
+			if(SKIPPED==curJob->GetStatus() || CANCELED==curJob->GetStatus())
 				break;
 			md5sess->SessionUpdate(pbuf,length_read);
 			curPos=(count++)*100/numPages;
@@ -239,6 +243,8 @@ UINT WorkThread(LPVOID param)
 		}
 		md5sess->SessionFinal(md5sum);
 		fclose (file);
+		thisWork->m_pUpdater->SetNewPos(jobIndex,100);
+
 #endif		
 done:	
 #ifdef USE_MEMORY_MAP
@@ -303,11 +309,11 @@ done:
 			thisWork->m_pUpdater->m_pJobList->SetItemText(jobIndex,0,"Error");
 		}
 		thisWork->m_pUpdater->m_pJobList->Scroll(CSize(0,10));
-		pQueue->IncDonePages(numPages);
 		pQueue->IncFinishJobs();
 		pQueue->Update();
 		TRACE("%s,%d\n",curJob->filePath,curJob->status);
 #ifdef SHOW_TIME_LEFT
+		pQueue->IncDonePages(numPages);
 		curTickCount=GetTickCount();
 		curTickCount-=lastTickCount;
 		if(curTickCount>10 && numPages>=2)
@@ -462,12 +468,17 @@ BOOL CWorkQueue::FetchCompareJobs(CStdioFile& stdf)
 {
 	CString szBuf;
 	CString str;
+	CFileFind finder;
 	while(stdf.ReadString(szBuf))
 	{
 		if(CANCELED==status)
+		{
+			finder.Close();
 			return FALSE;
+		}
 
-		if(32==szBuf.Find(_T(" *")))
+		// Linux md5sum text type support 
+		if(32==szBuf.Find(_T(" *")) || 32==szBuf.Find(_T("  ")))
 		{
 			str=szBuf;
 			str.Delete(0,34);
@@ -484,7 +495,8 @@ BOOL CWorkQueue::FetchCompareJobs(CStdioFile& stdf)
 			ju->fileName=str.Right(str.GetLength() - str.ReverseFind(_T('\\')) -1);
 			ju->filePath=m_szRootDir+str;
 
-			int file_size=0;
+			LONGLONG file_size=0;
+/*
 			CFile of;
 			CFileException ex;
 			if(FALSE==of.Open(ju->filePath,CFile::modeRead,&ex))
@@ -508,14 +520,37 @@ BOOL CWorkQueue::FetchCompareJobs(CStdioFile& stdf)
 				}
 				of.Close();
 			}
+*/
+			if(TRUE==finder.FindFile(ju->filePath))
+			{
+				finder.FindNextFile();
+				if(! finder.IsDots() && ! finder.IsDirectory())
+				{
+					file_size=finder.GetLength64();
+					if(0==file_size)	
+						ju->status=SKIPPED;
+				}
+				else
+				{
+					file_size=0;
+					ju->status=FAILURE;
+				}
+			}
+			else
+			{
+				file_size=0;
+				ju->status=FAILURE;
+			}
+
 			ju->filePages=file_size/m_SysAllocPages + (file_size%m_SysAllocPages > 0);
 			m_nTotPages+=ju->filePages;
-			m_pDlg->m_JobList.InsertItem(m_vecJobs.size(),"Ready");
+			m_pDlg->m_JobList.InsertItem(m_vecJobs.size(),_T("Ready"));
 			m_pDlg->m_JobList.SetItemText(m_vecJobs.size(),1,ju->fileName);
 			m_pDlg->m_JobList.SetItemData(m_vecJobs.size(),(DWORD)_tcsdup((LPCTSTR)ju->filePath));
 			m_vecJobs.push_back(ju);
 		}
 	}
+	finder.Close();
 	return TRUE;
 }
 
@@ -544,7 +579,8 @@ BOOL CWorkQueue::FetchMd5Jobs(CStdioFile& stdf)
 		else if(""==m_szRootDir)
 			m_szRootDir=szBuf.Left(index+1);
 		
-		finder.FindFile(szBuf);
+		if(FALSE==finder.FindFile(szBuf))
+			continue;
 		finder.FindNextFile();
 		ASSERT(!finder.IsDots());
 		if(finder.IsDirectory())
@@ -560,7 +596,7 @@ BOOL CWorkQueue::FetchMd5Jobs(CStdioFile& stdf)
 			ju=new JobUnit;
 			ju->fileName=finder.GetFileName();
 			ju->filePath=finder.GetFilePath();
-			ju->filePages=finder.GetLength()/m_SysAllocPages + (finder.GetLength()%m_SysAllocPages > 0);
+			ju->filePages=finder.GetLength64()/m_SysAllocPages + (finder.GetLength64()%m_SysAllocPages > 0);
 			m_nTotPages+=ju->filePages;
 			m_pDlg->m_JobList.InsertItem(m_vecJobs.size(),"Ready");
 			m_pDlg->m_JobList.SetItemText(m_vecJobs.size(),1,ju->fileName);
@@ -607,7 +643,7 @@ BOOL CWorkQueue::FetchJobs(CString& dir)
 			ju=new JobUnit;
 			ju->fileName=finder.GetFileName();
 			ju->filePath=finder.GetFilePath();
-			ju->filePages=finder.GetLength()/m_SysAllocPages + (finder.GetLength()%m_SysAllocPages > 0);
+			ju->filePages=finder.GetLength64()/m_SysAllocPages + (finder.GetLength64()%m_SysAllocPages > 0);
 			m_nTotPages+=ju->filePages;
 			m_pDlg->m_JobList.InsertItem(m_vecJobs.size(),"Ready");
 			m_pDlg->m_JobList.SetItemText(m_vecJobs.size(),1,ju->fileName);
@@ -629,7 +665,7 @@ JobUnit* CWorkQueue::GetNextJob(int &index)
 	index=m_nNextJob;
 	LeaveCriticalSection(&sche_cs);
 	
-	if(m_nNextJob<m_vecJobs.size() && status!=DONE && status!=CANCELED)
+	if(m_nNextJob<m_vecJobs.size()) // && status!=DONE && status!=CANCELED) seems useless
 		return m_vecJobs[m_nNextJob++];
 	else
 		return NULL;
@@ -650,11 +686,11 @@ void CWorkQueue::Run()
 
 void CWorkQueue::Update()
 {
-#if 0
-	if(FINISH==status)
+#if 0	
+	if(FINISH==status)		// obsolete state
 		return;
 #endif
-	if(DONE==status || CANCELED==status)
+	if(DONE==GetStatus() || CANCELED==GetStatus())
 		return;
 	if(m_nFinishJobs==m_vecJobs.size())
 		SetStatus(DONE);
@@ -662,21 +698,23 @@ void CWorkQueue::Update()
 	CString str;
 	str.Format(_T("Completed: %d/%d"),m_nFinishJobs,m_vecJobs.size());
 	m_pDlg->SetWindowText(str);
+#if 0
 	if(status==DONE || status==CANCELED)
 	{
-#if 0
 		status=FINISH;
-#endif
 #ifdef SHOW_TIME_LEFT
 		m_pTime->SetWindowText(_T("0:0:0"));
 #endif
 		return;
 	}
+#endif
 }
 
 void CWorkQueue::DoSaveResult()
 {
 	if(CHECKMD5==mode)
+		return;
+	if(0==m_vecJobs.size())	// skip if no jobs
 		return;
 	OPENFILENAME ofn;
 	TCHAR szFile[260] = _T("md5sum.txt\0");      // buffer for file name
@@ -809,4 +847,16 @@ void CWorkQueue::ShowResult()
 		s2.Format(_T("%d"),errors);
 		m_pDlg->ShowResult(s1,s2);
 	}
+}
+
+void CWorkQueue::SuspendWork()
+{
+	for(int i=0;i<m_vecThreads.size();i++)
+		SuspendThread(m_vecThreads[i]->m_pThread->m_hThread);
+}
+
+void CWorkQueue::ResumeWork()
+{
+	for(int i=0;i<m_vecThreads.size();i++)
+		ResumeThread(m_vecThreads[i]->m_pThread->m_hThread);
 }
