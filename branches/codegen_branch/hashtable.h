@@ -93,7 +93,7 @@ template<class Value> class Iterator {
   friend class Hashtable<Value>;
 
   private:
-    multimap<const char*, Value , ltstr>::iterator cur, end;
+    typename multimap<const char*, Value , ltstr>::iterator cur, end;
     Iterator(multimap<const char*, Value, ltstr>& t)
 	: cur(t.begin()), end(t.end()) {}
 	 

@@ -30,7 +30,7 @@ template <class Value> void Hashtable<Value>::Remove(const char *key, Value val)
   if (mmap.count(key) == 0) // no matches at all
     return;
 
-  multimap<const char *, Value>::iterator itr;
+  typename multimap<const char *, Value>::iterator itr;
   itr = mmap.find(key); // start at first occurrence
   while (itr != mmap.upper_bound(key)) {
     if (itr->second == val) { // iterate to find matching pair
@@ -52,7 +52,7 @@ template <class Value> Value Hashtable<Value>::Lookup(const char *key)
   Value found = NULL;
   
   if (mmap.count(key) > 0) {
-    multimap<const char *, Value>::iterator cur, last, prev;
+    typename multimap<const char *, Value>::iterator cur, last, prev;
     cur = mmap.find(key); // start at first occurrence
     last = mmap.upper_bound(key);
     while (cur != last) { // iterate to find last entered
