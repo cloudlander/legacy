@@ -1,6 +1,6 @@
-Copyright (C) 1999-2005 Nullsoft, Inc.
+Copyright (C) 1999-2005 Shineware, Inc.
 
-This license applies to everything in the NSIS package, except where otherwise noted.
+This license applies to everything in the EasyMD5 package, except where otherwise noted.
 
 This software is provided 'as-is', without any express or implied warranty. In no event will the authors be held liable for any damages arising from the use of this software. 
 
