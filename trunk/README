@@ -60,9 +60,9 @@
 
 	总的算法如下: (类似于每次处理一个基类) 
 
-	changed=false
-
 	do
+
+	  changed=false
 
 	  foreach symbol in global sym-table
 
@@ -230,11 +230,13 @@
 
 
 
-	由program的symbol table发起调用，通过顺序枚举所有的class完成任务,在处理每个class时，由每个class的symbol table
+	由program的symbol table发起调用，通过顺序枚举所有的class完成任务,在处理每个class时，
 
-	调用，通过bottomup方式遍历继承树，确定所有变量和method的offset,每个function/method也依次调用自己符号表的
+	由每个class的symbol table调用，通过bottomup方式遍历继承树，确定所有变量和method的
 
-	determineLocation,最终建立起完整的层次化符号表
+	offset,每个function/method也依次调用自己符号表的determineLocation,最终建立起完整的
+
+	层次化符号表
 
 	
 
@@ -242,7 +244,15 @@
 
 
 
-	至此，完整的符号表结构已经建立,包括所有相关符号的location属性都已经确定，从而方便了代码生成
+	至此，完整的符号表结构已经建立,包括所有相关符号的location属性都已经确定，但是这里
+
+	没有考虑在codegen阶段生成的临时变量，此处的策略是：由于临时变量只能产生在local的
+
+	symbol table，因此，只需事先知道local symbol table的最大分配到的offset，因此以后
+
+	产生的临时变量依次递增offset，来确定它的Location。
+
+
 
 
 
