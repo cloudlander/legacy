@@ -25,7 +25,8 @@ class Expr : public Stmt
     Expr(yyltype loc) : Stmt(loc) {}
     Expr() : Stmt() {}
 
-	virtual Type* GetType(SymTable* symtbl){return type=Type::errorType;}
+	virtual Type* GetType(SymTable* symtbl){Assert(0);return type=Type::errorType;}
+
 };
 
 /* This node type is used for those places where an expression is optional.
