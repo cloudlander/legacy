@@ -49,7 +49,11 @@ public:
 	}
 	inline STATUS GetStatus()
 	{
-		return status;
+		STATUS s;
+		EnterCriticalSection(&stat_cs);
+		s=status;
+		LeaveCriticalSection(&stat_cs);
+		return s;
 	}
 
 private:
