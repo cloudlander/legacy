@@ -298,27 +298,27 @@ void CWmd5Dlg::OnCancel()
 {
 	// TODO: Add extra cleanup here
 	if(m_pQueue && RUNNING==m_pQueue->GetStatus())
+	{
+		m_pQueue->SuspendWork();
 		if(IDYES==AfxMessageBox(_T("Cancel all jobs?"),MB_YESNO))
 		{
 			m_pQueue->SetStatus(CANCELED);
 		}	
+		m_pQueue->ResumeWork();
+	}
 //	CDialog::OnCancel();
 }
 
 void CWmd5Dlg::OnOK() 
 {
 	// TODO: Add extra cleanup here
-	if(m_pQueue && RUNNING==m_pQueue->GetStatus())
-		if(IDYES==AfxMessageBox(_T("Cancel all jobs?"),MB_YESNO))
-		{
-			m_pQueue->SetStatus(CANCELED);
-		}	
-//			CDialog::OnOK();
+	OnCancel();
 }
 
 void CWmd5Dlg::OnDestroy() 
 {
 	CDialog::OnDestroy();
+//	DWORD tmp=GetCurrentThreadId();
 	PostQuitMessage(0);
 	// TODO: Add your message handler code here
 	
