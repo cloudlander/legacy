@@ -7,10 +7,19 @@
 #include "symtable.h"
  
 /* code implementation for type checking */
+bool Type::IsCompatibleTo(Type* other)
+{
+	Assert(typeName);
+	if(IsEquivalentTo(Type::nullType))	// null should be compatible to any NamedType,ArrayType
+	{
+		if(typeid(NamedType)==typeid(*other) || typeid(ArrayType)==typeid(*other))
+			return true;
+	}
+	return false;	
+}
+
 bool NamedType::IsCompatibleTo(Type* other)
 {
-	if(other->IsEquivalentTo(Type::voidType))	// null should be compatible to any NamedType
-		return true;
 	if(IsEquivalentTo(other))
 		return true;
 	if(typeid(*this)!=typeid(*other))

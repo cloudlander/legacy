@@ -197,10 +197,10 @@ Variable	:Type Ident	{ $$ = new VarDecl($2,$1); }
 		;
 Ident		:T_Identifier	{ $$ = new Identifier(@1,$1);}
 		;
-Type		:T_Bool		{ $$ = new Type("bool"); }
-		|T_Int		{ $$ = new Type("int"); }
-		|T_Double	{ $$ = new Type("double"); }
-		|T_String	{ $$ = new Type("string"); }
+Type		:T_Bool		{ $$ = Type::boolType; }
+		|T_Int		{ $$ = Type::intType; }
+		|T_Double	{ $$ = Type::doubleType; }
+		|T_String	{ $$ = Type::stringType; }
 		|Ident	{ NamedType *nameType = new NamedType($1);$$ = nameType;}
 		|Type T_Dims	{$$ = new ArrayType(yylloc, $1);}
 		;

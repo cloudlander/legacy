@@ -29,7 +29,7 @@ class Type : public Node
     const char *GetPrintNameForNode() { return "Type"; }
     void PrintChildren(int indentLevel);
 	
-	virtual bool IsCompatibleTo(Type* other){return false;};
+	virtual bool IsCompatibleTo(Type* other);
 };
 
 class NamedType : public Type 
@@ -49,7 +49,7 @@ class NamedType : public Type
 	{
 		if(Type::IsEquivalentTo(other))
 			return true;
-		if(typeid(this)==typeid(*other))
+		if(typeid(*this)==typeid(*other))
 			return 0==strcmp(id->GetName(),static_cast<NamedType*>(other)->GetName());
 		else
 			return false;
@@ -74,7 +74,7 @@ class ArrayType : public Type
 	{
 		if(Type::IsEquivalentTo(other))
 			return true;
-		if(typeid(this)==typeid(*other))
+		if(typeid(*this)==typeid(*other))
 			return elemType->IsEquivalentTo(static_cast<ArrayType*>(other)->GetElemType());
 		else
 			return false;
