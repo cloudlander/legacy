@@ -25,6 +25,8 @@ public:
 	enum { IDD = IDD_ABOUTBOX };
 	//}}AFX_DATA
 
+	HICON m_hIcon;
+
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CAboutDlg)
 	protected:
@@ -43,6 +45,7 @@ CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
 {
 	//{{AFX_DATA_INIT(CAboutDlg)
 	//}}AFX_DATA_INIT
+	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
 void CAboutDlg::DoDataExchange(CDataExchange* pDX)
@@ -387,6 +390,9 @@ BOOL CAboutDlg::OnInitDialog()
 	
 	// TODO: Add extra initialization here
 	m_staticEmail.SetURL(_T("mailto:zhangxiaomin@gmail.com"));
+
+	SetIcon(m_hIcon, TRUE);			// Set big icon
+	SetIcon(m_hIcon, FALSE);		// Set small icon
 	
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
