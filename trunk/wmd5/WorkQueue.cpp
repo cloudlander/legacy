@@ -211,7 +211,10 @@ UINT WorkThread(LPVOID param)
 			thisWork->m_pUpdater->SetNewPos(jobIndex,(count++)*100/numPages);
 		}
 #else
+		int lastPos;
+		int curPos;
 		FILE* file;
+		lastPos=-1;
 		pbuf=new unsigned char[incSize];
 		if ((file = fopen ((LPCTSTR)(curJob->filePath), "rb")) == NULL)
 		{
@@ -227,7 +230,12 @@ UINT WorkThread(LPVOID param)
 			if(SKIPPED==curJob->status || CANCELED==curJob->status)
 				break;
 			md5sess->SessionUpdate(pbuf,length_read);
-			thisWork->m_pUpdater->SetNewPos(jobIndex,(count++)*100/numPages);
+			curPos=(count++)*100/numPages;
+			if(curPos>lastPos)
+			{
+				thisWork->m_pUpdater->SetNewPos(jobIndex,curPos);
+				lastPos=curPos;
+			}
 		}
 		md5sess->SessionFinal(md5sum);
 		fclose (file);
@@ -383,6 +391,8 @@ bool CWorkQueue::Initialize(MyCommandLineInfo* cmdline,CWmd5Dlg* dlg)
 			m_pDlg->SendMessage(WM_DESTROY);
 		}
 	}
+	
+	status=RUNNING;
 	
 	if(CHECKMD5==mode)
 	{
@@ -622,7 +632,6 @@ JobUnit* CWorkQueue::GetNextJob(int &index)
 void CWorkQueue::Run()
 {
 	m_pUpdater->SetRange(0,m_vecJobs.size());	
-	status=RUNNING;
 	for(int i=0;i<m_vecThreads.size();i++)
 		m_vecThreads[i]->m_pThread->ResumeThread();
 	CString str;
