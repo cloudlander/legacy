@@ -95,6 +95,10 @@ SOURCE=.\CJHyperLink.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\FileFindEx.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\JobProgresser.cpp
 # End Source File
 # Begin Source File
@@ -137,6 +141,10 @@ SOURCE=.\WorkQueue.cpp
 # Begin Source File
 
 SOURCE=.\CJHyperLink.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\FileFindEx.h
 # End Source File
 # Begin Source File
 

@@ -16,18 +16,18 @@ ResourceCount=6
 Resource1=IDD_ABOUTBOX
 Resource2=IDR_MAINFRAME
 Resource3=IDD_WMD5_DIALOG
-Resource4=IDD_WMD5_DIALOG (English (U.S.))
+Resource4=IDD_ABOUTBOX (English (U.S.))
 Class5=CQueueProgresser
 Class4=CJobProgresser
-Resource5=IDD_TIPBOX (English (U.S.))
+Resource5=IDD_WMD5_DIALOG (English (U.S.))
 Class6=CTipDlg
-Resource6=IDD_ABOUTBOX (English (U.S.))
+Resource6=IDD_TIPBOX (English (U.S.))
 
 [CLS:CWmd5App]
 Type=0
 HeaderFile=wmd5.h
 ImplementationFile=wmd5.cpp
-Filter=N
+Filter=W
 BaseClass=CWinApp
 VirtualFilter=AC
 
@@ -35,10 +35,10 @@ VirtualFilter=AC
 Type=0
 HeaderFile=wmd5Dlg.h
 ImplementationFile=wmd5Dlg.cpp
-Filter=W
+Filter=D
 BaseClass=CDialog
 VirtualFilter=dWC
-LastObject=IDC_JOBPATH
+LastObject=CWmd5Dlg
 
 [CLS:CAboutDlg]
 Type=0
