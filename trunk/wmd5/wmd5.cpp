@@ -49,11 +49,15 @@ UINT QueueThread(LPVOID param)
 	pQueue->Wait();
 	pQueue->Update();
 	if(CANCELED==pQueue->GetStatus())		// let GUI do close thing if DONE normally
+	{
+//		DWORD tmp=GetCurrentThreadId();
 		pQueue->m_pDlg->SendMessage(WM_DESTROY);
+	}
 	else
 	{
 		pQueue->ShowResult();
-		SuspendThread(GetCurrentThread());
+		// GetCurrentThread return a handle only reasonable to this thread
+		SuspendThread(GetCurrentThread());	
 	}
 	delete pQueue;
 	return 0;
