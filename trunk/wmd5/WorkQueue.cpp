@@ -529,8 +529,11 @@ BOOL CWorkQueue::FetchCompareJobs(CStdioFile& stdf)
 				if(! finder.IsDots() && ! finder.IsDirectory())
 				{
 					finder.GetLength64(file_size);
+
+					/*	skiping zero length file is not good as it seems
 					if(0==file_size)	
 						ju->status=SKIPPED;
+					*/
 				}
 				else
 				{
