@@ -390,7 +390,7 @@ LONG CCJHyperLink::GetRegKey(HKEY key, LPCTSTR subkey, LPTSTR retdata)
         long datasize = MAX_PATH;
         TCHAR data[MAX_PATH];
         RegQueryValue(hkey, NULL, data, &datasize);
-        _tcscpy(retdata,data);
+        _tcsncpy(retdata,data,MAX_PATH);
         RegCloseKey(hkey);
     }
 
