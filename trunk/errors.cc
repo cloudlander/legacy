@@ -16,26 +16,6 @@
 
 using namespace std;
 
-// added for symbol table operation
-void ReportError::ConditionalExprUnmatch(Expr *expr2,Expr *expr3)
-{
-    ostringstream s;
-    s << "Incompatible type " << expr2 << ": " << expr3
-        << " given, the typies of 2nd and 3rd expresstion in conditional expresstion must be compatible" << '\0';
-    OutputError(expr2->GetLocation(), s.str().c_str());
-}
-
-void ReportError::ThrowNullNotAllowed(Expr* expr)
-{
-	OutputError(expr->GetLocation(), "null can't be thrown");
-}
-  
-void ReportError::SwitchOnlyAcceptInteger(Expr *expr)
-{
-	OutputError(expr->GetLocation(), "switch/case only accept integer expression");
-}
-/////////////////////////////////////////////////
-
 int ReportError::numErrors = 0;
 
 void ReportError::UnderlineErrorInLine(const char *line, yyltype *pos) {
