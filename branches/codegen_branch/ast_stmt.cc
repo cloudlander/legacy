@@ -430,6 +430,9 @@ Location* ThrowStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	Location* typedim=NULL;
 	
 	Type* ehType=exception->GetType(symtbl);
+
+	Assert(! ehType->IsEquivalentTo(Type::nullType));
+	
 	Type* tmpType=ehType;
 
 	while(typeid(ArrayType)==typeid(*tmpType))
