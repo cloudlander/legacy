@@ -305,6 +305,16 @@ void CWmd5Dlg::OnCancel()
 //	CDialog::OnCancel();
 }
 
+void CWmd5Dlg::OnOK() 
+{
+	// TODO: Add extra cleanup here
+	if(m_pQueue && RUNNING==m_pQueue->GetStatus())
+		if(IDYES==AfxMessageBox(_T("Cancel all jobs?"),MB_YESNO))
+		{
+			m_pQueue->SetStatus(CANCELED);
+		}	
+//			CDialog::OnOK();
+}
 
 void CWmd5Dlg::OnDestroy() 
 {

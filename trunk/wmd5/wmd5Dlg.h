@@ -64,6 +64,7 @@ protected:
 	afx_msg void OnClose();
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	virtual void OnCancel();
+	virtual void OnOK();
 	afx_msg void OnDestroy();
 	afx_msg void OnClickJoblist(NMHDR* pNMHDR, LRESULT* pResult);
 	//}}AFX_MSG
