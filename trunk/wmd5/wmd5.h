@@ -23,6 +23,7 @@ class CWmd5App : public CWinApp
 {
 public:
 	CWmd5App();
+	CWinThread* m_pQueueThread;
 //	CWorkQueue m_Queue;
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -31,6 +32,7 @@ public:
 	virtual BOOL InitInstance();
 	virtual BOOL OnIdle(LONG lCount);
 	virtual void AddToRecentFileList(LPCTSTR lpszPathName);
+	virtual int ExitInstance();
 	//}}AFX_VIRTUAL
 
 // Implementation

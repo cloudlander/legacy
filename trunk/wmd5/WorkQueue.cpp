@@ -348,7 +348,7 @@ CWorkQueue::~CWorkQueue()
 	}
 	for(i=0;i<m_vecJobs.size();i++)
 	{
-//		AfxMessageBox(m_vecJobs[i]->m_pOpenFile->GetFilePath());
+		TRACE(m_vecJobs[i]->filePath);
 		delete m_vecJobs[i];
 	}
 	DeleteCriticalSection(&sche_cs);
@@ -776,9 +776,11 @@ void CWorkQueue::ShowResult()
 			}
 			else
 			{
+				/*
 				CString s;
 				s.Format("%s,%d",m_vecJobs[i]->filePath,m_vecJobs[i]->status);
 				AfxMessageBox(s);
+				*/
 				errors++;
 			}
 		}

@@ -51,7 +51,11 @@ UINT QueueThread(LPVOID param)
 	if(CANCELED==pQueue->GetStatus())		// let GUI do close thing if DONE normally
 		pQueue->m_pDlg->SendMessage(WM_DESTROY);
 	else
+	{
 		pQueue->ShowResult();
+		SuspendThread(GetCurrentThread());
+	}
+	delete pQueue;
 	return 0;
 }
 /////////////////////////////////////////////////////////////////////////////
@@ -86,7 +90,7 @@ BOOL CWmd5App::InitInstance()
 	p->cmdinfo=cmdinfo;
 	p->dlg=pdlg;
 
-	AfxBeginThread(&QueueThread,p,THREAD_PRIORITY_NORMAL);
+	m_pQueueThread=AfxBeginThread(&QueueThread,p,THREAD_PRIORITY_NORMAL);
 /*
 	CWmd5Dlg dlg;
 	m_pMainWnd = &dlg;
@@ -150,4 +154,12 @@ void MyCommandLineInfo::ParseParam(const TCHAR* pszParam,BOOL bFlag,BOOL bLast)
 		m_mode=GENMD5;
 		m_strFileName.Format("%s",pszParam+1);
 	}
+}
+
+int CWmd5App::ExitInstance() 
+{
+	// TODO: Add your specialized code here and/or call the base class
+	m_pQueueThread->ResumeThread();
+	WaitForSingleObject(m_pQueueThread->m_hThread,INFINITE);
+	return CWinApp::ExitInstance();
 }
