@@ -29,6 +29,17 @@ void StmtBlock::PrintChildren(int indentLevel) {
     stmts->PrintAll(indentLevel+1);
 }
 
+ExprStmt::ExprStmt(yyltype loc, Expr *e) : Stmt(loc) {
+        if(e)
+          (expr=e)->SetParent(this);
+}
+
+void ExprStmt::PrintChildren(int indentLevel)
+{   
+        if(expr)
+          expr->Print(indentLevel+1);
+}       
+
 ConditionalStmt::ConditionalStmt(Expr *t, Stmt *b) { 
     Assert(t != NULL && b != NULL);
     (test=t)->SetParent(this); 

@@ -57,6 +57,16 @@ class ConditionalStmt : public Stmt
     ConditionalStmt(Expr *testExpr, Stmt *body);
 };
 
+class ExprStmt : public Stmt
+{   
+   protected:
+        Expr *expr;
+   public:
+        ExprStmt(yyltype loc, Expr *e);
+        const char *GetPrintNameForNode() { return "ExprStmt";}
+        void PrintChildren(int indentLevel);
+};
+
 class LoopStmt : public ConditionalStmt 
 {
   public:

@@ -240,8 +240,8 @@ NonEmptyVList	:VariableDecl			{ ($$ = new List<VarDecl*>)->Append($1); }
 NonEmptySList	:Stmt			{($$=new List<Stmt*>)->Append($1);}
 		|NonEmptySList Stmt	{($$=$1)->Append($2);}
 		;
-Stmt		:';'			{$$=NULL;}
-		|Expr ';'		{$$=$1;}
+Stmt	:';'                    {$$=new ExprStmt(yylloc,NULL);}
+        |Expr ';'               {$$=new ExprStmt(@1,$1);}
 		|StmtBlock		{$$=$1;}
 		|IfStmt			{$$=$1;}
 		|SwitchStmt		{$$=$1;}
