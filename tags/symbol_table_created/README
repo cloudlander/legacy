@@ -1,0 +1,274 @@
+1. Symble Table 结构
+
+    使用层次结构，为每个可以产生新scope的语言单位生成独立的符号表，因此全局有一个表，
+
+	每个class，每个method和function，以及每个StmtBlock都各有一个，同时，根据curry
+
+	语言规范，每个method/function的形参也有一个表。这些表都有一个指向父表的指针。
+
+	父子关系遵从curry的语言规范。
+
+
+
+2. Symbol Table的构造
+
+	为简化实现，此处实现的符号表需要两次遍历(第一次遍历tree，第二次遍历符号表层次结构)
+
+
+
+	pass1: 
+
+	简单地为每个scope建立符号表和父子关系，但此时的class的父子
+
+	关系没有考虑继承，所有class都有同一个父符号表，也就是全局表。curry中的符号有
+
+	三类：变量，类，类变量，类方法，函数. 在加入符号表时需要附带符号类型,以及声明时的顺序
+
+
+
+	(类)变量: 包括全局和局部变量，只出现在全局，函数，方法内部，或者block和class内部
+
+			  通过搜索tree的父结点确定所在区域。
+
+	类:		  由于不支持嵌套定义，所以只出现在全局，无需判断
+
+	方法/函数:只能出现在全局或者class内部，也通过搜索父结点完成类型判断
+
+	此处确定的符号类型可以方便后期确定Location和codegen(虚拟函数的判断)。
+
+	
+
+	在构造method的形参表时，需要加入"this"符号
+
+
+
+	由program发起调用，通过topdown遍历syntax tree完成任务
+
+	此阶段完成的语意检查：重复定义错误
+
+
+
+	pass2: 
+
+	完成class的继承关系建立和成员变量以及method的offset分配，即根据声明顺序建立相对
+
+	对象基址(变量)和vtable基址(方法)的偏移量(由基类确定),同时完成全局变量和函数的
+
+	location属性设置,此时也正适合完成vtable的构建。
+
+	在这一pass，同时建立起字符串列表形式的虚函数表，以及完成所有的name mangling，为以后的codegen提供方便(算法中未列出)。	
+
+
+
+	总的算法如下: (类似于每次处理一个基类) 
+
+	do
+
+	  changed=false
+
+	  foreach symbol in global sym-table
+
+		if(type of symbol is CLASS and symbol.Location is null)
+
+		then
+
+			if(it has no extends)
+
+			then
+
+				/* it's a base class */
+
+				symbol.determineLocation    // determine each variable/method's offset from its
+
+									  		// declaration order and its base classes (see below)
+
+				changed=true
+
+			else
+
+				/* it has a parent class */
+
+				check the existence of parent class
+
+				if(all the parent class has location determined)
+
+					symbol.setparent(parent)
+
+					symbol.determineLocation
+
+					changed=true
+
+				endif
+
+			endif
+
+		else
+
+			if(type of symbol is var or function)	// just set this symbol global
+
+			then
+
+				symbol.setLocation(global)
+
+				if(symbol is function)
+
+				then
+
+					symbol.determineLocation		// determine the global function's local variables' locations
+
+				endif
+
+			endif
+
+		endif
+
+	  endfor
+
+	while(changed)
+
+
+
+	class的DetermineLocation算法:	
+
+	varoffset=parent.get(the direct parent's last offset) (size of class)
+
+	methodoffset=parent.get(the vtable size of the direct parent) 
+
+	sizeofclass=varoffset
+
+	init an empty vtable and copy parent's vtable
+
+	foreach symbol in this symbol table in declaration order 
+
+	do
+
+		if(symbol can be found in parent's symbol table)	// sub class overide parent's symbol(variable or method)
+
+		then
+
+			link the parent's location to this symbol table
+
+		else
+
+			if(symbol is var)
+
+			then
+
+				varoffset+=symbol.size()
+
+				symbol.setLocation(varoffset)
+
+				// increase total size because of new variable found
+
+				sizeofclass+=symbol.size()
+
+			else 
+
+				if(symbol is method)
+
+				then
+
+					methodoffset+=PointSize
+
+					symbol.setLocation(methodoffset)	// set the vtable offset of this newly found virtual function
+
+					symbol.DetermineLocation			// determine the method's local variables' locations
+
+					add ths symbol to vtable
+
+				endif
+
+			endif
+
+		endif
+
+	endfor
+
+	set the new sizeofclass
+
+	set vtable
+
+
+
+	function/method的determineLocation算法:
+
+	call formal-symboltable's determineLocation(offset=8)
+
+	call local-symboltable's determineLocation(offset=4)
+
+
+
+	formal-symboltable的determineLocation算法:
+
+	offset=param0 (8)
+
+	foreach symbol in symbol table
+
+	do
+
+		symbol.setLocation(offset)
+
+		offset+=symbol.size
+
+	endfor
+
+			
+
+	local-symboltable的determineLocation算法:
+
+	offset=param0 (4)
+
+	foreach symbol in symbol table
+
+	do
+
+		symbol.setLocation(offset)
+
+		offset+=symbol.size
+
+	endfor
+
+	foreach sub-stmtblock in stmts
+
+	do
+
+		sub-stmtblock.symtable.determineLocaion(offset)
+
+	endfor
+
+
+
+	由program的symbol table发起调用，通过顺序枚举所有的class完成任务,在处理每个class时，
+
+	由每个class的symbol table调用，通过bottomup方式遍历继承树，确定所有变量和method的
+
+	offset,每个function/method也依次调用自己符号表的determineLocation,最终建立起完整的
+
+	层次化符号表
+
+	
+
+	此阶段完成的语意检查：基类没找到
+
+
+
+	至此，完整的符号表结构已经建立,包括所有相关符号的location属性都已经确定，但是这里
+
+	没有考虑在codegen阶段生成的临时变量，此处的策略是：由于临时变量只能产生在local的
+
+	symbol table，因此，只需事先知道local symbol table的最大分配到的offset，因此以后
+
+	产生的临时变量依次递增offset，来确定它的Location。
+
+
+
+
+
+
+
+
+
+
+
+
+
