@@ -26,6 +26,9 @@ class Program : public Node
      Program(List<Decl*> *declList);
      const char *GetPrintNameForNode() { return "Program"; }
      void PrintChildren(int indentLevel);
+//   for symbol table usage	 
+	 void BuildSymTable(SymTable*);
+	 void DetermineLocation();
 };
 
 class Stmt : public Node
@@ -45,6 +48,9 @@ class StmtBlock : public Stmt
     StmtBlock(List<VarDecl*> *variableDeclarations, List<Stmt*> *statements);
     const char *GetPrintNameForNode() { return "StmtBlock"; }
     void PrintChildren(int indentLevel);
+	 
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
 };
 
 class ConditionalStmt : public Stmt
@@ -83,6 +89,9 @@ class ForStmt : public LoopStmt
     ForStmt(Expr *init, Expr *test, Expr *step, Stmt *body);
     const char *GetPrintNameForNode() { return "ForStmt"; }
     void PrintChildren(int indentLevel);
+	 
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
 };
 
 class WhileStmt : public LoopStmt 
@@ -91,17 +100,26 @@ class WhileStmt : public LoopStmt
     WhileStmt(Expr *test, Stmt *body) : LoopStmt(test, body) {}
     const char *GetPrintNameForNode() { return "WhileStmt"; }
     void PrintChildren(int indentLevel);
+	 
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
 };
 
 class IfStmt : public ConditionalStmt 
 {
   protected:
     Stmt *elseBody;
+
+	// for elseBody's new scope
+	SymTable* elsetable;
   
   public:
     IfStmt(Expr *test, Stmt *thenBody, Stmt *elseBody);
     const char *GetPrintNameForNode() { return "IfStmt"; }
     void PrintChildren(int indentLevel);
+	 
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
 };
 
 class SwitchStmt : public ConditionalStmt
@@ -110,6 +128,10 @@ class SwitchStmt : public ConditionalStmt
     SwitchStmt(Expr *test, Stmt *body) : ConditionalStmt(test, body) {}
     const char *GetPrintNameForNode() { return "SwitchStmt"; }
     void PrintChildren(int indentLevel);
+	 
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
+
 };
 
 class CaseStmt : public ConditionalStmt
@@ -118,6 +140,10 @@ class CaseStmt : public ConditionalStmt
     CaseStmt(Expr *test, Stmt *body) : ConditionalStmt(test, body) {}
     const char *GetPrintNameForNode() { return "CaseStmt"; }
     void PrintChildren(int indentLevel);
+	 
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
+
 };
 
 class DefaultStmt : public Stmt
@@ -128,6 +154,10 @@ class DefaultStmt : public Stmt
     DefaultStmt(Stmt *b);
     const char *GetPrintNameForNode() { return "DefaultStmt"; }
     void PrintChildren(int indentLevel);
+	 
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
+
 };
 
 class SwitchBody : public Stmt
@@ -139,6 +169,10 @@ class SwitchBody : public Stmt
     SwitchBody(List<CaseStmt*> *CaseList, DefaultStmt *Default);
     const char *GetPrintNameForNode() { return "SwitchBody"; }
     void PrintChildren(int indentLevel);
+	 
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
+
 };
 
 class BreakStmt : public Stmt 
@@ -179,6 +213,10 @@ class CatchStmt : public Stmt
 	  CatchStmt(VarDecl *excpt,List<Stmt*> *actbody);
 	  const char *GetPrintNameForNode() { return "CatchStmt"; }
 	  void PrintChildren(int indentLevel);
+	 
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
+
 };
 
 class TryStmt : public Stmt
@@ -190,6 +228,10 @@ class TryStmt : public Stmt
 	  TryStmt(List<Stmt*> *mainbody,List<CatchStmt*> *cblocks);
 	  const char *GetPrintNameForNode() { return "TryStmt"; }
 	  void PrintChildren(int indentLevel);
+	 
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
+
 };
 
 class ThrowStmt : public Stmt

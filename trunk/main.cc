@@ -10,7 +10,8 @@
 #include "parser.h"
 #include "errors.h"
 
-extern void test_asm_gen();
+/* declare external subroutines */
+#include "main.h"
 
 // The pointer directed to a dynamic allocated place(a dynamic array) to 
 // hold all idtable pointers. All idtables can be founded from this pointer
@@ -33,7 +34,7 @@ int main(int argc, char *argv[])
     InitScanner();
     InitParser();
     yyparse();
-
+	BuildSymTable();
     return (ReportError::NumErrors() == 0? 0 : -1);
 }
 

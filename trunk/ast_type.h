@@ -40,6 +40,8 @@ class NamedType : public Type
     void PrintToStream(ostream& out) { out << id; }    
     const char *GetPrintNameForNode() { return "NamedType"; }
     void PrintChildren(int indentLevel);
+//  for symbol table usage
+	char* GetName(){return id->GetName();}
 };
 
 class ArrayType : public Type 

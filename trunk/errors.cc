@@ -16,6 +16,14 @@
 
 using namespace std;
 
+// added for symbol table operation
+void ReportError::ParentClassNotDefined(Decl* decl,const char* parent)
+{
+    ostrstream s;
+    s << "Declaration of '" << decl << "' here has extends a not defined class: "<<parent<<'\0';
+    OutputError(decl->GetLocation(), s.str());
+}
+
 int ReportError::numErrors = 0;
 
 void ReportError::UnderlineErrorInLine(const char *line, yyltype *pos) {

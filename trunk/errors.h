@@ -105,6 +105,8 @@ class ReportError
   // Generic method to report a printf-style error message
   static void Formatted(yyltype *loc, const char *format, ...);
 
+  // added for symbol table operation and pp4
+  static void ParentClassNotDefined(Decl* decl,const char* parent);
 
   // Returns number of error messages printed
   static int NumErrors() { return numErrors; }

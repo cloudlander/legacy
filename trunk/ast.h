@@ -38,8 +38,11 @@
 #include <stdlib.h>   // for NULL
 #include "location.h"
 #include <iostream>
+#include "utility.h"
 
 using namespace std;
+
+class SymTable;
 
 class Node 
 {
@@ -47,6 +50,9 @@ class Node
     yyltype *location;
     Node *parent;
 
+	SymTable* symtable;
+
+	
   public:
     Node(yyltype loc);
     Node();
@@ -61,6 +67,20 @@ class Node
     // subclasses should override PrintChildren() instead
     void Print(int indentLevel, const char *label = NULL); 
     virtual void PrintChildren(int indentLevel)  {}
+
+	// for symbol table operation
+	SymTable* GetSymTable(){return symtable;}
+	virtual void BuildSymTable(SymTable* parent)
+	{
+		if(IsDebugOn("scope"))
+			fprintf(stderr," ----- BuildSymTable in %s  ------\n",GetPrintNameForNode());
+	}
+	virtual void DetermineLocation()
+	{
+		if(IsDebugOn("location"))
+			fprintf(stderr," ----- DetermineLocation in %s  ------\n",GetPrintNameForNode());
+	}
+
 };
    
 
@@ -74,6 +94,9 @@ class Identifier : public Node
     friend ostream& operator<<(ostream& out, Identifier *id) { return out << id->name; }    
     const char *GetPrintNameForNode()   { return "Identifier"; }
     void PrintChildren(int indentLevel);
+
+	/* access protected name for PP4 */
+	char* GetName(){return name;}
 };
 
 

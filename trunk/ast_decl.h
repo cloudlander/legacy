@@ -14,6 +14,7 @@
 
 #include "ast.h"
 #include "list.h"
+#include "ast_type.h"
 
 class Type;
 class NamedType;
@@ -39,6 +40,8 @@ class VarDecl : public Decl
     VarDecl(Identifier *name, Type *type);
     const char *GetPrintNameForNode() { return "VarDecl"; }
     void PrintChildren(int indentLevel);
+
+	void BuildSymTable(SymTable*);
 };
 
 class ClassDecl : public Decl 
@@ -48,11 +51,31 @@ class ClassDecl : public Decl
     NamedType *extends;
     List<NamedType*> *implements;
  
+
+	// for location determination
+	int varoffset;
+	int methodoffset;
+
+	List<const char*>* vtable;
+	const char* vtableName;
   public:
 //    ClassDecl(Identifier *name, NamedType *extends, List<NamedType*> *implements, List<Decl*> *members);
     ClassDecl(Identifier *name, NamedType *extends, List<Decl*> *members);
     const char *GetPrintNameForNode() { return "ClassDecl"; }
     void PrintChildren(int indentLevel);
+//  for symbol table usage
+	int GetVarOffset(){return varoffset;}
+	int GetMethodOffset(){return methodoffset;}
+	void SetVarOffset(int v){varoffset=v;}
+	void SetMethodOffset(int m){methodoffset=m;}
+	const char* GetExtendClass();
+	const char* GetClassName();
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
+	List<const char*>* GetVtable(){Assert(vtable); return vtable;}
+	void SetVtable(List<const char*>* v){Assert(v);vtable=v;}
+	const char* GetVtableName(){return vtableName;}
+	void SetVtableName(const char* n){vtableName=n;}
 };
 
 /*
@@ -74,12 +97,27 @@ class FnDecl : public Decl
     List<VarDecl*> *formals;
     Type *returnType;
     Stmt *body;
-    
+
+    // just for formal's scope
+	SymTable* formalTable;
+	
+	// frame size, byte count(not local var number count)
+	int	frameSize;
+	// the next offset to allocate local variable ( for generating temp variable )
+	int localOffset;
+	const char* mangledName;
   public:
     FnDecl(Identifier *name, Type *returnType, List<VarDecl*> *formals);
     void SetFunctionBody(Stmt *b);
     const char *GetPrintNameForNode() { return "FnDecl"; }
     void PrintChildren(int indentLevel);
+//  for symbol table usage
+	int GetLocalOffset(){return localOffset;}
+	int GetFrameSize(){return frameSize;}
+	void BuildSymTable(SymTable*);
+	void DetermineLocation();
+	void SetMangledName(const char* n){Assert(n);mangledName=n;}
+	const char* GetMangledName(){Assert(mangledName);return mangledName;}
 };
 
 #endif

@@ -5,8 +5,138 @@
 #include "ast_decl.h"
 #include "ast_type.h"
 #include "ast_stmt.h"
-        
-         
+#include "utility.h"
+#include "symtable.h"
+#include "errors.h"
+
+ 
+/* implemention of PP4 start */
+int localoffset;
+/* vardecls don't pull a new scope, it'll just insert itself to the parent symbol table */
+void VarDecl::BuildSymTable(SymTable* parent)
+{
+	Symbol* sym=parent->Find(id->GetName());
+	if(NULL!=sym)
+	{
+		ReportError::DeclConflict(this,sym->GetDecl());
+		return;
+	}
+	else
+		parent->Append(id->GetName(),this);
+}
+
+/* 
+ * as classdecl enters a new scope,class field will be inserted to its scope 
+ * also, it checkes its name into parent symbol table
+ * iteratively build all the methods' symbol table 
+ * 
+ */ 
+void ClassDecl::BuildSymTable(SymTable* parent)
+{
+	Assert(NULL==symtable);
+	Assert(NULL!=parent);
+	Symbol* sym=parent->Find(id->GetName());
+	if(NULL!=sym)
+	{
+		ReportError::DeclConflict(this,sym->GetDecl());
+		return;
+	}
+	else
+		parent->Append(id->GetName(),this);
+	symtable=new SymTable(parent,id->GetName());
+	DEBUGSCOPEBEGIN(symtable)
+	for(int i=0;i<members->NumElements();i++)
+		members->Nth(i)->BuildSymTable(symtable);
+	DEBUGSCOPE(symtable)
+	DEBUGSCOPEEND(symtable)
+}
+
+void ClassDecl::DetermineLocation()
+{
+	DEBUGLOCATIONBEGIN(symtable)
+	if(NULL==extends)
+		symtable->DetermineClassLocation(NULL,this);		// base class
+	else
+	{
+		Symbol* parent=GetGlobalSymTable()->Find(extends->GetName());
+		if(NULL==parent)
+			symtable->DetermineClassLocation(NULL,this);	// error, but consider it as a base class
+		symtable->DetermineClassLocation(static_cast<ClassDecl*>(parent->GetDecl()),this);		// deriving class
+	}
+	DEBUGLOCATION(symtable)
+	if(IsDebugOn("location"))
+	{
+		fprintf(stderr,"Start of dumping VTABLE:\n");
+		for(int i=0;i<vtable->NumElements();i++)
+			fprintf(stderr,"--- %s ---\n",vtable->Nth(i));
+		fprintf(stderr,"End of dumping VTABLE\n");
+	}
+	DEBUGLOCATIONEND(symtable)
+}
+
+const char* ClassDecl::GetExtendClass()
+{
+		if(extends)
+			return extends->GetName();
+		else
+			return NULL;
+}
+
+const char* ClassDecl::GetClassName()
+{
+	return id->GetName();
+}
+
+void FnDecl::BuildSymTable(SymTable* parent)
+{
+	Assert(NULL==symtable);
+	Assert(NULL!=parent);
+	Symbol* sym=parent->Find(id->GetName());
+	if(NULL!=sym)
+	{
+		ReportError::DeclConflict(this,sym->GetDecl());
+		return;
+	}
+	else
+		parent->Append(id->GetName(),this);
+	symtable=new SymTable(parent,id->GetName());
+	DEBUGSCOPEBEGIN(symtable)
+	Assert(NULL==formalTable);
+	formalTable=new SymTable(symtable,"Formal's scope");
+	DEBUGSCOPEBEGIN(formalTable)
+	int i;
+	for(i=0;i<formals->NumElements();i++)
+		formals->Nth(i)->BuildSymTable(formalTable);
+	/* compiler generates "this" parameter */
+	if(parent->Find(id->GetName())->IsMethod())
+	{
+		// set the actual Decl* of "this"
+		formalTable->Append("this",static_cast<ClassDecl*>(GetParent()));
+	}
+	DEBUGSCOPE(formalTable)
+	DEBUGSCOPEEND(formalTable)
+	body->BuildSymTable(formalTable);
+	DEBUGSCOPE(symtable)
+	DEBUGSCOPEEND(symtable)
+}
+     
+void FnDecl::DetermineLocation()
+{
+	DEBUGLOCATIONBEGIN(symtable)
+	DEBUGLOCATIONBEGIN(formalTable);
+	localoffset=-4;
+	(formalTable->DetermineParamLocation(8,1)-8);
+	DEBUGLOCATION(formalTable)
+	DEBUGLOCATIONEND(formalTable)
+	body->DetermineLocation();
+	frameSize=-(4+localoffset);
+	DEBUGLOCATION(symtable)
+	if(IsDebugOn("location"))
+		fprintf(stderr,"frameSize=%d\n",frameSize);
+	DEBUGLOCATIONEND(symtable)
+	localOffset=localoffset;
+}
+
 Decl::Decl(Identifier *n) : Node(*n->GetLocation()) {
     Assert(n != NULL);
     (id=n)->SetParent(this); 
@@ -71,6 +201,9 @@ FnDecl::FnDecl(Identifier *n, Type *r, List<VarDecl*> *d) : Decl(n) {
     (returnType=r)->SetParent(this);
     (formals=d)->SetParentAll(this);
     body = NULL;
+
+	formalTable=NULL;
+	frameSize=0;
 }
 
 void FnDecl::SetFunctionBody(Stmt *b) { 

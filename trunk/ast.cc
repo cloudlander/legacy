@@ -11,11 +11,15 @@
 Node::Node(yyltype loc) {
     location = new yyltype(loc);
     parent = NULL;
+ 
+ 	symtable=NULL;
 }
 
 Node::Node() {
     location = NULL;
     parent = NULL;
+	
+	symtable=NULL;
 }
 
 /* The Print method is used to print the parse tree nodes.

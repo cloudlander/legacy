@@ -21,7 +21,7 @@
 #include "errors.h"
 
 void yyerror(char *msg); // standard error-handling routine
-
+Program* program;
 %}
 
 /*
@@ -175,9 +175,11 @@ Program :DeclList
         /* pp2: The @1 is needed to convince 
          * yacc to set up yylloc. You can remove 
          * it oncde you have other uses of @n*/
-        Program *program = new Program($1);
+        program = new Program($1);
+/*
         if (ReportError::NumErrors() == 0)
 		program->Print(0);
+*/
         }
         ;
           
