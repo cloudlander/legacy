@@ -105,11 +105,13 @@ BEGIN_MESSAGE_MAP(CWmd5Dlg, CDialog)
 	ON_WM_DESTROY()
 	ON_NOTIFY(NM_CLICK, IDC_JOBLIST, OnClickJoblist)
 	//}}AFX_MSG_MAP
+	ON_REGISTERED_MESSAGE(nHelpMsg,OnHelpMsg)
 #ifdef SHOW_TIME_LEFT
 	ON_WM_TIMER()
 #endif
 END_MESSAGE_MAP()
 
+UINT CWmd5Dlg::nHelpMsg=0;
 /////////////////////////////////////////////////////////////////////////////
 // CWmd5Dlg message handlers
 
@@ -175,6 +177,8 @@ BOOL CWmd5Dlg::OnInitDialog()
 	SetTimer(1,1000,NULL);
 #endif
 	
+	CWmd5Dlg::nHelpMsg=RegisterWindowMessage(HELPMSGSTRING);
+
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
@@ -371,6 +375,12 @@ void CWmd5Dlg::ShowResult(CString total, CString error, CString match, CString n
 	m_notmatch.SetWindowText(notmatch);
 }
 
+void CWmd5Dlg::OnHelpMsg(WPARAM wParam,LPARAM lParam)
+{
+	// put my customized help here
+}
+
+
 BOOL CAboutDlg::OnInitDialog() 
 {
 	CDialog::OnInitDialog();
@@ -381,3 +391,4 @@ BOOL CAboutDlg::OnInitDialog()
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
+

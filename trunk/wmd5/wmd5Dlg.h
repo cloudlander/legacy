@@ -50,6 +50,8 @@ public:
 // Implementation
 protected:
 	HICON m_hIcon;
+	static UINT nHelpMsg;
+
 
 #ifdef SHOW_TIME_LEFT	
 	afx_msg void OnTimer(UINT nIDEvent);
@@ -68,8 +70,10 @@ protected:
 	afx_msg void OnDestroy();
 	afx_msg void OnClickJoblist(NMHDR* pNMHDR, LRESULT* pResult);
 	//}}AFX_MSG
+	afx_msg void OnHelpMsg(WPARAM wParam,LPARAM lParam);
 	DECLARE_MESSAGE_MAP()
 };
+
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
