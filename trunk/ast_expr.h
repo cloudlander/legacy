@@ -13,6 +13,7 @@
 #include "ast.h"
 #include "ast_stmt.h"
 #include "list.h"
+#include "ast_type.h"
 
 class NamedType; // for new
 class Type; // for NewArray
@@ -23,6 +24,8 @@ class Expr : public Stmt
   public:
     Expr(yyltype loc) : Stmt(loc) {}
     Expr() : Stmt() {}
+
+	virtual Type* GetType(SymTable* symtbl){return type=Type::errorType;}
 };
 
 /* This node type is used for those places where an expression is optional.
@@ -43,6 +46,8 @@ class IntConstant : public Expr
     IntConstant(yyltype loc, int val);
     const char *GetPrintNameForNode() { return "IntConstant"; }
     void PrintChildren(int indentLevel);
+
+	Type* GetType(SymTable* symtbl){return type=Type::intType;}
 };
 
 class DoubleConstant : public Expr 
@@ -54,6 +59,8 @@ class DoubleConstant : public Expr
     DoubleConstant(yyltype loc, double val);
     const char *GetPrintNameForNode() { return "DoubleConstant"; }
     void PrintChildren(int indentLevel);
+
+	Type* GetType(SymTable* symtbl){return type=Type::doubleType;}
 };
 
 class BoolConstant : public Expr 
@@ -65,6 +72,8 @@ class BoolConstant : public Expr
     BoolConstant(yyltype loc, bool val);
     const char *GetPrintNameForNode() { return "BoolConstant"; }
     void PrintChildren(int indentLevel);
+
+	Type* GetType(SymTable* symtbl){return type=Type::boolType;}
 };
 
 class StringConstant : public Expr 
@@ -76,6 +85,8 @@ class StringConstant : public Expr
     StringConstant(yyltype loc, const char *val);
     const char *GetPrintNameForNode() { return "StringConstant"; }
     void PrintChildren(int indentLevel);
+
+	Type* GetType(SymTable* symtbl){return type=Type::stringType;}
 };
 
 class NullConstant: public Expr 
@@ -83,6 +94,8 @@ class NullConstant: public Expr
   public: 
     NullConstant(yyltype loc) : Expr(loc) {}
     const char *GetPrintNameForNode() { return "NullConstant"; }
+
+	Type* GetType(SymTable* symtbl){return type=Type::nullType;}
 };
 
 class Operator : public Node 
@@ -106,6 +119,7 @@ class CompoundExpr : public Expr
     CompoundExpr(Expr *lhs, Operator *op, Expr *rhs); // for binary
     CompoundExpr(Operator *op, Expr *rhs);             // for unary
     void PrintChildren(int indentLevel);
+
 };
 
 class ArithmeticExpr : public CompoundExpr 
@@ -114,6 +128,8 @@ class ArithmeticExpr : public CompoundExpr
     ArithmeticExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     ArithmeticExpr(Operator *op, Expr *rhs) : CompoundExpr(op,rhs) {}
     const char *GetPrintNameForNode() { return "ArithmeticExpr"; }
+
+	Type* GetType(SymTable* symtbl);
 };
 
 class RelationalExpr : public CompoundExpr 
@@ -121,6 +137,8 @@ class RelationalExpr : public CompoundExpr
   public:
     RelationalExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     const char *GetPrintNameForNode() { return "RelationalExpr"; }
+
+	Type* GetType(SymTable* symtbl);
 };
 
 class EqualityExpr : public CompoundExpr 
@@ -128,6 +146,8 @@ class EqualityExpr : public CompoundExpr
   public:
     EqualityExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     const char *GetPrintNameForNode() { return "EqualityExpr"; }
+
+	Type* GetType(SymTable* symtbl);
 };
 
 class LogicalExpr : public CompoundExpr 
@@ -136,6 +156,8 @@ class LogicalExpr : public CompoundExpr
     LogicalExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     LogicalExpr(Operator *op, Expr *rhs) : CompoundExpr(op,rhs) {}
     const char *GetPrintNameForNode() { return "LogicalExpr"; }
+
+	Type* GetType(SymTable* symtbl);
 };
 
 class AssignExpr : public CompoundExpr 
@@ -143,6 +165,8 @@ class AssignExpr : public CompoundExpr
   public:
     AssignExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     const char *GetPrintNameForNode() { return "AssignExpr"; }
+
+	Type* GetType(SymTable* symtbl);
 };
 
 class LValue : public Expr 
@@ -156,6 +180,8 @@ class This : public Expr
   public:
     This(yyltype loc) : Expr(loc) {}
     const char *GetPrintNameForNode() { return "This"; }
+
+	Type* GetType(SymTable* symtbl);
 };
 
 class ArrayAccess : public LValue 
@@ -167,6 +193,8 @@ class ArrayAccess : public LValue
     ArrayAccess(yyltype loc, Expr *base, Expr *subscript);
     const char *GetPrintNameForNode() { return "ArrayAccess"; }
     void PrintChildren(int indentLevel);
+
+	Type* GetType(SymTable* symtbl);
 };
 
 /* Note that field access is used both for qualified names
@@ -184,6 +212,8 @@ class FieldAccess : public LValue
     FieldAccess(Expr *base, Identifier *field); //ok to pass NULL base
     const char *GetPrintNameForNode() { return "FieldAccess"; }
     void PrintChildren(int indentLevel);
+	
+	Type* GetType(SymTable* symtbl);
 };
 
 /* Like field access, call is used both for qualified base.field()
@@ -201,6 +231,8 @@ class Call : public Expr
     Call(yyltype loc, Expr *base, Identifier *field, List<Expr*> *args);
     const char *GetPrintNameForNode() { return "Call"; }
     void PrintChildren(int indentLevel);
+	
+	Type* GetType(SymTable* symtbl);
 };
 
 class NewExpr : public Expr
@@ -212,6 +244,8 @@ class NewExpr : public Expr
     NewExpr(yyltype loc, NamedType *clsType);
     const char *GetPrintNameForNode() { return "NewExpr"; }
     void PrintChildren(int indentLevel);
+
+	Type* GetType(SymTable* symtbl){return type=cType;}
 };
 
 class NewArrayExpr : public Expr
@@ -224,6 +258,8 @@ class NewArrayExpr : public Expr
     NewArrayExpr(yyltype loc, Expr *sizeExpr, Type *elemType);
     const char *GetPrintNameForNode() { return "NewArrayExpr"; }
     void PrintChildren(int indentLevel);
+
+	Type* GetType(SymTable* symtbl){return type=new ArrayType(*location,elemType);}
 };
 
 class ReadIntegerExpr : public Expr
@@ -231,6 +267,8 @@ class ReadIntegerExpr : public Expr
   public:
     ReadIntegerExpr(yyltype loc) : Expr(loc) {}
     const char *GetPrintNameForNode() { return "ReadIntegerExpr"; }
+
+	Type* GetType(SymTable* symtbl){return type=Type::intType;}
 };
 
 class ReadLineExpr : public Expr
@@ -238,6 +276,8 @@ class ReadLineExpr : public Expr
   public:
     ReadLineExpr(yyltype loc) : Expr (loc) {}
     const char *GetPrintNameForNode() { return "ReadLineExpr"; }
+
+	Type* GetType(SymTable* symtbl){return type=Type::stringType;}
 };
 
 class ConditionalExpr : public Expr
@@ -250,5 +290,6 @@ class ConditionalExpr : public Expr
     ConditionalExpr(Expr *e1, Operator *o1, Expr *e2, Operator *o2, Expr *e3);
     const char *GetPrintNameForNode() { return "ConditionalExpr";}
     void PrintChildren(int indentLevel);
+	Type* GetType(SymTable* symtbl);
 };    
 #endif

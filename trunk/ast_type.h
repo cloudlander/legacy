@@ -28,6 +28,8 @@ class Type : public Node
     virtual bool IsEquivalentTo(Type *other) { return this == other; }
     const char *GetPrintNameForNode() { return "Type"; }
     void PrintChildren(int indentLevel);
+	
+	virtual bool IsCompatibleTo(Type* other){return false;};
 };
 
 class NamedType : public Type 
@@ -42,6 +44,18 @@ class NamedType : public Type
     void PrintChildren(int indentLevel);
 //  for symbol table usage
 	char* GetName(){return id->GetName();}
+
+	bool IsEquivalentTo(Type* other)
+	{
+		if(Type::IsEquivalentTo(other))
+			return true;
+		if(typeid(this)==typeid(*other))
+			return 0==strcmp(id->GetName(),static_cast<NamedType*>(other)->GetName());
+		else
+			return false;
+	}
+	// check if this NamedType is sub class of "other"
+	bool IsCompatibleTo(Type* other);
 };
 
 class ArrayType : public Type 
@@ -54,6 +68,19 @@ class ArrayType : public Type
     void PrintToStream(ostream& out) { out << elemType << "[]"; }    
     const char *GetPrintNameForNode() { return "ArrayType"; }
     void PrintChildren(int indentLevel);
+
+	Type* GetElemType(){return elemType;}
+	bool IsEquivalentTo(Type* other)
+	{
+		if(Type::IsEquivalentTo(other))
+			return true;
+		if(typeid(this)==typeid(*other))
+			return elemType->IsEquivalentTo(static_cast<ArrayType*>(other)->GetElemType());
+		else
+			return false;
+	}
+
+	bool IsCompatibleTo(Type* other){return false;}
 };
 
  

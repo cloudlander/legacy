@@ -111,7 +111,9 @@ void FnDecl::BuildSymTable(SymTable* parent)
 	if(parent->Find(id->GetName())->IsMethod())
 	{
 		// set the actual Decl* of "this"
-		formalTable->Append("this",static_cast<ClassDecl*>(GetParent()));
+		formalTable->Append("this",new VarDecl(new Identifier(*location,"this"),
+					new NamedType(new Identifier(*location,
+					static_cast<ClassDecl*>(GetParent())->GetClassName()))));
 	}
 	DEBUGSCOPE(formalTable)
 	DEBUGSCOPEEND(formalTable)

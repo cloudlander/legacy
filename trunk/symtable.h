@@ -109,7 +109,12 @@ class SymTable
 		}
 		void SetParent(SymTable* sym)
 		{
+			Assert(sym);
 			parent=sym;
+		}
+		SymTable* GetParent()
+		{
+			return parent;
 		}
 	public:
 		void dump_begin();

@@ -56,7 +56,9 @@
 
 	location属性设置,此时也正适合完成vtable的构建。
 
-	在这一pass，同时建立起字符串列表形式的虚函数表，以及完成所有的name mangling，为以后的codegen提供方便(算法中未列出)。	
+	在这一pass，同时建立起字符串列表形式的虚函数表，以及完成所有的name mangling，为以后的
+
+	codegen提供方便(算法中未列出)。	
 
 
 
@@ -263,6 +265,18 @@
 
 
 
+
+3.	类型系统
+
+	每个expr有一个type，当且仅当所有的subexpr的类型一致(curry不支持类型转换,NamedType和null
+
+	必须type compatibal)
+
+	
+
+	
+
+	
 
 
 

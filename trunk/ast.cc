@@ -13,6 +13,7 @@ Node::Node(yyltype loc) {
     parent = NULL;
  
  	symtable=NULL;
+	type=NULL;
 }
 
 Node::Node() {
@@ -20,6 +21,7 @@ Node::Node() {
     parent = NULL;
 	
 	symtable=NULL;
+	type=NULL;
 }
 
 /* The Print method is used to print the parse tree nodes.

@@ -36,13 +36,15 @@
 #define _H_ast
 
 #include <stdlib.h>   // for NULL
-#include "location.h"
 #include <iostream>
+#include "location.h"
 #include "utility.h"
 
 using namespace std;
 
 class SymTable;
+
+class Type;
 
 class Node 
 {
@@ -52,7 +54,7 @@ class Node
 
 	SymTable* symtable;
 
-	
+	Type* type;	
   public:
     Node(yyltype loc);
     Node();

@@ -4,7 +4,39 @@
  */
 #include "ast_type.h"
 #include "ast_decl.h"
+#include "symtable.h"
  
+/* code implementation for type checking */
+bool NamedType::IsCompatibleTo(Type* other)
+{
+	if(other->IsEquivalentTo(Type::voidType))	// null should be compatible to any NamedType
+		return true;
+	if(IsEquivalentTo(other))
+		return true;
+	if(typeid(*this)!=typeid(*other))
+		return false;
+	
+	Symbol* rootsym=GetGlobalSymTable()->Find(static_cast<NamedType*>(other)->GetName());
+	Assert(rootsym);
+	SymTable* rootsymtbl=static_cast<ClassDecl*>(rootsym->GetDecl())->GetSymTable();
+	Assert(rootsymtbl);
+	
+	Symbol* thissym=GetGlobalSymTable()->Find(this->GetName());
+	Assert(thissym);
+	SymTable* thissymtbl=static_cast<ClassDecl*>(thissym->GetDecl())->GetSymTable();
+	Assert(thissymtbl);
+
+	while(thissymtbl)
+	{
+		if(thissymtbl == rootsymtbl)
+			return true;
+		thissymtbl=thissymtbl->GetParent();
+	}
+	return false;
+}
+
+
+
 /* Class constants
  * ---------------
  * These are public constants for the built-in base types (int, double, etc.)

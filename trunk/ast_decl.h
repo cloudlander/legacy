@@ -29,6 +29,8 @@ class Decl : public Node
   public:
     Decl(Identifier *name);
     friend ostream& operator<<(ostream& out, Decl *d) { return out << d->id; }
+
+	virtual Type* GetType()=0;
 };
 
 class VarDecl : public Decl 
@@ -42,6 +44,7 @@ class VarDecl : public Decl
     void PrintChildren(int indentLevel);
 
 	void BuildSymTable(SymTable*);
+	Type* GetType(){return type;}
 };
 
 class ClassDecl : public Decl 
@@ -76,6 +79,8 @@ class ClassDecl : public Decl
 	void SetVtable(List<const char*>* v){Assert(v);vtable=v;}
 	const char* GetVtableName(){return vtableName;}
 	void SetVtableName(const char* n){vtableName=n;}
+	
+	Type* GetType(){Assert(0);return NULL;}
 };
 
 /*
@@ -118,6 +123,8 @@ class FnDecl : public Decl
 	void DetermineLocation();
 	void SetMangledName(const char* n){Assert(n);mangledName=n;}
 	const char* GetMangledName(){Assert(mangledName);return mangledName;}
+
+	Type* GetType(){return returnType;}
 };
 
 #endif
