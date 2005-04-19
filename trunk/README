@@ -294,11 +294,15 @@
 
 	
 
-	bug:/* fixed */
+	bugs:/* fixed */
 
 	unknown class checking? (bad14.curry,bad17.curry)
 
-	
+	ExprStmt::Check/ExprStmt::GenTac null stmt check  (connectFour)
+
+	X86: unary operator '!' generates wrong code (tictactoe)
+
+
 
 	Note:
 
@@ -409,4 +413,10 @@
 	由于cygwin上的gcc默认会加上_,而Linux环境则不加,给.s和thunk.c之间的全局变量(函数)共享带来麻烦.
 
 	另外,gcc的前置_符号的命令行开关为:-fleading-underscore
+
+
+
+
+
+
 

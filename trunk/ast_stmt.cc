@@ -56,7 +56,7 @@ void Program::DetermineLocation()
 
 bool ExprStmt::Check(SymTable* symtbl)
 {
-	return expr->Check(symtbl);
+	return expr ? expr->Check(symtbl) : true;
 }
 
 void StmtBlock::BuildSymTable(SymTable* parent)
@@ -241,19 +241,25 @@ void ForStmt::DetermineLocation()
 bool ForStmt::Check(SymTable* symtbl)
 {
 	bool ret=true;
-	Type* inittype=init->GetType(symtbl);
+	Type* inittype=NULL;
+	inittype=init->GetType(symtbl);
 	Assert(inittype);
-	Type* testtype=test->GetType(symtbl);
+	ret=!inittype->IsEquivalentTo(Type::errorType) && ret;
+
+	Type* testtype=NULL;
+	testtype=test->GetType(symtbl);
 	Assert(testtype);
+	ret=!testtype->IsEquivalentTo(Type::errorType) && ret;
+
 	if(!testtype->IsEquivalentTo(Type::boolType))
 	{	
 		ReportError::TestNotBoolean(test);
 		ret=false;
 	}
-	Type* steptype=step->GetType(symtbl);
+
+	Type* steptype=NULL;
+	steptype=step->GetType(symtbl);
 	Assert(steptype);
-	ret=!inittype->IsEquivalentTo(Type::errorType) && ret;
-	ret=!testtype->IsEquivalentTo(Type::errorType) && ret;
 	ret=!steptype->IsEquivalentTo(Type::errorType) && ret;
 	
 	return body->Check(symtbl) && ret;

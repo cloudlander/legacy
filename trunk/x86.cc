@@ -475,9 +475,11 @@ void X86::EmitBinaryOp(BinaryOp::OpCode code, Location *dst, Location *op1, Loca
 		Emit("movl\t%%eax, %s", regs[rDst].name);  	
 		*/
 		rRight=GetRegister(op2);
-		Emit("notl\t%s",regs[rRight].name);
-		Emit("andl\t$0x1, %s",regs[rRight].name);
-		BindVarWithRegister(dst, rRight, ForWrite);					
+		rLeft=GetRegisterForWrite(dst,rRight);
+		Emit("movl\t%s, %s",regs[rRight].name,regs[rLeft].name);
+		Emit("notl\t%s",regs[rLeft].name);
+		Emit("andl\t$0x1, %s",regs[rLeft].name);
+		BindVarWithRegister(dst, rLeft, ForWrite);					
 	}		
 	else {
 		rLeft = GetRegister(op1);

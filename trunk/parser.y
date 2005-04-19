@@ -272,10 +272,10 @@ CatchBlock	:T_Catch '(' Variable ')' '{' StmtList '}'	{$$ = new CatchStmt($3,$6)
 		;
 PrintStmt	:T_Print '(' NonEmptyActuals ')' ';'	{$$ = new PrintStmt($3);}
 		;
-BreakStmt	:T_Break ';'		{$$ = new BreakStmt(yylloc);}
+BreakStmt	:T_Break ';'		{$$ = new BreakStmt(@1);}
 		;
-ReturnStmt	:T_Return Expr ';'	{$$ = new ReturnStmt(yylloc,$2);}
-		|T_Return ';'		{$$ = new ReturnStmt(yylloc,new EmptyExpr());}
+ReturnStmt	:T_Return Expr ';'	{$$ = new ReturnStmt(@2,$2);}
+		|T_Return ';'		{$$ = new ReturnStmt(@1,new EmptyExpr());}
 		;
 IfStmt		:T_If '(' Expr ')' Stmt %prec Lower_Else	{$$ = new IfStmt($3,$5,NULL);}
 		|T_If '(' Expr ')' Stmt T_Else Stmt		{$$ = new IfStmt($3,$5,$7);}
@@ -336,8 +336,8 @@ Expr		:Constant		{$$ = $1;}
 			$$ = new ConditionalExpr($1,new Operator(@2,"?"),$3,new Operator(@4,":"),$5);
 					}
 		;
-Call		:Ident '(' Actuals ')'	{$$ = new Call(yylloc,NULL,$1,$3);}
-		|Expr '.' Ident '(' Actuals ')'	{$$ = new Call(yylloc,$1,$3,$5);}
+Call		:Ident '(' Actuals ')'	{$$ = new Call(Join(@1,@4),NULL,$1,$3);}
+		|Expr '.' Ident '(' Actuals ')'	{$$ = new Call(@3,$1,$3,$5);}
 		;
 NonEmptyActuals	:Expr			{($$ = new List<Expr*>)->Append($1);}
 		|NonEmptyActuals ',' Expr	{($$ = $1)->Append($3);}

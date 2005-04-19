@@ -623,8 +623,7 @@ Location* AssignExpr::GenTac(CodeGenerator* cg,SymTable* symtbl)
 Location* ExprStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 {
 	Assert(cg && symtbl);
-	Assert(expr);
-	return expr->GenTac(cg,symtbl);
+	return expr ? expr->GenTac(cg,symtbl) : NULL;
 }
 
 bool NewExpr::Check(SymTable* symtbl)
