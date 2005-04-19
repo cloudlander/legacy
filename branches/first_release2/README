@@ -1,0 +1,422 @@
+1. Symble Table 结构
+
+    使用层次结构，为每个可以产生新scope的语言单位生成独立的符号表，因此全局有一个表，
+
+	每个class，每个method和function，以及每个StmtBlock都各有一个，同时，根据curry
+
+	语言规范，每个method/function的形参也有一个表。这些表都有一个指向父表的指针。
+
+	父子关系遵从curry的语言规范。
+
+
+
+2. Symbol Table的构造
+
+	为简化实现，此处实现的符号表需要两次遍历(第一次遍历tree，第二次遍历符号表层次结构)
+
+
+
+	pass1: 
+
+	简单地为每个scope建立符号表和父子关系，但此时的class的父子
+
+	关系没有考虑继承，所有class都有同一个父符号表，也就是全局表。curry中的符号有
+
+	三类：变量，类，类变量，类方法，函数. 在加入符号表时需要附带符号类型,以及声明时的顺序
+
+
+
+	(类)变量: 包括全局和局部变量，只出现在全局，函数，方法内部，或者block和class内部
+
+			  通过搜索tree的父结点确定所在区域。
+
+	类:		  由于不支持嵌套定义，所以只出现在全局，无需判断
+
+	方法/函数:只能出现在全局或者class内部，也通过搜索父结点完成类型判断
+
+	此处确定的符号类型可以方便后期确定Location和codegen(虚拟函数的判断)。
+
+	
+
+	在构造method的形参表时，需要加入"this"符号
+
+
+
+	由program发起调用，通过topdown遍历syntax tree完成任务
+
+	此阶段完成的语意检查：重复定义错误
+
+
+
+	pass2: 
+
+	完成class的继承关系建立和成员变量以及method的offset分配，即根据声明顺序建立相对
+
+	对象基址(变量)和vtable基址(方法)的偏移量(由基类确定),同时完成全局变量和函数的
+
+	location属性设置,此时也正适合完成vtable的构建。
+
+	在这一pass，同时建立起字符串列表形式的虚函数表，以及完成所有的name mangling，为以后的
+
+	codegen提供方便(算法中未列出)。	
+
+
+
+	总的算法如下: (类似于每次处理一个基类) 
+
+	do
+
+	  changed=false
+
+	  foreach symbol in global sym-table
+
+		if(type of symbol is CLASS and symbol.Location is null)
+
+		then
+
+			if(it has no extends)
+
+			then
+
+				/* it's a base class */
+
+				symbol.determineLocation    // determine each variable/method's offset from its
+
+									  		// declaration order and its base classes (see below)
+
+				changed=true
+
+			else
+
+				/* it has a parent class */
+
+				check the existence of parent class
+
+				if(all the parent class has location determined)
+
+					symbol.setparent(parent)
+
+					symbol.determineLocation
+
+					changed=true
+
+				endif
+
+			endif
+
+		else
+
+			if(type of symbol is var or function)	// just set this symbol global
+
+			then
+
+				symbol.setLocation(global)
+
+				if(symbol is function)
+
+				then
+
+					symbol.determineLocation		// determine the global function's local variables' locations
+
+				endif
+
+			endif
+
+		endif
+
+	  endfor
+
+	while(changed)
+
+
+
+	class的DetermineLocation算法:	
+
+	varoffset=parent.get(the direct parent's last offset) (size of class)
+
+	methodoffset=parent.get(the vtable size of the direct parent) 
+
+	sizeofclass=varoffset
+
+	init an empty vtable and copy parent's vtable
+
+	foreach symbol in this symbol table in declaration order 
+
+	do
+
+		if(symbol can be found in parent's symbol table)	// sub class overide parent's symbol(variable or method)
+
+		then
+
+			link the parent's location to this symbol table
+
+		else
+
+			if(symbol is var)
+
+			then
+
+				varoffset+=symbol.size()
+
+				symbol.setLocation(varoffset)
+
+				// increase total size because of new variable found
+
+				sizeofclass+=symbol.size()
+
+			else 
+
+				if(symbol is method)
+
+				then
+
+					methodoffset+=PointSize
+
+					symbol.setLocation(methodoffset)	// set the vtable offset of this newly found virtual function
+
+					symbol.DetermineLocation			// determine the method's local variables' locations
+
+					add ths symbol to vtable
+
+				endif
+
+			endif
+
+		endif
+
+	endfor
+
+	set the new sizeofclass
+
+	set vtable
+
+
+
+	function/method的determineLocation算法:
+
+	call formal-symboltable's determineLocation(offset=8)
+
+	call local-symboltable's determineLocation(offset=4)
+
+
+
+	formal-symboltable的determineLocation算法:
+
+	offset=param0 (8)
+
+	foreach symbol in symbol table
+
+	do
+
+		symbol.setLocation(offset)
+
+		offset+=symbol.size
+
+	endfor
+
+			
+
+	local-symboltable的determineLocation算法:
+
+	offset=param0 (4)
+
+	foreach symbol in symbol table
+
+	do
+
+		symbol.setLocation(offset)
+
+		offset+=symbol.size
+
+	endfor
+
+	foreach sub-stmtblock in stmts
+
+	do
+
+		sub-stmtblock.symtable.determineLocaion(offset)
+
+	endfor
+
+
+
+	由program的symbol table发起调用，通过顺序枚举所有的class完成任务,在处理每个class时，
+
+	由每个class的symbol table调用，通过bottomup方式遍历继承树，确定所有变量和method的
+
+	offset,每个function/method也依次调用自己符号表的determineLocation,最终建立起完整的
+
+	层次化符号表
+
+	
+
+	此阶段完成的语意检查：基类没找到
+
+
+
+	至此，完整的符号表结构已经建立,包括所有相关符号的location属性都已经确定，但是这里
+
+	没有考虑在codegen阶段生成的临时变量，此处的策略是：由于临时变量只能产生在local的
+
+	symbol table，因此，只需事先知道local symbol table的最大分配到的offset，因此以后
+
+	产生的临时变量依次递增offset，来确定它的Location。
+
+
+
+
+
+3.	类型系统和类型检查
+
+	每个expr有一个type，当且仅当所有的subexpr的类型一致(curry不支持类型转换,NamedType和null
+
+	必须type compatibal). 类型系统并不作为一个独立的pass来调用，而是分布在各个expr中，
+
+	仅当要获取expr的类型时才建立类型信息. 这样做的好处是使symantic和codegen可以独立(当然
+
+	这仅对本project而言). type checking和codegen都需要得到某个expr的具体类型才可以方便的
+
+	进行处理。
+
+
+
+	(now)未执行的类型检查:
+
+	1. 所有控制路径都有返回值
+
+	2. not check the accessisibility of field (bad4.curry,bad8.curry)	/* fixed */
+
+	3. parameter check/call check	/* fixed */
+
+	4. virtual function signature checking (testcases3/bad/bad13.curry)	/* fixed */
+
+	5. should class variable be overided? (testcases3/bad/bad16.curry)	
+
+	
+
+	bugs:/* fixed */
+
+	unknown class checking? (bad14.curry,bad17.curry)
+
+	ExprStmt::Check/ExprStmt::GenTac null stmt check  (connectFour)
+
+	X86: unary operator '!' generates wrong code (tictactoe)
+
+
+
+	Note:
+
+	(1): some errors may be ommited by me (e.g. testcases3/bad/bad8.curry)
+
+	(2): CALL/break/return in parser.y may contain error! (location issue) (bad6.curry bad9.curry)
+
+	(3): double type implementated before? (testcases3/bad/bad1.curry)
+
+
+
+4.  代码生成
+
+	curry中的所有符号在gentac之前就已经确定好了location，但并未处理Class的变量的内存位置。
+
+	这一步在codegen中完成。
+
+	由于所有的变量访问都通过FieldAccess，所有的函数调用都通过Call。
+
+	所以，区分curry的两种变量位置:直接和间接(Point), 这一属性通过Location::IsPointer得到。
+
+	具体的说，只要一个变量必须通过一个相对的偏移才可以得出它的物理地址，则它就是间接的。
+
+	比如类变量，数组元素就是这样的变量。如果某个Expr生成的结果是Pointer，那么就要先Dereference
+
+	取得实际的变量地址，才可以进一步运算。FieldAccess和Call的实现基本上遵循这一规则。
+
+
+
+	codegen的总体框架还是从全局的Symbol Table开始，先生成所有的vtable，全局变量，和全局
+
+	函数，碰到类时，就进入生成method的代码。遍历语法树生成函数的代码时，在用到临时变量的
+
+	地方，同时会增加本函数的localoffset，最后的localoffset即为本函数的stacksize.
+
+
+
+	codegen不检查symantics，但是强制检查所有的expr不是errorType，遇错即退出。因此未打开
+
+	语义检查的情况下，codegen只能处理完全正确的程序。
+
+
+
+	New,NewArray等均用外部的C程序代码实现，为此增加了thunk.c文件，该文件需要和curry生成的
+
+	汇编程序一起编译，否则会有连接错误. 浮点支持和所有的builtin都可以用类似方法实现。
+
+
+
+5.	外部.c程序和.s的全局变量之间的共享(/* 此处有误,情况并不是这样,thunk.c中已经体现,作为
+
+	一个日志, 这里就不删除本记录了 */)
+
+	.c 程序声明extern ... .s中使用.comm或者.data LABEL: .long(.asciz) ...但是这样共享的
+
+	都是值，如果需要得到字符串的地址(在printf时需要),则要取共享变量地址。
+
+
+
+6.	Exception Handling
+
+	基本实现框架为基于%edi的setjmp/longjmp方式。需要对x86.cc作改动,使支持堆栈的保存.
+
+	除此之外，还需要专门的动态类型识别(RTTI)的支持. 使用简单的RTTI策略，在编译阶段生成
+
+	所有的NamedType类型对象(包括类型名,父类型对象指针),同时生成所有内置基本类型的类型对象.
+
+	在thunk.c中增加一个外部函数，用以比较类型对象是否匹配(相容)
+
+	所有的NamedType类型指针都放在虚函数表的-1位置.
+
+
+
+	发生exception时所完成的动作:
+
+	(1):  根据异常对象的类型设置_exception_type(对象类型)
+
+	(2):  把异常对象的value放入_exception_value(简单考虑,不专门使用%eax)
+
+	(3):  控制跳转到catch代码段时,调用IsKindOf完成类型匹配检查
+
+
+
+	另外,由于使用edi保存jumpbuf,所以gcc不能在生成thunk.c的代码时使用到edi,这可以通过-ffixed-edi
+
+	参数确保gcc不会这样做.(事实上,目前gcc编译thunk.c时还没有使用到edi)
+
+
+
+7.	运行时异常处理
+
+	包括数组访问越界,NewArray的参数无效,以及New(Array)失败. 通过内置的异常处理机制实现.在生成main
+
+	函数的代码时,安装上顶层try/catch结构,捕捉所有的内置异常以及用户没有处理的异常.
+
+	真正的运行时检查在thunk.c中由相关函数完成,如果发生错误,则模拟throw过程抛出异常,等待被main中的
+
+	try/catch捕捉.
+
+
+
+8.	关于CYGWIN环境
+
+	cyg.sh脚本将原来的x86实现中和cygwin不兼容的代码过滤掉,现在已经不需要该程序了.
+
+	Makefile中添加-DCYGWIN可以打开cygwin支持,事实上仅仅是转变一下namemangling的方式,去掉前置的_符号
+
+	由于cygwin上的gcc默认会加上_,而Linux环境则不加,给.s和thunk.c之间的全局变量(函数)共享带来麻烦.
+
+	另外,gcc的前置_符号的命令行开关为:-fleading-underscore
+
+
+
+
+
+
+
