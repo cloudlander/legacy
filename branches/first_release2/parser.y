@@ -19,9 +19,10 @@
 #include "scanner.h" // for yylex
 #include "parser.h"
 #include "errors.h"
+Program *program;
 
 void yyerror(char *msg); // standard error-handling routine
-Program* program;
+
 %}
 
 /*
@@ -69,9 +70,9 @@ Program* program;
     TryStmt *tryStmt;
     CatchStmt *catchStmt;
     ThrowStmt *throwStmt;
-    SwitchStmt *switchStmt;
-    CaseStmt *caseStmt;
-    DefaultStmt *defaultStmt;
+    SwitchStmt *switchStmt;                                 
+    CaseStmt *caseStmt;                                     
+    DefaultStmt *defaultStmt; 
     SwitchBody *switchBody;
     List<CatchStmt*> *catchStmtList;
     List<CaseStmt*>  *caseStmtList;
@@ -117,17 +118,17 @@ Program* program;
 %type <decl>		Decl	Field	ClassDecl
 %type <varDecl>		VariableDecl	Variable
 %type <fnDecl>		FunctionDecl
-%type <varDeclList>	Formals NonEmptyVList //VarDeclList
+%type <varDeclList>	Formals NonEmptyVList 
 %type <type>		Type
 
 %type <stmt>		Stmt
-%type <stmtList>	NonEmptySList StmtList 
+%type <stmtList>	NonEmptySList StmtList
 %type <stmtBlock>	StmtBlock
 
-%type <switchBody>	SwitchBody
-%type <defaultStmt>	DefaultStmt
-%type <caseStmt>	CaseStmt
-%type <switchStmt>	SwitchStmt
+%type <switchBody>      SwitchBody
+%type <defaultStmt>     DefaultStmt
+%type <caseStmt>        CaseStmt
+%type <switchStmt>      SwitchStmt
 %type <ifStmt>		IfStmt
 %type <whileStmt>	WhileStmt
 %type <forStmt>		ForStmt
@@ -138,19 +139,17 @@ Program* program;
 %type <catchStmt>	CatchBlock
 %type <throwStmt>	ThrowStmt
 %type <catchStmtList>	CatchBlockList NonEmptyCBList
-%type <caseStmtList>	CaseStmtList
+%type <caseStmtList>    CaseStmtList
 
 %type <expr>		Expr Constant IntConstant Expr_Em
 %type <LV>		LValue
 %type <call>		Call
 %type <exprList>	Actuals NonEmptyActuals
 
-//%type <type>		BaseType ClassType
 %type <ident>		Ident
-//%type <ident>		ClassIdent
 
 %left ','
-%left '='
+%right '='
 %left ':' '?'
 %left T_Or 
 %left T_And
@@ -176,12 +175,12 @@ Program :DeclList
          * yacc to set up yylloc. You can remove 
          * it oncde you have other uses of @n*/
         program = new Program($1);
-/*
+	/*
         if (ReportError::NumErrors() == 0)
 		program->Print(0);
-*/
+	*/
         }
-        ;
+	;        
           
 DeclList  :    DeclList Decl        { ($$=$1)->Append($2); }
           |    Decl                 { ($$ = new List<Decl*>)->Append($1); }
@@ -202,7 +201,7 @@ Type		:T_Bool		{ $$ = Type::boolType; }
 		|T_Double	{ $$ = Type::doubleType; }
 		|T_String	{ $$ = Type::stringType; }
 		|Ident	{ NamedType *nameType = new NamedType($1);$$ = nameType;}
-		|Type T_Dims	{$$ = new ArrayType(yylloc, $1);}
+		|Type T_Dims	{$$ = new ArrayType(@1, $1);}
 		;
 ClassDecl	:T_Class Ident '{' Fieldlist '}'	{ $$ = new ClassDecl($2,NULL,$4);}
 		|T_Class Ident T_Extends Ident '{' Fieldlist '}' { 
@@ -217,11 +216,14 @@ Field		:VariableDecl	{ $$ = $1; }
 		;
 
 FunctionDecl	:Type Ident '(' Formals ')' StmtBlock {$$ = new FnDecl($2,$1,$4);$$->SetFunctionBody($6);}
-		|T_Void Ident '(' Formals ')' StmtBlock {$$ = new FnDecl($2,Type::voidType,$4);$$->SetFunctionBody($6);}
+		|T_Void Ident '(' Formals ')' StmtBlock {
+			$$ = new FnDecl($2,Type::voidType,$4);$$->SetFunctionBody($6);}
+		|Type Ident '('')' StmtBlock {$$ = new FnDecl($2,$1,new List<VarDecl*>);$$->SetFunctionBody($5);}
+		|T_Void Ident '(' ')' StmtBlock {
+			$$ = new FnDecl($2,Type::voidType,new List<VarDecl*>);$$->SetFunctionBody($5);}
 		;
 Formals		:Variable		{ ($$ = new List<VarDecl*>)->Append($1); }
 		|Formals ',' Variable	{ ($$ = $1)->Append($3); }
-		|			{ $$ = new List<VarDecl*>; }
 		;
 StmtBlock	:'{' NonEmptyVList NonEmptySList '}' {$$ = new StmtBlock($2,$3);}
 		|'{' NonEmptyVList '}'	{
@@ -242,11 +244,11 @@ NonEmptyVList	:VariableDecl			{ ($$ = new List<VarDecl*>)->Append($1); }
 NonEmptySList	:Stmt			{($$=new List<Stmt*>)->Append($1);}
 		|NonEmptySList Stmt	{($$=$1)->Append($2);}
 		;
-Stmt	:';'                    {$$=new ExprStmt(yylloc,NULL);}
-        |Expr ';'               {$$=new ExprStmt(@1,$1);}
+Stmt		:';'			{$$=new ExprStmt(@1,NULL);}
+		|Expr ';'		{$$=new ExprStmt(@1,$1);}
 		|StmtBlock		{$$=$1;}
 		|IfStmt			{$$=$1;}
-		|SwitchStmt		{$$=$1;}
+		|SwitchStmt             {$$=$1;}
 		|WhileStmt		{$$=$1;}
 		|ForStmt		{$$=$1;}
 		|ReturnStmt		{$$=$1;}
@@ -255,7 +257,7 @@ Stmt	:';'                    {$$=new ExprStmt(yylloc,NULL);}
 		|TryCatchBlock		{$$=$1;}
 		|ThrowStmt		{$$=$1;}
 		;
-ThrowStmt	:T_Throw Expr ';'	{$$ = new ThrowStmt(yylloc,$2);}
+ThrowStmt	:T_Throw Expr ';'	{$$ = new ThrowStmt(@2,$2);}
 		;
 TryCatchBlock	:T_Try '{' StmtList '}' CatchBlockList	{$$ = new TryStmt($3,$5);}
 		;
@@ -326,18 +328,18 @@ Expr		:Constant		{$$ = $1;}
 		|'(' Expr ')'		{$$ = $2;}
 		|LValue			{$$ = $1;}
 		|LValue '=' Expr	{$$ = new AssignExpr($1,new Operator(@2,"="),$3);}
-		|T_New '(' Ident ')'	{$$ = new NewExpr(yylloc,new NamedType($3));}
-		|T_NewArray '(' Expr ',' Type ')'	{$$ = new NewArrayExpr(yylloc,$3,$5);}
-		|T_ReadLine '(' ')'	{$$ = new ReadLineExpr(yylloc);}
-		|T_ReadInteger '(' ')'	{$$ = new ReadIntegerExpr(yylloc);}
-		|T_This			{$$ = new This(yylloc);}
+		|T_New '(' Ident ')'	{$$ = new NewExpr(@1,new NamedType($3));}
+		|T_NewArray '(' Expr ',' Type ')'	{$$ = new NewArrayExpr(@1,$3,$5);}
+		|T_ReadLine '(' ')'	{$$ = new ReadLineExpr(@1);}
+		|T_ReadInteger '(' ')'	{$$ = new ReadIntegerExpr(@1);}
+		|T_This			{$$ = new This(@1);}
 		|Call			{$$ = $1;}
-		|Expr '?' Expr ':' Expr	{
-			$$ = new ConditionalExpr($1,new Operator(@2,"?"),$3,new Operator(@4,":"),$5);
-					}
+		|Expr '?' Expr ':' Expr {
+                        $$ = new ConditionalExpr($1,new Operator(@2,"?"),$3,new Operator(@4,":"),$5);
+                                        }
 		;
-Call		:Ident '(' Actuals ')'	{$$ = new Call(Join(@1,@4),NULL,$1,$3);}
-		|Expr '.' Ident '(' Actuals ')'	{$$ = new Call(@3,$1,$3,$5);}
+Call		:Ident '(' Actuals ')'	{$$ = new Call(@1,NULL,$1,$3);}
+		|Expr '.' Ident '(' Actuals ')'	{$$ = new Call(@1,$1,$3,$5);}
 		;
 NonEmptyActuals	:Expr			{($$ = new List<Expr*>)->Append($1);}
 		|NonEmptyActuals ',' Expr	{($$ = $1)->Append($3);}
@@ -347,15 +349,15 @@ Actuals		:NonEmptyActuals	{$$ = $1;}
 		;
 LValue		:Ident			{$$ = new FieldAccess(NULL,$1);}
 		|Expr '.' Ident		{$$ = new FieldAccess($1,$3);}
-		|Expr '[' Expr ']'	{$$ = new ArrayAccess(yylloc,$1,$3);}
+		|Expr '[' Expr ']'	{$$ = new ArrayAccess(@1,$1,$3);}
 		;
-IntConstant	:T_IntConstant          {$$ = new IntConstant(yylloc,$1);}
+IntConstant	:T_IntConstant          {$$ = new IntConstant(@1,$1);}
 		;
 Constant	:IntConstant		{$$ = $1;}
-		|T_DoubleConstant	{$$ = new DoubleConstant(yylloc,$1);}
-		|T_BoolConstant		{$$ = new BoolConstant(yylloc,$1);}
-		|T_StringConstant	{$$ = new StringConstant(yylloc,$1);}
-		|T_Null			{$$ = new NullConstant(yylloc);}
+		|T_DoubleConstant	{$$ = new DoubleConstant(@1,$1);}
+		|T_BoolConstant		{$$ = new BoolConstant(@1,$1);}
+		|T_StringConstant	{$$ = new StringConstant(@1,$1);}
+		|T_Null			{$$ = new NullConstant(@1);}
 		;
 %%
 
