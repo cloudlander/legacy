@@ -16,13 +16,13 @@
 
 using namespace std;
 
-// added for symbol table operation
-void ReportError::ConditionalExprUnmatch(Expr *expr2,Expr *expr3)
+/////////////////////////////////////////////////
+void ReportError::ConditionalExprUnmatch(Operator* op,Type *expr2,Type *expr3)
 {
     ostringstream s;
     s << "Incompatible type " << expr2 << ": " << expr3
-        << " given, the typies of 2nd and 3rd expresstion in conditional expresstion must be compatible" << '\0';
-    OutputError(expr2->GetLocation(), s.str().c_str());
+        << " given, the type of 2nd and 3rd expression must be compatible" << '\0';
+    OutputError(op->GetLocation(), s.str().c_str());
 }
 
 void ReportError::ThrowNullNotAllowed(Expr* expr)
@@ -34,7 +34,6 @@ void ReportError::SwitchOnlyAcceptInteger(Expr *expr)
 {
 	OutputError(expr->GetLocation(), "switch/case only accept integer expression");
 }
-/////////////////////////////////////////////////
 
 int ReportError::numErrors = 0;
 
@@ -194,11 +193,12 @@ void ReportError::TestNotBoolean(Expr *expr) {
 void ReportError::BreakOutsideLoop(BreakStmt *bStmt) {
     OutputError(bStmt->GetLocation(), "break is only allowed inside a loop");
 }
-  
+
 void ReportError::NoMainFound() {
     OutputError(NULL, "Linker: function 'main' not defined");
 }
 
+ 
 /* Function: yyerror()
  * -------------------
  * Standard error-reporting function expected by yacc. Our version merely

@@ -436,27 +436,35 @@ Type* ConditionalExpr::GetType(SymTable* symtbl)
 	Assert(expr3type);
 	if(expr3type->IsEquivalentTo(Type::errorType))
 		type=Type::errorType;
-
+/*
  	if(type && type->IsEquivalentTo(Type::errorType))
 		return type;
-
-	if(!expr1type->IsEquivalentTo(Type::boolType))
+*/
+	if(!expr1type->IsEquivalentTo(Type::errorType) && !expr1type->IsEquivalentTo(Type::boolType))
 	{
 //		Failure("conditional expr1 not bool type!");
 		ReportError::TestNotBoolean(expr1);
-		return type=Type::errorType;
+//		return type=Type::errorType;
+		type=Type::errorType;
 	}
 	if(expr2type->IsEquivalentTo(expr3type) || 
 	   expr3type->IsCompatibleTo(expr2type) )
-		return type=expr2type;
+	{
+		if(!type->IsEquivalentTo(Type::errorType))
+			return type=expr2type;
+	}
 	else if(expr2type->IsCompatibleTo(expr3type))
-		return type=expr3type;
+	{
+		if(!type->IsEquivalentTo(Type::errorType))
+			return type=expr3type;
+	}
 	else
 	{
 //		Failure("conditional expr2's type not equal to expr3's type");
-		ReportError::ConditionalExprUnmatch(expr2,expr3);
-		return type=Type::errorType;
+		ReportError::ConditionalExprUnmatch(op2,expr2type,expr3type);
+		type=Type::errorType;
 	}
+	return type;
 }
 
 Location* IntConstant::GenTac(CodeGenerator* cg,SymTable* symtbl)
