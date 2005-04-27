@@ -163,13 +163,17 @@ void FnDecl::DetermineLocation()
 		fprintf(stderr,"frameSize=%d\n",frameSize);
 	DEBUGLOCATIONEND(symtable)
 	localOffset=localoffset;
+
+	if(NULL==type)
+		type=returnType;
+
 }
 
 extern bool mainFunctionFound;
 
 bool FnDecl::Check(SymTable* symtbl)
 {
-	if(type && type->IsEquivalentTo(Type::errorType))
+	if(type && type->Check(symtbl) && type->IsEquivalentTo(Type::errorType))
 		return false;
 	
 	bool ret=true;
