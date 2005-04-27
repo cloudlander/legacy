@@ -16,6 +16,25 @@
 
 using namespace std;
 
+/////////////////////////////////////////////////
+void ReportError::ConditionalExprUnmatch(Operator* op,Type *expr2,Type *expr3)
+{
+    ostringstream s;
+    s << "Incompatible type " << expr2 << ": " << expr3
+        << " given, the type of 2nd and 3rd expression must be compatible" << '\0';
+    OutputError(op->GetLocation(), s.str().c_str());
+}
+
+void ReportError::ThrowNullNotAllowed(Expr* expr)
+{
+	OutputError(expr->GetLocation(), "null can't be thrown");
+}
+  
+void ReportError::SwitchOnlyAcceptInteger(Expr *expr)
+{
+	OutputError(expr->GetLocation(), "switch/case only accept integer expression");
+}
+
 int ReportError::numErrors = 0;
 
 void ReportError::UnderlineErrorInLine(const char *line, yyltype *pos) {
@@ -175,10 +194,6 @@ void ReportError::BreakOutsideLoop(BreakStmt *bStmt) {
     OutputError(bStmt->GetLocation(), "break is only allowed inside a loop");
 }
   
-void ReportError::NoMainFound() {
-    OutputError(NULL, "Linker: function 'main' not defined");
-}
-
 /* Function: yyerror()
  * -------------------
  * Standard error-reporting function expected by yacc. Our version merely

@@ -74,6 +74,7 @@ class ReportError
   static void IncompatibleOperand(Operator *op, Type *rhs); // unary
   static void IncompatibleOperands(Operator *op, Type *lhs, Type *rhs); // binary
   static void ThisOutsideClassScope(This *th);
+  static void ConditionalExprUnmatch(Operator* op,Type *expr2,Type *expr3);
 
   
  // Errors used by semantic analyzer for array acesss & NewArray
@@ -97,14 +98,12 @@ class ReportError
   static void TestNotBoolean(Expr *testExpr);
   static void ReturnMismatch(ReturnStmt *rStmt, Type *given, Type *expected);
   static void BreakOutsideLoop(BreakStmt *bStmt);
+  static void ThrowNullNotAllowed(Expr *expr);
+  static void SwitchOnlyAcceptInteger(Expr *expr);
 
-
-    // Errors used by code-generator/linker
-  static void NoMainFound();
 
   // Generic method to report a printf-style error message
   static void Formatted(yyltype *loc, const char *format, ...);
-
 
   // Returns number of error messages printed
   static int NumErrors() { return numErrors; }
@@ -117,9 +116,4 @@ class ReportError
   
 };
 
-  
-// Wording to use for runtime error messages
-static const char *err_arr_out_of_bounds = "Decaf runtime error: Array subscript out of bounds\\n";
-static const char *err_arr_bad_size = "Decaf runtime error: Array size is <= 0\\n";
- 
 #endif
