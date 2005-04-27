@@ -1,0 +1,30 @@
+
+*** Error line 6.
+  x = x > y ? z : x;
+        ^
+*** Incompatible operands: int > double
+
+
+*** Error line 6.
+  x = x > y ? z : x;
+                ^
+*** Incompatible type bool: int given, the type of 2nd and 3rd expression must be compatible
+
+
+*** Error line 8.
+  throw null;
+        ^^^^
+*** null can't be thrown
+
+
+*** Error line 10.
+  switch(z>y)
+          ^
+*** Incompatible operands: bool > double
+
+
+*** Error line 10.
+  switch(z>y)
+         ^^^
+*** switch/case only accept integer expression
+
