@@ -48,7 +48,9 @@ class CodeGenerator {
          // generate any Tac instructions (see GenLabel below if needed)
     char *NewLabel();
 
-    
+   		 // Generates a global variable to be accessed throughout the whole program
+	void GenGlobalVar(const char* var);
+
          // Creates and returns a Location for a new uniquely named
          // temp variable. Does not generate any Tac instructions
     Location *GenTempVar();

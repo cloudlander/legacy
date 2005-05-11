@@ -243,6 +243,12 @@ void CodeGenerator::GenVTable(const char *className, List<const char *> *methodL
 }
 
 
+void CodeGenerator::GenGlobalVar(const char* var)
+{
+  code->Append(new DeclareGlobal(var));
+}
+
+
 void CodeGenerator::DoFinalCodeGen()
 {
   if (IsDebugOn("tac")) { // if debug don't translate to x86, just print Tac

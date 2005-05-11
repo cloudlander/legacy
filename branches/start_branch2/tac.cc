@@ -22,6 +22,16 @@ void Instruction::Emit(X86 *x86) {
 } 
 
 
+DeclareGlobal::DeclareGlobal(const char* s){
+	Assert(s);
+	sprintf(printed,"declare global variable:%s",s);
+	str=new char[strlen(s)+1];
+	strcpy(str,s);
+}
+
+void DeclareGlobal::EmitSpecific(X86 *x86){
+	x86->EmitDeclareGlobal(str);
+}
 LoadConstant::LoadConstant(Location *d, int v)
   : dst(d), val(v) {
   Assert(dst != NULL);
@@ -92,7 +102,7 @@ void Store::EmitSpecific(X86 *x86) {
 }
 
 
-char * BinaryOp::opName[BinaryOp::NumOps] = {"+", "-", "*", "/", "%", "==", "<", "&&", "||"};
+char * BinaryOp::opName[BinaryOp::NumOps] = {"+", "-", "*", "/", "%", "==", "<", "&&", "||", "!=", "!"};
  
 BinaryOp::OpCode BinaryOp::OpCodeForName(const char *name) {
   for (int i = 0; i < NumOps; i++) 

@@ -30,11 +30,13 @@ class X86;
 
     // A Location object is used to identify the operands to the
     // various TAC instructions. A Location is fpRelative(fp means
-    // stackframe pointer) if the var is on the stack. If a var is  
+    // stackframe pointer, on X86, we usually call it "base pointer"
+    // or %ebp ) if the var is on the stack. If a var is  
     // global, we call it gpRelative. 
     // For example, a declaration for integer num as the first local
     // variable in a function would be assigned a Location object
-    // with name "num", segment fpRelative, and offset 4. 
+    // with name "num", segment fpRelative, and offset -4 (relative to
+    // base pointer). 
     
 typedef enum {fpRelative, gpRelative} Segment;
 
@@ -91,7 +93,15 @@ class Instruction {
   class LCall;
   class ACall;
   class VTable;
+  class DeclareGlobal;
 
+class DeclareGlobal: public Instruction {
+	private:
+		char* str;
+	public:
+		DeclareGlobal(const char* s);
+		void EmitSpecific(X86 *x86);
+};
 
 
 class LoadConstant: public Instruction {
@@ -144,7 +154,7 @@ class Store: public Instruction {
 class BinaryOp: public Instruction {
 
   public:
-    typedef enum {Add, Sub, Mul, Div, Mod, Eq, Less, And, Or, NumOps} OpCode;
+    typedef enum {Add, Sub, Mul, Div, Mod, Eq, Less, And, Or, NotEq, Not,NumOps} OpCode;
     static char * opName[NumOps];
     static OpCode OpCodeForName(const char *name);
     

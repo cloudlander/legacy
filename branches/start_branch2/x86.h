@@ -94,6 +94,7 @@ class X86 {
     void EmitPopParams(int bytes);
     
     void EmitVTable(const char *label, List<const char*> *methodLabels);
+	void EmitDeclareGlobal(const char* s);
 
     void EmitPreamble();
 };
