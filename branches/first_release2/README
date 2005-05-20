@@ -378,7 +378,7 @@
 
 	发生exception时所完成的动作:
 
-	(1):  根据异常对象的类型设置_exception_type(对象类型)
+	(1):  根据异常对象的类型设置_exception_type(对象类型)  (Java/C++ throw the static exception type object)
 
 	(2):  把异常对象的value放入_exception_value(简单考虑,不专门使用%eax)
 

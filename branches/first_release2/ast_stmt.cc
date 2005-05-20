@@ -669,11 +669,13 @@ Location* ThrowStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	while(typeid(ArrayType)==typeid(*tmpType))
 		tmpType=static_cast<ArrayType*>(tmpType)->GetElemType();
 	
-	if(typeid(NamedType)==typeid(*ehType) && typeid(NamedType)==typeid(*tmpType))		// only determine type object dynamiclly for object
+	if(typeid(NamedType)==typeid(*ehType) && typeid(NamedType)==typeid(*tmpType))		// only determine type object  staticly for object ( same as C++/Java )
 	{
-		Location *vtableaddr=cg->GenLoad(ehValueLoc,0,symtbl);
-		typeobject=cg->GenLoad(vtableaddr,-4,symtbl);
-//		cg->GenBuiltInCall(PrintInt,ehTypeLoc,NULL,symtbl);
+		char typeLabel[100];
+		const char* name=static_cast<NamedType*>(tmpType)->GetName();
+		strcpy(typeLabel,name);	
+		strcat(typeLabel,"_Type");
+		typeobject=cg->GenLoadLabel(typeLabel,symtbl);
 	}
 	else if(typeid(ArrayType)==typeid(*ehType) && typeid(NamedType)==typeid(*tmpType))	// staticly for array
 	{

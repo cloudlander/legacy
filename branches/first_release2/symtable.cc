@@ -892,6 +892,8 @@ BuiltInException bie[]={
 
 	{"ArraySizeException", "Runtime Exception: NewArray Got Invalid Size\\n"},
 
+	{"NullPointerException", "Runtime Exception: Null Pointer Access\\n"},
+
 /* add more runtime exception here */
 
 	{"UnKnownException", "Runtime Exception: Unhandled Exception Caught\\n"}

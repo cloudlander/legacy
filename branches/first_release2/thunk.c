@@ -34,6 +34,8 @@ enum BuiltInExceptionType{
 
 	ArraySize,
 
+	NullPointer,
+
 };
 
 
@@ -45,6 +47,8 @@ TypeInfo BuiltInExceptions[]={
 	{"NewObjectFailureException",NULL},
 
 	{"ArraySizeException", NULL},
+
+	{"NullPointerException", NULL},
 
 };
 
@@ -241,6 +245,20 @@ void CheckIndex(unsigned int addr, unsigned int index)
 		_throw_exception(IndexOutOfBound);
 
 }
+
+
+
+void CheckNull(unsigned int addr)
+
+{
+
+	if(addr == 0x0)
+
+		_throw_exception(NullPointer);
+
+}
+
+
 
 
 
