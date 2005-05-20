@@ -302,7 +302,7 @@ class NewArrayExpr : public Expr
     const char *GetPrintNameForNode() { return "NewArrayExpr"; }
     void PrintChildren(int indentLevel);
 
-	Type* GetType(SymTable* symtbl){return type=new ArrayType(*location,elemType);}
+	Type* GetType(SymTable* symtbl){if(Check(symtbl)){return type=new ArrayType(*location,elemType);}else return Type::errorType;}
 	bool Check(SymTable* symtbl);
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };
