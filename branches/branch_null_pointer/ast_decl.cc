@@ -70,9 +70,10 @@ void ClassDecl::DetermineLocation()
 	else
 	{
 		Symbol* parent=GetGlobalSymTable()->Find(extends->GetName());
-		if(NULL==parent)
+		if(NULL==parent || !parent->IsClass() )
 			symtable->DetermineClassLocation(NULL,this);	// error, but consider it as a base class
-		symtable->DetermineClassLocation(static_cast<ClassDecl*>(parent->GetDecl()),this);		// deriving class
+		else
+			symtable->DetermineClassLocation(static_cast<ClassDecl*>(parent->GetDecl()),this);		// deriving class
 	}
 	DEBUGLOCATION(symtable)
 	if(IsDebugOn("location"))

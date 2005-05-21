@@ -492,11 +492,31 @@ void SymTable::DetermineGlobalLocation()
 
 					{
 
-						sym->GetDecl()->GetSymTable()->SetParent(parent->GetDecl()->GetSymTable());
+						if(parent->IsClass())		// must be a class type
 
-						sym->GetDecl()->DetermineLocation();
+						{
 
-						sym->SetLocation(gpRelative,0);
+							sym->GetDecl()->GetSymTable()->SetParent(parent->GetDecl()->GetSymTable());
+
+							sym->GetDecl()->DetermineLocation();
+
+							sym->SetLocation(gpRelative,0);
+
+						}
+
+						else
+
+						{
+
+							ReportError::IdentifierNotDeclared(static_cast<ClassDecl*>(sym->GetDecl())->GetExtendClass(),LookingForClass);
+
+							/* just try to handle it as a base class */
+
+							sym->GetDecl()->DetermineLocation();
+
+							sym->SetLocation(gpRelative,0);
+
+						}
 
 						changed=true;
 
