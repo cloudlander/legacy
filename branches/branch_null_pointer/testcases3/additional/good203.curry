@@ -50,10 +50,7 @@ void main()
 	Print(x.get(),y[5][3].GetX(7),y[5][3].get());
 
 	Print(x.func(100,70)[50][35].get(),x.func(10,10)[5].length());
-	Print(x.func(100,70)[50][35].GetX(7));
+	Print(x.func(100,70)[50][3].GetX(7));
 	Print(x.func(100,70)[50][35].GetX(7));
 
-	Print(x.func(100,70)[50][35].get(),x.func(10,10)[5].length());
-	Print(x.func(100,70)[50][35].GetX(7));
-	Print(x.func(100,70)[50][35].GetX(7));
 }
