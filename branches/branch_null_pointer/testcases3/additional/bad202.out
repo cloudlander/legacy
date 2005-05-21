@@ -1,0 +1,36 @@
+
+*** Error line 6.
+	x=NewArray(x,int[]);
+                   ^
+*** Size for NewArray must be an integer
+
+
+*** Error line 9.
+		x=NewArray(7,int);
+                 ^
+*** Incompatible operands: int[][] = int[]
+
+
+*** Error line 12.
+			x[x][j]=i*j+1 + true;
+                          ^
+*** Array subscript must be an integer
+
+
+*** Error line 12.
+			x[x][j]=i*j+1 + true;
+                                      ^
+*** Incompatible operands: int + bool
+
+
+*** Error line 15.
+	Print(x.alength(),x[3].length().x);
+                ^^^^^^^
+*** int[][] has no such field 'alength'
+
+
+*** Error line 15.
+	Print(x.alength(),x[3].length().x);
+                                        ^
+*** int has no such field 'x'
+
