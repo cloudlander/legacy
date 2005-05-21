@@ -809,7 +809,7 @@ void X86::EmitPopParams(int bytes)
 
 	  /* To support NullPointer detection, set local frame to zero */
 	  Emit("# zeromemory local stack to enable NullPointer detection");
-	  Emit("pushl\t$%d",stackFrameSize+8);
+	  Emit("pushl\t$%d",stackFrameSize+8);	// tricky! as sp has been increased
 	  Emit("pushl\t$0");
 	  Emit("pushl\t%%esp");
 #ifdef CYGWIN
@@ -848,7 +848,7 @@ void X86::EmitBeginFunction(int stackFrameSize)
 
 	  /* To support NullPointer detection, set local frame to zero */
 	  Emit("# zeromemory local stack to enable NullPointer detection");
-	  Emit("pushl\t$%d",stackFrameSize+8);
+	  Emit("pushl\t$%d",stackFrameSize+8);  // tricky! as sp has been increased
 	  Emit("pushl\t$0");
 	  Emit("pushl\t%%esp");
 #ifdef CYGWIN
