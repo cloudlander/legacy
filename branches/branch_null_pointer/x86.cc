@@ -754,11 +754,6 @@ void X86::EmitLCall(Location *dst, const char *label)
 
 	EmitCallInstr(dst,label,true);
 
-    	// handle return value  
-	if (dst != NULL) {
-		Register r1 = GetRegisterForWrite(dst);
-		Emit("movl\t%s, %s\t# copy function return value from %%eax", regs[eax].name, regs[r1].name);
-	}
 }
 
 
@@ -808,8 +803,22 @@ void X86::EmitPopParams(int bytes)
   Emit("movl\t%%esp, %%ebp");
 
   if (stackFrameSize != 0)
-    Emit("subl\t$%d, %%esp \t# decrement sp to make space for locals/temps",
+  {
+	  Emit("subl\t$%d, %%esp \t# decrement sp to make space for locals/temps",
 	   stackFrameSize);
+
+	  /* To support NullPointer detection, set local frame to zero */
+	  Emit("# zeromemory local stack to enable NullPointer detection");
+	  Emit("pushl\t$%d",stackFrameSize+8);
+	  Emit("pushl\t$0");
+	  Emit("pushl\t%%esp");
+#ifdef CYGWIN
+	  Emit("call\t_memset");
+#else
+	  Emit("call\tmemset");
+#endif
+      Emit("addl\t$12, %%esp\t# end of zeromemory");
+  }
 
   Emit("andl\t$-16, %%esp \t# align the stack pointer for performance reasons");
   Emit("# the next two instruction is generated to initialize the accumulator, ");
@@ -833,8 +842,22 @@ void X86::EmitBeginFunction(int stackFrameSize)
   Emit("movl\t%%esp, %%ebp");
 
   if (stackFrameSize != 0)
-    Emit("subl\t$%d, %%esp\t# decrement sp to make space for locals/temps",
+  {
+	  Emit("subl\t$%d, %%esp\t# decrement sp to make space for locals/temps",
 	   stackFrameSize);
+
+	  /* To support NullPointer detection, set local frame to zero */
+	  Emit("# zeromemory local stack to enable NullPointer detection");
+	  Emit("pushl\t$%d",stackFrameSize+8);
+	  Emit("pushl\t$0");
+	  Emit("pushl\t%%esp");
+#ifdef CYGWIN
+	  Emit("call\t_memset");
+#else
+	  Emit("call\tmemset");
+#endif
+      Emit("addl\t$12, %%esp\t# end of zeromemory");
+  }
 }
 
 

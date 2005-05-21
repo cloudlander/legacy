@@ -178,11 +178,17 @@ unsigned int NewClass(int size,int vtbaddr)
 
 	unsigned int *addr=(unsigned int*)malloc(size);
 
-
+	
 
 	if(NULL==addr)
 
 		_throw_exception(NewObjectFailure);
+
+	
+
+	/* zeromemory newly allocated space to support NullPointer detection */
+
+	memset(addr,0,size);
 
 	
 
@@ -215,6 +221,12 @@ unsigned int NewArray(int length,int typesize)
 		_throw_exception(NewObjectFailure);
 
 	
+
+	/* zeromemory newly allocated space to support NullPointer detection */
+
+	memset(addr,0,length*typesize+4);
+
+
 
 	*addr=length;
 

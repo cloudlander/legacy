@@ -450,12 +450,12 @@ Type* ConditionalExpr::GetType(SymTable* symtbl)
 	if(expr2type->IsEquivalentTo(expr3type) || 
 	   expr3type->IsCompatibleTo(expr2type) )
 	{
-		if(!type->IsEquivalentTo(Type::errorType))
+		if(!type || !type->IsEquivalentTo(Type::errorType))
 			return type=expr2type;
 	}
 	else if(expr2type->IsCompatibleTo(expr3type))
 	{
-		if(!type->IsEquivalentTo(Type::errorType))
+		if(!type || !type->IsEquivalentTo(Type::errorType))
 			return type=expr3type;
 	}
 	else
@@ -748,6 +748,8 @@ Location* Call::GenTac(CodeGenerator* cg,SymTable* symtbl)
 			baseaddr=base->GenTac(cg,symtbl);
 			if(baseaddr->IsPointer())
 				baseaddr=cg->GenLoad(baseaddr,0,symtbl);
+			/* firstly, check NullPointer exception */
+			cg->GenThunkCall(CheckNull,baseaddr,NULL,symtbl);
 			return cg->GenThunkCall(ArrayLength,baseaddr,NULL,symtbl);
 		}
 		else
@@ -792,12 +794,13 @@ Location* Call::GenTac(CodeGenerator* cg,SymTable* symtbl)
 		Location* vtbaddr;
 		Location* indaddr;
 		if(baseaddr->IsPointer())
-		{
-			indaddr=cg->GenLoad(baseaddr,0,symtbl);
-			vtbaddr=cg->GenLoad(indaddr,0,symtbl);
-		}
-		else			
-			vtbaddr=cg->GenLoad(baseaddr,0,symtbl);
+			baseaddr=cg->GenLoad(baseaddr,0,symtbl);
+
+		/* firstly, check NullPointer exception */
+		cg->GenThunkCall(CheckNull,baseaddr,NULL,symtbl);
+		
+		vtbaddr=cg->GenLoad(baseaddr,0,symtbl);
+
 //		Location *vfuncaddr=cg->GenLoad(vtbaddr,vfuncOffset,symtbl);
 		Location *vfuncOffsetLoc=cg->GenLoadConstant(vfuncOffset,symtbl);
 		Location *vfuncaddr=cg->GenLoad(cg->GenBinaryOp("+",vtbaddr,vfuncOffsetLoc,symtbl),0,symtbl);
@@ -896,6 +899,8 @@ Location* FieldAccess::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	{
 		if(baseaddr->IsPointer())
 			baseaddr=cg->GenLoad(baseaddr,0,symtbl);
+		
+		cg->GenThunkCall(CheckNull,baseaddr,NULL,symtbl);
 
 		Location* fieldoff=cg->GenLoadConstant(fieldoffset,symtbl);
 		Location* tmp=cg->GenBinaryOp("+",baseaddr,fieldoff,symtbl);
@@ -922,10 +927,13 @@ Location* ArrayAccess::GenTac(CodeGenerator* cg,SymTable* symtbl)
 		subscriptaddr=cg->GenLoad(subscriptaddr,0,symtbl);
 	
 	Location* baseaddr=base->GenTac(cg,symtbl);
-	
+
+
 	if(baseaddr->IsPointer())
 		baseaddr=cg->GenLoad(baseaddr,0,symtbl);
 
+	cg->GenThunkCall(CheckNull,baseaddr,NULL,symtbl);
+	
 	/* check index bound */
 	cg->GenThunkCall(CheckIndex,baseaddr,subscriptaddr,symtbl);
 	
