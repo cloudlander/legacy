@@ -306,11 +306,13 @@
 
 	Note:
 
-	(1): some errors may be ommited by me (e.g. testcases3/bad/bad8.curry)
+	(1): some errors may be ommited by me(error recovery not perfect) (e.g. testcases3/bad/bad8.curry)
 
 	(2): CALL/break/return in parser.y may contain error! (location issue) (bad6.curry bad9.curry)
 
 	(3): double type implementated before? (testcases3/bad/bad1.curry)
+
+	(4): Switch/Case is not the same as C (case doesn't fallthrough)
 
 
 
@@ -349,6 +351,8 @@
 	New,NewArray等均用外部的C程序代码实现，为此增加了thunk.c文件，该文件需要和curry生成的
 
 	汇编程序一起编译，否则会有连接错误. 浮点支持和所有的builtin都可以用类似方法实现。
+
+
 
 
 
