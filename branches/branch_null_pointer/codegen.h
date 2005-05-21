@@ -23,7 +23,7 @@ typedef enum { ReadInt, ReadDouble, ReadLine, ReadBool,
                           PrintInt, PrintDouble, PrintString, PrintBool,
                           Alloc, StringEqual, Halt, NumBuiltIns } BuiltIn;
 
-typedef enum { NewClass , NewArray , ArrayLength , EqualString , IsKindOf , CheckIndex , NumThunks } Thunk;
+typedef enum { NewClass , NewArray , ArrayLength , EqualString , IsKindOf , CheckIndex , CheckNull , NumThunks } Thunk;
 
 class CodeGenerator {
   private:

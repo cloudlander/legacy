@@ -280,6 +280,7 @@ static struct _thunk {
    {"_EqualString", 2, true},
    {"_IsKindOf", 2, true},
    {"_CheckIndex", 2, false},
+   {"_CheckNull", 1, false},
    };
 #else
 static struct _thunk {
@@ -293,6 +294,7 @@ static struct _thunk {
    {"EqualString", 2, true},
    {"IsKindOf", 2, true},
    {"CheckIndex", 2, false},
+   {"CheckNull", 1, false},
    };
 #endif
 
