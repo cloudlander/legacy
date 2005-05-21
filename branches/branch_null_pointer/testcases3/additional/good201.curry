@@ -32,9 +32,7 @@ void main()
 		a=2;	
 		Print(a);
 		x[3][2].print();
+		x[1][1].print();
 		x[20][1].print();
-/*		not enabling NullPointer check
-		x[1].print();
-*/
 	}
 }
