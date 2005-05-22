@@ -630,8 +630,6 @@ void SymTable::DetermineClassLocation(ClassDecl* parent,ClassDecl* me)
 
 
 
-	List<const char*>* vt1=new List<const int*>;
-
 	List<const char*>* vt=new List<const char*>;
 
 	if(parent)
@@ -1132,7 +1130,7 @@ const char* NameMangling(ClassDecl* decl,const char* func)
 
 	Assert(decl || func);
 
-	if(NULL==decl)
+	if(NULL==decl)	/* function name mangling */
 
 	{
 
