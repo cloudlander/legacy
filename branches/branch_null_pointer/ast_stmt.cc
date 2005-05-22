@@ -840,7 +840,8 @@ Location* CaseStmt::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	char* caseexit=cg->NewLabel();
 	cg->GenIfZ(equal,caseexit);
 	body->GenTac(cg,symtbl);
-	cg->GenGoto(caseexit);
+//	cg->GenGoto(caseexit);
+	cg->GenGoto(exitLabelStack.Nth(exitLabelStack.NumElements()-1));
 	cg->GenLabel(caseexit);
 	return NULL;
 }
