@@ -20,7 +20,7 @@ class Type : public Node
     char *typeName;
 
   public :
-    static Type  *intType, *doubleType, *boolType, *voidType, *nullType, *stringType, *errorType;
+    static Type  *intType, *doubleType, *boolType, *voidType, *nullType, *stringType, *errorType, *argType/* for main subroutine*/;
 
     Type(yyltype loc) : Node(loc) {}
     Type(const char *str);
@@ -68,6 +68,9 @@ class ArrayType : public Type
 
   public:
     ArrayType(yyltype loc, Type *elemType);
+
+	ArrayType(Type* elemType);
+	
     void PrintToStream(ostream& out) { out << elemType << "[]"; }    
     const char *GetPrintNameForNode() { return "ArrayType"; }
     void PrintChildren(int indentLevel);

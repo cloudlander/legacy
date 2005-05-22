@@ -819,7 +819,7 @@ void X86::EmitPopParams(int bytes)
 #endif
       Emit("addl\t$12, %%esp\t# end of zeromemory");
   }
-
+  
   Emit("andl\t$-16, %%esp \t# align the stack pointer for performance reasons");
   Emit("# the next two instruction is generated to initialize the accumulator, ");
   Emit("# and also to reset the condition flags");
@@ -958,10 +958,38 @@ void X86::EmitPreamble()
 #ifdef CYGWIN
   Emit(".text");
   Emit(".globl _main");
+  Emit("_main:\t# entry subroutine");	
 #else
   Emit(".text");
   Emit(".globl main");
+  Emit("main:\t# entry subroutine");	
 #endif
+
+  /* insert parameter processng call */ 
+  Emit("pushl\t%%ebp");
+  Emit("movl\t%%esp,%%ebp");
+  Emit("pushl\t12(%%ebp)\t#char** argv");
+  Emit("pushl\t8(%%ebp)\t#int argc");
+
+#ifdef CYGWIN
+  Emit("call\t__marshal_args");
+#else
+  Emit("call\t_marshal_args");
+#endif
+
+  Emit("addl\t$8, %%esp\t# end of marshaling args");
+
+  Emit("pushl\t%%eax\t#string[]");
+
+#ifdef CYGWIN
+  Emit("call\t_main_start");
+#else
+  Emit("call\tmain_start");
+#endif
+
+  Emit("popl\t%%eax\t# return value");
+  Emit("leave");
+  Emit("ret");
 
 //  Emit(".type _main, @function");
 }

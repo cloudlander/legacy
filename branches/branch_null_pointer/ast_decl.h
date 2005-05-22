@@ -117,7 +117,7 @@ class FnDecl : public Decl
 	int	frameSize;
 	// the next offset to allocate local variable ( for generating temp variable )
 	int localOffset;
-	const char* mangledName;
+	char* mangledName;
   public:
     FnDecl(Identifier *name, Type *returnType, List<VarDecl*> *formals);
     void SetFunctionBody(Stmt *b);
@@ -128,7 +128,19 @@ class FnDecl : public Decl
 	int GetFrameSize(){return frameSize;}
 	void BuildSymTable(SymTable*);
 	void DetermineLocation();
-	void SetMangledName(const char* n){Assert(n);mangledName=n;}
+	void SetMangledName(const char* n)
+	{
+		Assert(n);
+		if(0==strncmp("main",id->GetName(),4))
+		/* change main to main_start to support main's paramenter passing */
+		{
+			mangledName=new char[strlen(n)+strlen("_start")+1];
+			strcpy(mangledName,n);
+			strcat(mangledName,"_start");
+		}	
+		else
+			mangledName=const_cast<char*>(n);
+	}
 	const char* GetMangledName(){Assert(mangledName);return mangledName;}
 
 	void GenCode(CodeGenerator* cg);

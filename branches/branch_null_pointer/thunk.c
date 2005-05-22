@@ -16,6 +16,38 @@ extern unsigned int exception_type_dim;
 
 
 
+
+
+unsigned int ReadLine();
+
+unsigned int ReadInt();
+
+void PrintInt(int x);
+
+void PrintString(char* s);
+
+void PrintBool(int b);
+
+unsigned int NewClass(int size,int vtbaddr);
+
+unsigned int NewArray(int length,int typesize);
+
+unsigned int ArrayLength(unsigned int addr);
+
+void CheckIndex(unsigned int addr, unsigned int index);
+
+void CheckNull(unsigned int addr);
+
+unsigned int EqualString(char* s1,char* s2);
+
+unsigned int IsKindOf(unsigned int objtype,unsigned int dim);
+
+
+
+
+
+
+
 typedef struct tagTypeInfo{
 
 	unsigned char* typename;
@@ -77,6 +109,28 @@ void _throw_exception(enum BuiltInExceptionType bie_type)
 	asm volatile ("jmp *%edx");
 
 	/* never return*/
+
+}
+
+
+
+unsigned int _marshal_args(int argc,char** argv)
+
+{
+
+	int i;
+
+	unsigned int* addr=(unsigned int*)NewArray(argc,4);
+
+	for(i=0;i<argc;i++)
+
+	{
+
+		addr[i]=(unsigned int)argv[i];
+
+	}
+
+	return (unsigned int)addr;
 
 }
 

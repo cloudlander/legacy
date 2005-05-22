@@ -4,6 +4,7 @@
  */
 #include "ast_decl.h"
 #include "ast_type.h"
+#include "ast_expr.h"
 #include "ast_stmt.h"
 #include "utility.h"
 #include "symtable.h"
@@ -184,7 +185,35 @@ bool FnDecl::Check(SymTable* symtbl)
 			ret=false;
 	
 	if(0==strcmp("main",id->GetName()))
+	{
 		mainFunctionFound=true;
+		if(0==formals->NumElements()) /* main has no parameters */
+		{
+		}
+		else if(1!=formals->NumElements())	/* only allow 1 parameter */
+		{
+			ReportError::NumArgsMismatch(id, 1, formals->NumElements());
+			ret=false;
+		}
+		else	
+		{
+			Type* argType=formals->Nth(0)->GetType();
+			Assert(argType);
+			if(typeid(*argType)==typeid(ArrayType))
+			{
+				ArrayType* arrType=static_cast<ArrayType*>(argType);
+		  		if(arrType->GetElemType()->IsEquivalentTo(Type::stringType) &&
+				     arrType->GetDim() == 1)
+				{
+					return body->Check(symtbl) && ret;
+				}
+			}
+			/* create a temporiary expr node for error reporting */
+			EmptyExpr e(*(formals->Nth(0)->GetLocation()));
+			ReportError::ArgMismatch(&e,1,argType,Type::argType);
+			ret=false;
+		}
+	}
 	// return type check will be delayed until return stmt found
 	return body->Check(symtbl) && ret;
 }
