@@ -968,8 +968,8 @@ void X86::EmitPreamble()
   /* insert parameter processng call */ 
   Emit("pushl\t%%ebp");
   Emit("movl\t%%esp,%%ebp");
-  Emit("pushl\t12(%%ebp)\t#char** argv");
-  Emit("pushl\t8(%%ebp)\t#int argc");
+  Emit("pushl\t12(%%ebp)\t# char** argv");
+  Emit("pushl\t8(%%ebp)\t# int argc");
 
 #ifdef CYGWIN
   Emit("call\t__marshal_args");
@@ -987,7 +987,7 @@ void X86::EmitPreamble()
   Emit("call\tmain_start");
 #endif
 
-  Emit("popl\t%%eax\t# return value");
+  Emit("addl\t$4, %%esp\t# end of main_start");
   Emit("leave");
   Emit("ret");
 

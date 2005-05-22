@@ -17,6 +17,7 @@ then
 	then
 		echo "runing $prefix.exe"
 		./$prefix.exe
+		echo -e "\nReturn Value: $?"
 	fi
 fi
 rm -f .$prefix.s		 
