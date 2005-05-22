@@ -630,6 +630,8 @@ void SymTable::DetermineClassLocation(ClassDecl* parent,ClassDecl* me)
 
 
 
+	List<const char*>* vt1=new List<const int*>;
+
 	List<const char*>* vt=new List<const char*>;
 
 	if(parent)
@@ -646,7 +648,7 @@ void SymTable::DetermineClassLocation(ClassDecl* parent,ClassDecl* me)
 
 		sym=orderedList.Nth(i);
 
-		if(parent!=NULL && NULL!=(symParent=parent->GetSymTable()->Find(sym->GetName(),true)))	//	symbol can be found in parent's symbol table)	// sub class overide parent's symbol(variable or method)
+		if(parent!=NULL && NULL!=(symParent=parent->GetSymTable()->Find(sym->GetName(),true)))	//	symbol can be found in parent's symbol table)	// sub class overide parent's method)
 
 		{
 
@@ -683,6 +685,12 @@ void SymTable::DetermineClassLocation(ClassDecl* parent,ClassDecl* me)
 				OverideMethod(vt,sym->GetLocation()->GetOffset(),me,sym->GetName());
 
 			}
+
+			else if(sym->IsClassVar())		// disallow overiding variable of parent
+
+				ReportError::DeclConflict(sym->GetDecl(),symParent->GetDecl());
+
+				
 
 		}
 

@@ -290,7 +290,7 @@
 
 	4. virtual function signature checking (testcases3/bad/bad13.curry)	/* fixed */
 
-	5. should class variable be overided? (testcases3/bad/bad16.curry)	
+	5. should class variable be overided? (testcases3/bad/bad16.curry)	/* now disallowing overiding */
 
 	
 
