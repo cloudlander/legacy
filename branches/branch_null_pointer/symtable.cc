@@ -912,17 +912,17 @@ Location* ehDimLoc=new Location(gpRelative,0,ehDim);
 
 BuiltInException bie[]={
 
-	{"IndexOutOfBoundException","Runtime Exception: Index Out Of Bound\\n"},
+	{"IndexOutOfBoundException","runtime error: index out of bounds\\n"},
 
-	{"NewObjectFailureException", "Runtime Exception: New Operation Failed\\n"},
+	{"NewObjectFailureException", "runtime error: memory allocation\\n"},
 
-	{"ArraySizeException", "Runtime Exception: NewArray Got Invalid Size\\n"},
+	{"ArraySizeException", "runtime error: invalid array length\\n"},
 
-	{"NullPointerException", "Runtime Exception: Null Pointer Access\\n"},
+	{"NullPointerException", "runtime error: null reference\\n"},
 
 /* add more runtime exception here */
 
-	{"UnKnownException", "Runtime Exception: Unhandled Exception Caught\\n"}
+	{"UnKnownException", "runtime error: uncaught exception\\n"}
 
 };
 
