@@ -1,0 +1,18 @@
+
+*** Error line 13.
+	double x;
+               ^
+*** Declaration of 'x' here conflicts with declaration on line 12
+
+
+*** Error line 12.
+	bool x;
+             ^
+*** Declaration of 'x' here conflicts with declaration on line 3
+
+
+*** Error line 16.
+		x=1;
+                 ^
+*** Incompatible operands: bool = int
+

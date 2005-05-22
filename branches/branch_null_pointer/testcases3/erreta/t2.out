@@ -1,0 +1,24 @@
+
+*** Error line 14.
+	double x;
+               ^
+*** Declaration of 'x' here conflicts with declaration on line 13
+
+
+*** Error line 2.
+class A extends x
+                ^
+*** No declaration found for class 'x'
+
+
+*** Error line 13.
+	bool x;
+             ^
+*** Declaration of 'x' here conflicts with declaration on line 4
+
+
+*** Error line 17.
+		x=1;
+                 ^
+*** Incompatible operands: bool = int
+
