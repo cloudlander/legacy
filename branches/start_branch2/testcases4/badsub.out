@@ -1,4 +1,3 @@
-
 0
 1
 2
@@ -9,4 +8,4 @@
 7
 8
 9
-Curry runtime error: Array subscript out of bounds
+runtime error: index out of bounds
