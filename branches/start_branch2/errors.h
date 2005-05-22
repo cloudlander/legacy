@@ -116,4 +116,10 @@ class ReportError
   
 };
 
+// runtime errors defined as macro
+#define INDEX_OUT_OF_BOUNDS 		"runtime error: index out of bounds\\n"
+#define INVALID_ARRAY_LENGTH		"runtime error: invalid array length\\n"
+#define NULL_REFERENCE				"runtime error: null reference\\n"
+#define UNCAUGHT_EXCEPTION			"runtime error: uncaught exception\\n"
+
 #endif
