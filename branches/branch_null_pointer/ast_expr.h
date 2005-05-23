@@ -38,6 +38,7 @@ class EmptyExpr : public Expr
     const char *GetPrintNameForNode() { return "Empty"; }
 
     EmptyExpr(yyltype loc) : Expr(loc) {}
+	EmptyExpr(){}
 
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl){return NULL;}
 	Type* GetType(SymTable*){return type=Type::voidType;}
