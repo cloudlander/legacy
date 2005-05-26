@@ -62,7 +62,7 @@ SINGLE_COMMENT    ("//"[^\n]*)
                          curColNum = 1; yy_pop_state(); yyless(0); }
 <COPY><<EOF>>          { yy_pop_state(); }
 
-<*>\n                  { curLineNum++; curColNum = 1;
+<*>\n|\r\n                  { curLineNum++; curColNum = 1;
 			 if (YYSTATE == COPY) savedLines.Append("");
                          else yy_push_state(COPY);
 		       }
