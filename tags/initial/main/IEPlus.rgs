@@ -1,0 +1,40 @@
+HKCR
+{
+	IEPlusATL.IEPlus.1 = s 'iEnhance'
+	{
+		CLSID = s '{83C64D70-F259-4384-8443-217351436BE6}'
+	}
+	IEPlusATL.IEPlus = s 'iEnhance'
+	{
+		CLSID = s '{83C64D70-F259-4384-8443-217351436BE6}'
+		CurVer = s 'IEPlusATL.IEPlus.1'
+	}
+	NoRemove CLSID
+	{
+		ForceRemove {83C64D70-F259-4384-8443-217351436BE6} = s 'iEnhance'
+		{
+			ProgID = s 'IEPlusATL.IEPlus.1'
+			VersionIndependentProgID = s 'IEPlusATL.IEPlus'
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+		}
+	}
+}
+HKLM
+{
+	NoRemove SOFTWARE
+	{
+		NoRemove Microsoft
+		{
+			NoRemove 'Internet Explorer' 
+			{
+				NoRemove 'Toolbar'
+				{
+					val {83C64D70-F259-4384-8443-217351436BE6} = s 'iEnhance'
+				}
+			}
+		}
+	}
+}

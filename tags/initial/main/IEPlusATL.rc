@@ -1,0 +1,449 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Chinese (P.R.C.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+#ifdef _WIN32
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#pragma code_page(936)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE MOVEABLE PURE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE MOVEABLE PURE 
+BEGIN
+    "#include ""winres.h""\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+#ifndef _MAC
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 0,0,0,1
+ PRODUCTVERSION 0,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "FileDescription", "iEnhance beta\0"
+            VALUE "FileVersion", "0, 0, 0, 1\0"
+            VALUE "InternalName", "IEPlusATL\0"
+            VALUE "LegalCopyright", "Copyright 2002\0"
+            VALUE "OriginalFilename", "IEPlusATL.DLL\0"
+            VALUE "ProductName", "iEnhance\0"
+            VALUE "ProductVersion", "0, 0, 0, 1\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+#endif    // !_MAC
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// REGISTRY
+//
+
+IDR_IEPLUS              REGISTRY MOVEABLE PURE  "IEPlus.rgs"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_POPUP MENU DISCARDABLE 
+BEGIN
+    POPUP ""
+    BEGIN
+        POPUP "浏览限制"
+        BEGIN
+            MENUITEM "不下载图片",                  ID_LIMITIMG
+            MENUITEM "不下载视频",                  ID_LIMITVIDEO
+            MENUITEM "不下载动画",                  ID_LIMITANIM
+            MENUITEM "禁用背景音乐",                ID_NOTPLAYSOUND
+        END
+        MENUITEM SEPARATOR
+        MENUITEM SEPARATOR
+        MENUITEM "选项...",                     ID_OPTION
+        MENUITEM "关于...",                     ID_ABOUT
+    END
+    POPUP ""
+    BEGIN
+        MENUITEM "使用代理",                    IDR_USEPROXY
+        MENUITEM "配置代理服务器",              ID_CONFIGPROXY
+        MENUITEM SEPARATOR
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_QUICKSAVEDLG DIALOGEX 200, 200, 444, 213
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "提取Flash和图片"
+FONT 9, "Tahoma"
+BEGIN
+    DEFPUSHBUTTON   "关闭",IDOK,375,189,50,14
+    CONTROL         "",IDC_SHOCKWAVEFLASH,
+                    "{D27CDB6E-AE6D-11CF-96B8-444553540000}",NOT WS_VISIBLE | 
+                    WS_TABSTOP,309,15,128,142
+    CONTROL         "",IDC_WBROWSER,"{8856F961-340A-11D0-A96B-00C04FD705A2}",
+                    NOT WS_VISIBLE | WS_TABSTOP,140,40,135,109
+    PUSHBUTTON      "取消全部选择",IDB_UNSELALL,140,189,60,14
+    PUSHBUTTON      "保存到...",IDB_SAVE,295,189,60,14
+    PUSHBUTTON      "选择全部",IDB_SELALL,75,189,50,14
+    PUSHBUTTON      "反向选择",IDB_REVERSE,215,189,65,14
+    CONTROL         "允许预览",IDC_SHOWPREVIEW,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,5,191,45,10
+END
+
+IDD_OPTIONDLG DIALOGEX 0, 0, 303, 197
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "选项"
+FONT 10, "宋体"
+BEGIN
+    DEFPUSHBUTTON   "确定",IDOK,163,178,50,14
+    PUSHBUTTON      "取消",IDCANCEL,223,178,50,14
+    CONTROL         "List1",IDC_OPTIONLIST,"SysListView32",LVS_LIST | 
+                    WS_BORDER | WS_TABSTOP,5,5,65,170
+    GROUPBOX        "Static",IDC_GBOX,75,5,225,169,NOT WS_VISIBLE
+END
+
+IDD_PROXYDLG DIALOG DISCARDABLE  0, 0, 227, 171
+STYLE WS_CHILD
+FONT 10, "宋体"
+BEGIN
+    CONTROL         "List1",IDC_PROXYLIST,"SysListView32",LVS_REPORT | 
+                    LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,2,25,220,110
+    PUSHBUTTON      "更改",IDC_BTNCHANGE,183,150,38,15
+    PUSHBUTTON      "删除",IDC_BTNDEL,139,150,38,15
+    PUSHBUTTON      "添加",IDC_BTNADD,92,150,38,15
+    PUSHBUTTON      "导入",IDC_BTNIMPORT,0,150,38,15
+    PUSHBUTTON      "导出",IDC_BTNEXPORT,45,150,38,15
+    LTEXT           "代理服务器列表:",IDC_STATIC,1,8,57,8
+    CONTROL         "所有协议使用相同代理设置",IDC_SETALL,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,121,8,105,10
+END
+
+IDD_SEDLG DIALOG DISCARDABLE  0, 0, 227, 171
+STYLE WS_CHILD
+FONT 10, "宋体"
+BEGIN
+    CONTROL         "List1",IDC_SELIST,"SysListView32",LVS_REPORT | 
+                    LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,0,25,220,110
+    PUSHBUTTON      "更改",IDC_BTNCHANGE,183,150,38,15
+    PUSHBUTTON      "删除",IDC_BTNDEL,139,150,38,15
+    PUSHBUTTON      "添加",IDC_BTNADD,92,150,38,15
+    LTEXT           "可用搜索引擎列表:",IDC_STATIC,1,8,64,8
+    PUSHBUTTON      "设为默认搜索引擎",IDB_SETDEFAULT,10,151,64,14
+END
+
+IDD_PROXYENTRY DIALOGEX 0, 0, 223, 126
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "代理服务器配置"
+FONT 10, "宋体"
+BEGIN
+    LTEXT           "代理地址:",IDC_STATIC,18,12,35,8
+    EDITTEXT        IDC_NAME,68,10,115,13,ES_AUTOHSCROLL
+    LTEXT           "代理端口:",IDC_STATIC,18,34,35,8
+    EDITTEXT        IDC_PORT,68,31,45,13,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "代理类型:",IDC_STATIC,18,56,35,8
+    LTEXT           "注释:",IDC_STATIC,18,76,20,8
+    EDITTEXT        IDC_COMMENT,68,74,82,13,ES_AUTOHSCROLL
+    COMBOBOX        IDC_TYPE,68,54,47,41,CBS_DROPDOWNLIST | WS_VSCROLL | 
+                    WS_TABSTOP
+    LTEXT           "(前20字节有效)",IDC_STATIC,150,75,54,8
+    PUSHBUTTON      "确定",IDOK,50,100,50,15
+    PUSHBUTTON      "取消",IDCANCEL,115,100,50,15
+END
+
+IDD_SEENTRY DIALOGEX 0, 0, 187, 90
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "配置搜索引擎"
+FONT 10, "宋体"
+BEGIN
+    LTEXT           "名称:",IDC_STATIC,17,13,20,8
+    EDITTEXT        IDC_NAME,77,10,90,15,ES_AUTOHSCROLL
+    LTEXT           "搜索引擎URL:",IDC_STATIC,17,37,47,8
+    EDITTEXT        IDC_URL,77,34,90,15,ES_AUTOHSCROLL
+    PUSHBUTTON      "确定",IDOK,41,62,45,15
+    PUSHBUTTON      "取消",IDCANCEL,101,62,45,15
+END
+
+IDD_MOREDLG DIALOG DISCARDABLE  0, 0, 252, 186
+STYLE WS_CHILD
+FONT 10, "宋体"
+BEGIN
+    CONTROL         "List1",IDC_PROXYLIST,"SysListView32",LVS_REPORT | 
+                    WS_BORDER | WS_TABSTOP,5,25,240,120
+    PUSHBUTTON      "设为代理",IDC_ACTIVATE,7,153,40,15
+    LTEXT           "当前使用的代理服务器:",IDC_STATIC,5,10,79,8
+    LTEXT           "",IDC_CURPROXY,90,9,115,10
+    PUSHBUTTON      "清除代理",IDC_DEACTIVATE,57,153,40,15
+    PUSHBUTTON      "刷新列表",IDC_REFRESH,107,153,40,15
+    PUSHBUTTON      "关闭",IDC_CLOSE,205,152,40,15
+END
+
+IDD_SETTINGS DIALOG DISCARDABLE  0, 0, 187, 100
+STYLE WS_CHILD
+FONT 9, "宋体"
+BEGIN
+    CONTROL         "关闭广告窗口时发出蜂鸣声",IDC_BEEP,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,9,8,109,12
+    LTEXT           "设定组合框大小为:",IDC_STATIC,9,28,69,8
+    EDITTEXT        IDC_COMBOSIZE,82,26,36,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "象素",IDC_STATIC,125,29,29,8
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog Info
+//
+
+IDD_QUICKSAVEDLG DLGINIT
+BEGIN
+    IDC_SHOCKWAVEFLASH, 0x376, 174, 0
+0x0000, 0x0000, 0x5567, 0x5566, 0x0300, 0x0000, 0x1727, 0x0000, 0x19bc, 
+0x0000, 0x0008, 0x0002, 0x0000, 0x0000, 0x0008, 0x0002, 0x0000, 0x0000, 
+0x0008, 0x0002, 0x0000, 0x0000, 0x0008, 0x000e, 0x0000, 0x0057, 0x0069, 
+0x006e, 0x0064, 0x006f, 0x0077, 0x0000, 0x000b, 0xffff, 0x000b, 0xffff, 
+0x0008, 0x000a, 0x0000, 0x0048, 0x0069, 0x0067, 0x0068, 0x0000, 0x0008, 
+0x0002, 0x0000, 0x0000, 0x000b, 0xffff, 0x0008, 0x0002, 0x0000, 0x0000, 
+0x0008, 0x000e, 0x0000, 0x0061, 0x006c, 0x0077, 0x0061, 0x0079, 0x0073, 
+0x0000, 0x0008, 0x0010, 0x0000, 0x0053, 0x0068, 0x006f, 0x0077, 0x0041, 
+0x006c, 0x006c, 0x0000, 0x000b, 0x0000, 0x000b, 0x0000, 0x0008, 0x0002, 
+0x0000, 0x0000, 0x0008, 0x0002, 0x0000, 0x0000, 
+    IDC_WBROWSER, 0x376, 160, 0
+0x0000, 0x0000, 0x004c, 0x0000, 0x1864, 0x0000, 0x13be, 0x0000, 0x0000, 
+0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
+0x0000, 0x0000, 0x004c, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0001, 
+0x0000, 0xd0e0, 0x0057, 0x3573, 0x11cf, 0x69ae, 0x0008, 0x2e2b, 0x6212, 
+0x0008, 0x0000, 0x0000, 0x0000, 0x004c, 0x0000, 0x1401, 0x0002, 0x0000, 
+0x0000, 0x00c0, 0x0000, 0x0000, 0x4600, 0x0080, 0x0000, 0x0000, 0x0000, 
+0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
+0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0001, 0x0000, 
+0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO MOVEABLE PURE 
+BEGIN
+    IDD_OPTIONDLG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 291
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 183
+    END
+
+    IDD_PROXYDLG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 220
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 169
+    END
+
+    IDD_SEDLG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 220
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 169
+    END
+
+    IDD_PROXYENTRY, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 216
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 119
+    END
+
+    IDD_SEENTRY, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 83
+    END
+
+    IDD_MOREDLG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 245
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 179
+    END
+
+    IDD_SETTINGS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 93
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_HOT                 BITMAP  MOVEABLE PURE   "res\\hot.bmp"
+IDB_COLD                BITMAP  MOVEABLE PURE   "res\\cold.bmp"
+IDB_HOTNT               BITMAP  MOVEABLE PURE   "res\\hotnt.bmp"
+IDB_COLDNT              BITMAP  MOVEABLE PURE   "res\\coldnt.bmp"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Toolbar
+//
+
+IDB_HOT TOOLBAR MOVEABLE PURE  22, 20
+BEGIN
+    BUTTON      ID_BUTTON32810
+    BUTTON      ID_BUTTON32811
+    BUTTON      ID_BUTTON32812
+    BUTTON      ID_BUTTON32813
+    BUTTON      ID_BUTTON32814
+END
+
+IDB_COLD TOOLBAR MOVEABLE PURE  22, 20
+BEGIN
+    BUTTON      ID_BUTTON32823
+    BUTTON      ID_BUTTON32824
+    BUTTON      ID_BUTTON32825
+    BUTTON      ID_BUTTON32826
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_PROJNAME            "IEPlusATL"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_ADDRCOLUMN          "代理地址"
+    IDS_PORTCOLUMN          "端口"
+    IDS_TYPECOLUMN          "协议"
+    IDS_COMMENTCOLUMN       "注释"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_QSFILENAME          "文件名"
+    IDS_QSURL               "URL "
+    IDS_QSLOCALFILENAME     "本地文件名"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_SENAME              "名称"
+    IDS_SEURL               "Url"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_PROXYENTRYHTTP      "http"
+    IDS_PROXYENTRYHTTPS     "https"
+    IDS_PROXYENTRYFTP       "ftp"
+    IDS_PROXYENTRYGOPHER    "gopher"
+    IDS_PROXYENTRYSOCKS     "socks"
+END
+
+#endif    // Chinese (P.R.C.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// 24
+//
+
+2                       24      MOVEABLE PURE   "res\\IEPlusATL.manifest"
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
