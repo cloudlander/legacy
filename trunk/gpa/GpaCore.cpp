@@ -12,7 +12,7 @@
 #pragma comment(lib,"wininet")
 
 #define IENH_EXT_EXPORTS
-#include "../ienh/ienh_ext.h"
+#include "../bin/ext/IENH_EXT.H"
 
 #ifdef _DEBUG
 #undef THIS_FILE

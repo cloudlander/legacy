@@ -5,7 +5,7 @@
 #include "EventSpy.h"
 #include "EventDlg.h"
 #define IENH_EXT_EXPORTS
-#include "../ext/ienh_ext.h"
+#include "../bin/ext/ienh_ext.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
