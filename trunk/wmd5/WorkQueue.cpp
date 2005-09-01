@@ -583,7 +583,11 @@ BOOL CWorkQueue::FetchMd5Jobs(CStdioFile& stdf)
 		}
 		else if(""==m_szRootDir)
 			m_szRootDir=szBuf.Left(index+1);
-		
+		/* CFileFinder has a buffer overrun bug, trim szBuf at MAX_PATH */
+		/* a potential buffer overflow attack way*/
+		/* think of debugging an application to see if it uses FileFinder */
+		if(_tcslen(szBuf)>=MAX_PATH)
+			szBuf.SetAt(MAX_PATH-1,_T('\0'));
 		if(FALSE==finder.FindFile(szBuf))
 			continue;
 		finder.FindNextFile();
