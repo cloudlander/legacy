@@ -4,7 +4,6 @@
 
 #include "stdafx.h"
 #include <wininet.h>
-#include <fstream>
 
 #define MAX_PROXY_LENGTH	200
 
@@ -18,17 +17,6 @@
 	Disbled original code
 */
 #define USE_WININET
-
-
-DWORD WINAPI ThreadFunc( LPVOID lpParam ) 
-{ 
-    char szMsg[80];
-
-    wsprintf( szMsg, "Parameter = %d.", *(DWORD*)lpParam ); 
-    MessageBox( NULL, szMsg, "ThreadFunc", MB_OK );
-
-    return 0; 
-} 
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -197,7 +185,10 @@ BOOL CProxyManager::GetProxySettingFromIE()
 		ReportErrMsg("In CProxyManager::GetProxySettingFromIE");
 		return FALSE;
 	}
-	_tcscpy(szBuf,Option[0].Value.pszValue);
+	if(Option[0].Value.pszValue)
+		_tcscpy(szBuf,Option[0].Value.pszValue);
+	else
+		return TRUE;
  
 #endif
 	tstring str;
