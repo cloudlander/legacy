@@ -23,6 +23,11 @@
 #ifndef WINVER
 #define WINVER 0x0500
 #endif
+#define USE_VLD
+#ifdef USE_VLD
+#include "vld.h"
+#endif
+//#define USE_EFENCE
 
 #include <tchar.h>
 
@@ -49,8 +54,13 @@ extern CComModule _Module;
 #include <vector>
 #include <map>
 #include <stack>
+#include <fstream>
 
 using namespace std;
+#ifdef USE_EFENCE
+#include <new>
+#include "../efencelib/efencepp.h"
+#endif
 
 typedef basic_string<TCHAR,char_traits<TCHAR>, allocator<TCHAR> > tstring;
 
