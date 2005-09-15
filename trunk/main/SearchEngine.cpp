@@ -320,6 +320,10 @@ void CSearchEngine::DoSearch(int index,TCHAR* query)
 	}
 	
 	int i = index;
+
+	if(-1 == index)
+		i = m_nDef;
+
 	variant_t vtEmpty;
 	// we want to convert an MBCS string in lpszA
 	int nLen = MultiByteToWideChar(CP_ACP, 0,query, -1, NULL, NULL);
@@ -345,8 +349,6 @@ void CSearchEngine::DoSearch(int index,TCHAR* query)
 	delete[] lpszW;
 
 	nav[0] = _T('\0');
-	if(-1 == index)
-		i = m_nDef;
 	int d = m_VecSe[i].url.find(_T("^"),0);
 	if(-1 == d)
 	{
