@@ -290,7 +290,7 @@
 
 	4. virtual function signature checking (testcases3/bad/bad13.curry)	/* fixed */
 
-	5. should class variable be overided? (testcases3/bad/bad16.curry)	
+	5. should class variable be overided? (testcases3/bad/bad16.curry)	/* now disallowing overiding */
 
 	
 
@@ -306,11 +306,13 @@
 
 	Note:
 
-	(1): some errors may be ommited by me (e.g. testcases3/bad/bad8.curry)
+	(1): some errors may be ommited by me(error recovery not perfect) (e.g. testcases3/bad/bad8.curry)
 
 	(2): CALL/break/return in parser.y may contain error! (location issue) (bad6.curry bad9.curry)
 
 	(3): double type implementated before? (testcases3/bad/bad1.curry)
+
+	(4): Switch/Case is not the same as C (case doesn't fallthrough)
 
 
 
@@ -352,6 +354,8 @@
 
 
 
+
+
 5.	外部.c程序和.s的全局变量之间的共享(/* 此处有误,情况并不是这样,thunk.c中已经体现,作为
 
 	一个日志, 这里就不删除本记录了 */)
@@ -378,7 +382,7 @@
 
 	发生exception时所完成的动作:
 
-	(1):  根据异常对象的类型设置_exception_type(对象类型)
+	(1):  根据异常对象的类型设置_exception_type(对象类型)  (Java/C++ throw the static exception type object)
 
 	(2):  把异常对象的value放入_exception_value(简单考虑,不专门使用%eax)
 

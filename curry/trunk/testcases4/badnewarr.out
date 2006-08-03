@@ -1,2 +1,1 @@
-
-Curry runtime error: Array size is <= 0
+runtime error: invalid array length

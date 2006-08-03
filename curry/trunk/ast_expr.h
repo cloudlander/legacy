@@ -37,6 +37,9 @@ class EmptyExpr : public Expr
   public:
     const char *GetPrintNameForNode() { return "Empty"; }
 
+    EmptyExpr(yyltype loc) : Expr(loc) {}
+	EmptyExpr(){}
+
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl){return NULL;}
 	Type* GetType(SymTable*){return type=Type::voidType;}
 	bool Check(SymTable*){return true;}
@@ -302,7 +305,7 @@ class NewArrayExpr : public Expr
     const char *GetPrintNameForNode() { return "NewArrayExpr"; }
     void PrintChildren(int indentLevel);
 
-	Type* GetType(SymTable* symtbl){return type=new ArrayType(*location,elemType);}
+	Type* GetType(SymTable* symtbl){if(Check(symtbl)){return type=new ArrayType(*location,elemType);}else return Type::errorType;}
 	bool Check(SymTable* symtbl);
 	Location* GenTac(CodeGenerator* cg,SymTable* symtbl);
 };

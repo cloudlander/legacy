@@ -754,11 +754,6 @@ void X86::EmitLCall(Location *dst, const char *label)
 
 	EmitCallInstr(dst,label,true);
 
-    	// handle return value  
-	if (dst != NULL) {
-		Register r1 = GetRegisterForWrite(dst);
-		Emit("movl\t%s, %s\t# copy function return value from %%eax", regs[eax].name, regs[r1].name);
-	}
 }
 
 
@@ -808,9 +803,23 @@ void X86::EmitPopParams(int bytes)
   Emit("movl\t%%esp, %%ebp");
 
   if (stackFrameSize != 0)
-    Emit("subl\t$%d, %%esp \t# decrement sp to make space for locals/temps",
+  {
+	  Emit("subl\t$%d, %%esp \t# decrement sp to make space for locals/temps",
 	   stackFrameSize);
 
+	  /* To support NullPointer detection, set local frame to zero */
+	  Emit("# zeromemory local stack to enable NullPointer detection");
+	  Emit("pushl\t$%d",stackFrameSize+8);	// tricky! as sp has been increased
+	  Emit("pushl\t$0");
+	  Emit("pushl\t%%esp");
+#ifdef CYGWIN
+	  Emit("call\t_memset");
+#else
+	  Emit("call\tmemset");
+#endif
+      Emit("addl\t$12, %%esp\t# end of zeromemory");
+  }
+  
   Emit("andl\t$-16, %%esp \t# align the stack pointer for performance reasons");
   Emit("# the next two instruction is generated to initialize the accumulator, ");
   Emit("# and also to reset the condition flags");
@@ -833,8 +842,22 @@ void X86::EmitBeginFunction(int stackFrameSize)
   Emit("movl\t%%esp, %%ebp");
 
   if (stackFrameSize != 0)
-    Emit("subl\t$%d, %%esp\t# decrement sp to make space for locals/temps",
+  {
+	  Emit("subl\t$%d, %%esp\t# decrement sp to make space for locals/temps",
 	   stackFrameSize);
+
+	  /* To support NullPointer detection, set local frame to zero */
+	  Emit("# zeromemory local stack to enable NullPointer detection");
+	  Emit("pushl\t$%d",stackFrameSize+8);  // tricky! as sp has been increased
+	  Emit("pushl\t$0");
+	  Emit("pushl\t%%esp");
+#ifdef CYGWIN
+	  Emit("call\t_memset");
+#else
+	  Emit("call\tmemset");
+#endif
+      Emit("addl\t$12, %%esp\t# end of zeromemory");
+  }
 }
 
 
@@ -935,10 +958,38 @@ void X86::EmitPreamble()
 #ifdef CYGWIN
   Emit(".text");
   Emit(".globl _main");
+  Emit("_main:\t# entry subroutine");	
 #else
   Emit(".text");
   Emit(".globl main");
+  Emit("main:\t# entry subroutine");	
 #endif
+
+  /* insert parameter processng call */ 
+  Emit("pushl\t%%ebp");
+  Emit("movl\t%%esp,%%ebp");
+  Emit("pushl\t12(%%ebp)\t# char** argv");
+  Emit("pushl\t8(%%ebp)\t# int argc");
+
+#ifdef CYGWIN
+  Emit("call\t__marshal_args");
+#else
+  Emit("call\t_marshal_args");
+#endif
+
+  Emit("addl\t$8, %%esp\t# end of marshaling args");
+
+  Emit("pushl\t%%eax\t#string[]");
+
+#ifdef CYGWIN
+  Emit("call\t_main_start");
+#else
+  Emit("call\tmain_start");
+#endif
+
+  Emit("addl\t$4, %%esp\t# end of main_start");
+  Emit("leave");
+  Emit("ret");
 
 //  Emit(".type _main, @function");
 }

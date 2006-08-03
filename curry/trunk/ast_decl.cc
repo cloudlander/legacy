@@ -4,6 +4,7 @@
  */
 #include "ast_decl.h"
 #include "ast_type.h"
+#include "ast_expr.h"
 #include "ast_stmt.h"
 #include "utility.h"
 #include "symtable.h"
@@ -70,9 +71,10 @@ void ClassDecl::DetermineLocation()
 	else
 	{
 		Symbol* parent=GetGlobalSymTable()->Find(extends->GetName());
-		if(NULL==parent)
+		if(NULL==parent || !parent->IsClass() )
 			symtable->DetermineClassLocation(NULL,this);	// error, but consider it as a base class
-		symtable->DetermineClassLocation(static_cast<ClassDecl*>(parent->GetDecl()),this);		// deriving class
+		else
+			symtable->DetermineClassLocation(static_cast<ClassDecl*>(parent->GetDecl()),this);		// deriving class
 	}
 	DEBUGLOCATION(symtable)
 	if(IsDebugOn("location"))
@@ -163,13 +165,17 @@ void FnDecl::DetermineLocation()
 		fprintf(stderr,"frameSize=%d\n",frameSize);
 	DEBUGLOCATIONEND(symtable)
 	localOffset=localoffset;
+
+	if(NULL==type)
+		type=returnType;
+
 }
 
 extern bool mainFunctionFound;
 
 bool FnDecl::Check(SymTable* symtbl)
 {
-	if(type && type->IsEquivalentTo(Type::errorType))
+	if(type && type->Check(symtbl) && type->IsEquivalentTo(Type::errorType))
 		return false;
 	
 	bool ret=true;
@@ -179,7 +185,35 @@ bool FnDecl::Check(SymTable* symtbl)
 			ret=false;
 	
 	if(0==strcmp("main",id->GetName()))
+	{
 		mainFunctionFound=true;
+		if(0==formals->NumElements()) /* main has no parameters */
+		{
+		}
+		else if(1!=formals->NumElements())	/* only allow 1 parameter */
+		{
+			ReportError::NumArgsMismatch(id, 1, formals->NumElements());
+			ret=false;
+		}
+		else	
+		{
+			Type* argType=formals->Nth(0)->GetType();
+			Assert(argType);
+			if(typeid(*argType)==typeid(ArrayType))
+			{
+				ArrayType* arrType=static_cast<ArrayType*>(argType);
+		  		if(arrType->GetElemType()->IsEquivalentTo(Type::stringType) &&
+				     arrType->GetDim() == 1)
+				{
+					return body->Check(symtbl) && ret;
+				}
+			}
+			/* create a temporiary expr node for error reporting */
+			EmptyExpr e(*(formals->Nth(0)->GetLocation()));
+			ReportError::ArgMismatch(&e,1,argType,Type::argType);
+			ret=false;
+		}
+	}
 	// return type check will be delayed until return stmt found
 	return body->Check(symtbl) && ret;
 }

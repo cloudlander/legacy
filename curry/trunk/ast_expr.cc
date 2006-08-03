@@ -436,27 +436,35 @@ Type* ConditionalExpr::GetType(SymTable* symtbl)
 	Assert(expr3type);
 	if(expr3type->IsEquivalentTo(Type::errorType))
 		type=Type::errorType;
-
+/*
  	if(type && type->IsEquivalentTo(Type::errorType))
 		return type;
-
-	if(!expr1type->IsEquivalentTo(Type::boolType))
+*/
+	if(!expr1type->IsEquivalentTo(Type::errorType) && !expr1type->IsEquivalentTo(Type::boolType))
 	{
 //		Failure("conditional expr1 not bool type!");
 		ReportError::TestNotBoolean(expr1);
-		return type=Type::errorType;
+//		return type=Type::errorType;
+		type=Type::errorType;
 	}
 	if(expr2type->IsEquivalentTo(expr3type) || 
 	   expr3type->IsCompatibleTo(expr2type) )
-		return type=expr2type;
+	{
+		if(!type || !type->IsEquivalentTo(Type::errorType))
+			return type=expr2type;
+	}
 	else if(expr2type->IsCompatibleTo(expr3type))
-		return type=expr3type;
+	{
+		if(!type || !type->IsEquivalentTo(Type::errorType))
+			return type=expr3type;
+	}
 	else
 	{
 //		Failure("conditional expr2's type not equal to expr3's type");
-		ReportError::ConditionalExprUnmatch(expr2,expr3);
-		return type=Type::errorType;
+		ReportError::ConditionalExprUnmatch(op2,expr2type,expr3type);
+		type=Type::errorType;
 	}
+	return type;
 }
 
 Location* IntConstant::GenTac(CodeGenerator* cg,SymTable* symtbl)
@@ -740,6 +748,8 @@ Location* Call::GenTac(CodeGenerator* cg,SymTable* symtbl)
 			baseaddr=base->GenTac(cg,symtbl);
 			if(baseaddr->IsPointer())
 				baseaddr=cg->GenLoad(baseaddr,0,symtbl);
+			/* firstly, check NullPointer exception */
+			cg->GenThunkCall(CheckNull,baseaddr,NULL,symtbl);
 			return cg->GenThunkCall(ArrayLength,baseaddr,NULL,symtbl);
 		}
 		else
@@ -784,12 +794,13 @@ Location* Call::GenTac(CodeGenerator* cg,SymTable* symtbl)
 		Location* vtbaddr;
 		Location* indaddr;
 		if(baseaddr->IsPointer())
-		{
-			indaddr=cg->GenLoad(baseaddr,0,symtbl);
-			vtbaddr=cg->GenLoad(indaddr,0,symtbl);
-		}
-		else			
-			vtbaddr=cg->GenLoad(baseaddr,0,symtbl);
+			baseaddr=cg->GenLoad(baseaddr,0,symtbl);
+
+		/* firstly, check NullPointer exception */
+		cg->GenThunkCall(CheckNull,baseaddr,NULL,symtbl);
+		
+		vtbaddr=cg->GenLoad(baseaddr,0,symtbl);
+
 //		Location *vfuncaddr=cg->GenLoad(vtbaddr,vfuncOffset,symtbl);
 		Location *vfuncOffsetLoc=cg->GenLoadConstant(vfuncOffset,symtbl);
 		Location *vfuncaddr=cg->GenLoad(cg->GenBinaryOp("+",vtbaddr,vfuncOffsetLoc,symtbl),0,symtbl);
@@ -888,6 +899,8 @@ Location* FieldAccess::GenTac(CodeGenerator* cg,SymTable* symtbl)
 	{
 		if(baseaddr->IsPointer())
 			baseaddr=cg->GenLoad(baseaddr,0,symtbl);
+		
+		cg->GenThunkCall(CheckNull,baseaddr,NULL,symtbl);
 
 		Location* fieldoff=cg->GenLoadConstant(fieldoffset,symtbl);
 		Location* tmp=cg->GenBinaryOp("+",baseaddr,fieldoff,symtbl);
@@ -914,10 +927,13 @@ Location* ArrayAccess::GenTac(CodeGenerator* cg,SymTable* symtbl)
 		subscriptaddr=cg->GenLoad(subscriptaddr,0,symtbl);
 	
 	Location* baseaddr=base->GenTac(cg,symtbl);
-	
+
+
 	if(baseaddr->IsPointer())
 		baseaddr=cg->GenLoad(baseaddr,0,symtbl);
 
+	cg->GenThunkCall(CheckNull,baseaddr,NULL,symtbl);
+	
 	/* check index bound */
 	cg->GenThunkCall(CheckIndex,baseaddr,subscriptaddr,symtbl);
 	

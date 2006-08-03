@@ -492,11 +492,31 @@ void SymTable::DetermineGlobalLocation()
 
 					{
 
-						sym->GetDecl()->GetSymTable()->SetParent(parent->GetDecl()->GetSymTable());
+						if(parent->IsClass())		// must be a class type
 
-						sym->GetDecl()->DetermineLocation();
+						{
 
-						sym->SetLocation(gpRelative,0);
+							sym->GetDecl()->GetSymTable()->SetParent(parent->GetDecl()->GetSymTable());
+
+							sym->GetDecl()->DetermineLocation();
+
+							sym->SetLocation(gpRelative,0);
+
+						}
+
+						else
+
+						{
+
+							ReportError::IdentifierNotDeclared(static_cast<ClassDecl*>(sym->GetDecl())->GetExtendClass(),LookingForClass);
+
+							/* just try to handle it as a base class */
+
+							sym->GetDecl()->DetermineLocation();
+
+							sym->SetLocation(gpRelative,0);
+
+						}
 
 						changed=true;
 
@@ -626,7 +646,7 @@ void SymTable::DetermineClassLocation(ClassDecl* parent,ClassDecl* me)
 
 		sym=orderedList.Nth(i);
 
-		if(parent!=NULL && NULL!=(symParent=parent->GetSymTable()->Find(sym->GetName(),true)))	//	symbol can be found in parent's symbol table)	// sub class overide parent's symbol(variable or method)
+		if(parent!=NULL && NULL!=(symParent=parent->GetSymTable()->Find(sym->GetName(),true)))	//	symbol can be found in parent's symbol table)	// sub class overide parent's method)
 
 		{
 
@@ -663,6 +683,12 @@ void SymTable::DetermineClassLocation(ClassDecl* parent,ClassDecl* me)
 				OverideMethod(vt,sym->GetLocation()->GetOffset(),me,sym->GetName());
 
 			}
+
+			else if(sym->IsClassVar())		// disallow overiding variable of parent
+
+				ReportError::DeclConflict(sym->GetDecl(),symParent->GetDecl());
+
+				
 
 		}
 
@@ -886,15 +912,17 @@ Location* ehDimLoc=new Location(gpRelative,0,ehDim);
 
 BuiltInException bie[]={
 
-	{"IndexOutOfBoundException","Runtime Exception: Index Out Of Bound\\n"},
+	{"IndexOutOfBoundException","runtime error: index out of bounds\\n"},
 
-	{"NewObjectFailureException", "Runtime Exception: New Operation Failed\\n"},
+	{"NewObjectFailureException", "runtime error: memory allocation\\n"},
 
-	{"ArraySizeException", "Runtime Exception: NewArray Got Invalid Size\\n"},
+	{"ArraySizeException", "runtime error: invalid array length\\n"},
+
+	{"NullPointerException", "runtime error: null reference\\n"},
 
 /* add more runtime exception here */
 
-	{"UnKnownException", "Runtime Exception: Unhandled Exception Caught\\n"}
+	{"UnKnownException", "runtime error: uncaught exception\\n"}
 
 };
 
@@ -1102,7 +1130,7 @@ const char* NameMangling(ClassDecl* decl,const char* func)
 
 	Assert(decl || func);
 
-	if(NULL==decl)
+	if(NULL==decl)	/* function name mangling */
 
 	{
 

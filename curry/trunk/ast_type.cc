@@ -89,6 +89,8 @@ Type *Type::boolType   = new Type("bool");
 Type *Type::nullType   = new Type("null");
 Type *Type::stringType = new Type("string");
 Type *Type::errorType  = new Type("error"); 
+/* for main subrouting formals checking */
+Type *Type::argType   = new ArrayType(new Type("string"));
 
 Type::Type(const char *n) {
     Assert(n);
@@ -117,4 +119,8 @@ void ArrayType::PrintChildren(int indentLevel) {
     elemType->Print(indentLevel+1);
 }
 
+ArrayType::ArrayType(Type *et) : Type(yyltype()){
+    Assert(et != NULL);
+    (elemType=et)->SetParent(this);
+}
 
