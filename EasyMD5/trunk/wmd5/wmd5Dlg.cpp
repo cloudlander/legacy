@@ -37,6 +37,7 @@ public:
 protected:
 	//{{AFX_MSG(CAboutDlg)
 	virtual BOOL OnInitDialog();
+	afx_msg BOOL OnHelpInfo(HELPINFO* pHelpInfo);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
@@ -60,6 +61,7 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
 	//{{AFX_MSG_MAP(CAboutDlg)
+	ON_WM_HELPINFO()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -107,6 +109,7 @@ BEGIN_MESSAGE_MAP(CWmd5Dlg, CDialog)
 	ON_WM_SIZE()
 	ON_WM_DESTROY()
 	ON_NOTIFY(NM_CLICK, IDC_JOBLIST, OnClickJoblist)
+	ON_WM_HELPINFO()
 	//}}AFX_MSG_MAP
 	ON_REGISTERED_MESSAGE(nHelpMsg,OnHelpMsg)
 #ifdef SHOW_TIME_LEFT
@@ -378,9 +381,20 @@ void CWmd5Dlg::ShowResult(CString total, CString error, CString match, CString n
 	m_notmatch.SetWindowText(notmatch);
 }
 
+extern LONG GetRegValue(HKEY key, LPCTSTR subkey, LPCTSTR name,LPTSTR retdata);
+
 void CWmd5Dlg::OnHelpMsg(WPARAM wParam,LPARAM lParam)
 {
 	// put my customized help here
+	int temp=1;
+	TCHAR buf[MAX_PATH];
+	if(ERROR_SUCCESS==GetRegValue(HKEY_LOCAL_MACHINE,_T("SOFTWARE\\EasyMD5"),NULL,buf))
+	{
+		CString path=buf;
+		path+="\\Help\\README.htm";
+		ShellExecute(AfxGetApp()->GetMainWnd()->GetSafeHwnd(),_T("open"),path,NULL,_T("C:\\"),SW_MAXIMIZE);
+	}
+
 }
 
 
@@ -398,3 +412,25 @@ BOOL CAboutDlg::OnInitDialog()
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
+
+BOOL CWmd5Dlg::OnHelpInfo(HELPINFO* pHelpInfo) 
+{
+	// TODO: Add your message handler code here and/or call default
+	OnHelpMsg(0,0);
+	return TRUE;
+//	return CDialog::OnHelpInfo(pHelpInfo);
+}
+
+BOOL CAboutDlg::OnHelpInfo(HELPINFO* pHelpInfo) 
+{
+	// TODO: Add your message handler code here and/or call default
+	int temp=1;
+	TCHAR buf[MAX_PATH];
+	if(ERROR_SUCCESS==GetRegValue(HKEY_LOCAL_MACHINE,_T("SOFTWARE\\EasyMD5"),NULL,buf))
+	{
+		CString path=buf;
+		path+="\\Help\\README.htm";
+		ShellExecute(AfxGetApp()->GetMainWnd()->GetSafeHwnd(),_T("open"),path,NULL,_T("C:\\"),SW_MAXIMIZE);
+	}
+	return TRUE;
+}

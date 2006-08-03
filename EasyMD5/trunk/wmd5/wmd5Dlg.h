@@ -69,6 +69,7 @@ protected:
 	virtual void OnOK();
 	afx_msg void OnDestroy();
 	afx_msg void OnClickJoblist(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg BOOL OnHelpInfo(HELPINFO* pHelpInfo);
 	//}}AFX_MSG
 	afx_msg void OnHelpMsg(WPARAM wParam,LPARAM lParam);
 	DECLARE_MESSAGE_MAP()
