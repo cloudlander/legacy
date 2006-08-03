@@ -1,0 +1,10 @@
+// IEPlusATL.idl : IDL source for IEPlusATL.dll
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (IEPlusATL.tlb) and marshalling code.
+
+
+library IEPLUSATLLib
+{
+};
