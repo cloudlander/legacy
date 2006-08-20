@@ -1,0 +1,915 @@
+#! /bin/bash
+
+################################################################################
+# interactive line editor ( resembles ed for linux )
+# developed by Zhang Xiao-Min Student Number: 9924055
+# Computer Science Department @ Fudan University
+# contact me: sunflashboy@263.net
+################################################################################
+
+# some global varieties:
+declare  TotLine                  # Document's Total Line
+declare  CurLine                  # Current line to edit
+declare  LineUp                   # Line Up of operation
+declare  LineDn                   # Line Down of operation
+declare  SearchNum                # Line Num of current search
+declare  SearchStr                # use for // and ??
+declare  Modified=N                 # flag of Modified
+declare  Buffer                   # Buffer file
+declare  TempFile                 # TempFile
+declare  TempSc                   # Temp Script File
+declare  bNoFile=N                # flag for no file input
+declare -a Errors=( "Invalid Address" "Unexpected Address" "No Match" "Bad Command" "Interupt Occured" "Not Saved" "No Pattern" "No Filename")
+declare ErrNumBak                 # for h command use 
+declare bShowErrExtd="Y"          # bool: whether to Show Extend Error Msg  
+declare -i ErrNum=-1              # Error number referring to Errors
+declare InvalidCmd="N"            # bool: true for invalid command
+function ShowErr( ){
+
+   if (( $ErrNum >= 0 ))
+   then
+      echo "?"
+      if [[ $bShowErrExtd == "Y" ]]
+      then
+         echo ${Errors[$ErrNum]} ${Errors[$ErrNum+1]}
+         echo -n "$Prompt"
+      fi
+   fi 
+   (( ErrNum != -1 )) && ErrNumBak=$ErrNum
+   ErrNum=-1
+   return;
+}
+
+#   Interupt Error Ignored, sigh :(   
+#
+#   function IntErr(){
+#      bInted=Y
+#      ErrNum=8
+#      ShowErr
+#   }
+
+#   trap "IntErr" 2
+
+# *******  UI  ********
+declare Prompt                    # Prompt
+declare bShowPrompt="Y"           # bool: whether to Show Prompt
+
+
+function ShowPrompt () {
+   if [[ $bShowPrompt == "Y" ]]
+   then
+      echo -n $Prompt
+   fi
+   ShowErr
+   
+}
+
+# ******* Functions to realize *******
+function InsText () {                         # function of Insert Text
+  local stringA
+  local stringB
+  count=0                                     # lines added
+  if (( $# > 0 ))
+  then
+     echo  "$1 $2\\" > $TempSc                    # note:  \ is a special char
+  else
+     cat /dev/null > $TempSc
+  fi
+  read -r stringA
+  if [[ $stringA == . ]] 
+  then
+     count=0
+     return 
+  fi
+  while true
+  do
+     read -r stringB
+     if [[ $stringB == . ]]
+     then
+        echo "$stringA" >> $TempSc
+        let count+=1
+        break;
+     else
+         if (( $# > 0 )) 
+         then
+            echo "$stringA\\" >> $TempSc
+         else
+	    echo "$stringA" >> $TempSc
+         fi
+         let count+=1
+     fi
+     stringA="$stringB"
+  done
+  if (( $# > 0 ))
+  then
+     sed  -f $TempSc $Buffer > $TempFile 2> /dev/null
+     cat $TempFile > $Buffer
+  else
+     cat $TempSc > $Buffer
+  fi
+  return 
+}
+
+function DelText () {
+     sed  "$LineUp,$LineDn d" $Buffer > $TempFile
+     cat $TempFile > $Buffer
+     LineNow="$(wc -l $Buffer)"
+     LineNow=${LineNow// /}
+     LineNow=${LineNow%%[!0-9]*}
+     if (( $LineNow < $TotLine ))
+     then
+        Modified=Y
+	if (( $LineDn == $TotLine ))
+	then
+	   let CurLine=$TotLine-1
+	else
+           CurLine=$LineUp
+	fi
+        TotLine=$LineNow
+     fi   
+     return
+}
+
+# ******* Some Utility function ******
+declare bFileNull=N                            # true if current file is 0 length
+declare Num                                  # parsed Num
+declare bNum="Y"                      # bool: true if processing Line Address
+declare bNull="N"
+declare -a reArray
+
+function PreParseAdd(){                      # Preparse left of Command Line
+     temp=$1
+     temp=${temp// /}
+     temp=${temp//$/$TotLine}
+     temp=${temp//./$CurLine}
+}
+  
+function ParseAdd () {                       # function to Parse Address Line
+    PreParseAdd "$1"
+    if [[ $temp == *,* ]]                    # pattern of address , address
+    then
+        LineUp=${temp%%[,]*}
+        LineDn=${temp#$LineUp,}
+        EvalAddress "$LineUp"                # generate left address
+        if [[ $bNum == "Y" ]]
+        then
+           LineUp=$Num
+        else
+           bNum="Y"
+           if [[ $bNull == Y ]] 
+           then
+              LineUp=1
+              bNull=N
+           else
+              InvalidCmd="Y"                 # invalid line address
+              return 1
+           fi
+        fi
+        EvalAddress "$LineDn"                # generate right address
+        if [[ $bNum == "Y" ]]
+        then
+           LineDn=$Num
+        else
+           bNum="Y"
+           if [[ $bNull == Y ]] 
+           then
+              LineDn=$TotLine
+              bNull=N
+           else
+              InvalidCmd="Y"                 # invalid line address
+              return 1
+           fi
+        fi
+    else                                    # pattern of address 
+        EvalAddress "$temp"
+        if [[ $bNum == "Y" ]]
+        then
+           LineUp=$Num
+           LineDn=$Num
+        else
+           bNum="Y"
+           if [[ $bNull == Y ]]
+           then
+              LineUp=$CurLine
+              LineDn=$CurLine
+              bNull=N
+           else
+              InvalidCmd=Y
+              return 1                           # invalid line address
+           fi
+        fi
+     fi   
+      
+}
+
+function EvalAddress(){                   # function for compute Address
+  tem=$1
+  if [[ ! -n "$tem" ]]
+  then
+     bNull=Y
+     bNum=N
+     return 
+  fi                                       # why here can't use extend pattern
+  if [[ $tem == *,* ]]
+  then
+     bNum=N
+     return
+  fi
+  if [[ $tem == [0-9]*+[0-9]* ]]           # process n + n Address
+  then
+     First=${tem%%[!0-9]*}
+     tem=${tem##$First}
+     tem=${tem//+/1+}
+     tem=${First}+$tem 
+     eval let Num="$tem-1" >& /dev/null
+     return #$Num
+  fi
+  if [[ $tem == [0-9]*-[0-9]* ]]           # process n - n Address
+  then
+     First=${tem##*[!0-9]}
+     tem=${tem%%$First}
+     tem=${tem//-/-1}
+     tem=$tem-$First 
+     eval let Num="$tem+1" >& /dev/null
+     return #$Num
+  fi 
+ 
+  if [[ $tem == [0-9]*+* ]]                # process n + + Address
+  then
+     tempp=${tem##*[0-9]}
+     Num=${tem%%$tempp}
+     Length=$(expr $tempp : "+*" )
+     let Num=Num+Length >& /dev/null
+     return #$Num
+  fi
+  if [[ $tem == [0-9]*-* ]]                # process n - - Address
+  then
+     tempp=${tem##*[0-9]}
+     Num=${tem%%$tempp}
+     Length=$(expr $tempp : "-*" )
+     let Num=Num-Length >& /dev/null
+     return #$Num
+  fi
+  if [[ $tem == +*[0-9]* ]]                # process + + n Address
+  then
+     Num=${tem##*[!0-9]}
+     Length=$(expr $temp : "+*" )
+     let Num=Num+Length+CurLine-1 >& /dev/null
+     return #$Num
+  fi
+  if [[ $tem == -*[0-9]* ]]                # process - - n Address
+  then
+     Num=${tem##*[!0-9]}
+     Length=$(expr $temp : "-*" )
+     let Num=CurLine-Length-Num+1 >& /dev/null
+     return #$Num
+  fi
+ if expr "$tem" + 0 >& /dev/null                    # process   n  Address
+  then
+     let Num="$tem"
+     return #$Num
+  fi
+  if [[ $tem == +* ]]                      # process + +  Address
+  then
+     Length=$(expr $tem : "+*" )
+     let Num=Length+CurLine >& /dev/null
+     return #$Num
+  fi
+  if [[ $tem == -* ]]                      # process - -  Address
+  then
+     Length=$(expr $tem : "-*" )
+     let Num=CurLine-Length >& /dev/null
+     return #$Num
+  fi   
+  bNum="N"                                 # no match, not valid address
+}
+     
+function EvalLineCmd(){                    # function for line Command
+  PreParseAdd "$1"
+  if [[ $temp == *= ]]                     # pattern of  *=
+  then 
+     temp=${temp%=}       
+     EvalAddress "$temp"      
+     if [[ $bNum == "Y" ]]
+     then
+        return #$Num
+     else
+        bNum="Y"
+        if [[ $bNull == Y ]]
+        then
+           bNull=N
+           return 0
+        else
+           InvalidCmd="Y"
+        fi
+     fi
+  else                                     # pattern of *
+     EvalAddress "$temp"   
+     if [[ $bNum == Y ]]
+     then 
+        return #$Num
+     else
+        bNum=Y 
+        InvalidCmd="Y"
+     fi
+  fi
+}
+                                             
+
+function IsMatch(){                        # return 0 if matched
+  local iNum
+  iNum=$1
+  while (( $iNum <= $2 ))
+  do
+     sed -n "$CmdRight=" $Buffer | grep $iNum >& /dev/null
+     if [[ $? == 0 ]]
+     then
+        return 0
+     fi
+     let iNum+=1
+  done
+  return 1
+}
+
+function Match(){
+  ft=$(sed -n "$Cmd=" $Buffer 2> /dev/null)
+  if [[ -z "$ft" ]] 
+  then
+     return 1
+  fi
+#  echo $ft
+  ft="$ft "
+#  read
+  local i=0
+  while [[ "$ft" != "" ]]
+  do
+     temp=${ft%%[!0-9]*}
+     reArray[$i]="$temp"
+#          echo ${reArray[$i]}
+     ft=${ft#$temp[!0-9]}
+ #    read
+     let i+=1
+  done
+  length=$i
+  if (( $1 == 0 ))
+  then
+     let SearchNum=$CurLine+1
+     if (( $SearchNum > $TotLine ))
+     then
+        SearchNum=1
+     fi
+     Search 
+     if [[ $? != 0 ]]
+     then
+        SearchNum=1
+        Search 
+        if [[ $? != 0 ]]
+        then
+           return 1       # no match
+        else
+           return 0
+        fi
+     else
+        return 0
+     fi
+  else
+     let SearchNum=$CurLine-1
+     if (( $SearchNum < 1 ))
+     then
+        SearchNum=$TotLine
+     fi
+     Search2 
+     if (( $? != 0 ))
+     then
+        SearchNum=$TotLine
+	Search2 
+	if (( $? != 0 ))
+	then
+	   return 1
+        else
+	   return 0
+	fi
+     else
+        return 0
+     fi
+  fi
+  return 1
+}
+
+function Search(){
+  local i=0
+  while (( $i < $length )) && (( $SearchNum > ${reArray[$i]} ))
+  do
+     let i+=1
+  done
+  if (( $i >= $length ))
+  then
+     return 1
+  else
+     CurLine=${reArray[$i]}
+  fi
+} 
+
+function Search2(){
+  local i
+  let i=$length-1
+  while (( $i > -1 )) && (( $SearchNum < ${reArray[$i]} ))
+  do
+     let i-=1
+  done
+  if (( $i == -1 ))
+  then
+     return 1
+  else
+     CurLine=${reArray[$i]}
+  fi
+} 
+
+
+function IsValid(){                        # true if address is valid
+  if [[ $bFileNull == Y ]]
+  then
+     if (( $LineUp == 0 )) && (( $LineDn == 0 ))
+     then
+        return 0
+     else
+        return 1
+     fi
+  fi
+  if (( $# > 0 ))
+  then
+     if [[ $1 -le $TotLine ]] && [[ $1 -ge 1 ]]
+     then
+        return 0
+     else
+        return 1
+     fi
+  fi
+  if ( [[ -n "$LineUp" ]] && (( $LineUp < 1 )) ) || ( [[ -n "$LineDn" ]] && \
+     (( $LineDn > $TotLine )) ) || ( [[ -n "$LineUp" && -n "$LineDn" ]] && \
+     (( $LineUp > $LineDn )) )
+  then
+     return 1
+  else
+     return 0
+  fi
+}
+       
+
+function quit(){                          # called when user wants to leave
+  rm -f $TempSc
+  rm -f $TempFile
+  rm -f $Buffer
+  exit 0
+}
+
+# ******* Main Procedure: ************
+declare CmdLine                   # Command user input
+declare CmdLeft                   # left of Command, line address
+declare CmdRight                  # right of Command, real cmd
+declare Cmd                       # real cmd
+shopt -s extglob
+
+Prompt=">"
+Buffer="/tmp/ed.$$buf"
+TempSc="/tmp/ed.$$SC"
+TempFile="${Buffer}tmp"
+
+if (( $# > 0 ))
+then
+     if [[  -e $1 ]]
+     then
+        cat $1 > $Buffer
+    else
+        cat /dev/null > $Buffer
+    fi
+    TempSc="/tmp/ed.$$SC"
+    TempFile="${Buffer}tmp"
+    TotLine="$(wc -l $Buffer)"
+    TotChar="$(wc -c $Buffer)"
+    TotLine=${TotLine// /}
+    TotLine=${TotLine%%[!0-9]*}
+    TotChar=${TotChar// /}
+    TotChar=${TotChar%%[!0-9]*}
+    echo "$TotLine lines in file $1, totally $TotChar chars loaded"
+    if [[ $TotLine == 0 ]]
+    then
+       bFileNull=Y
+    fi
+    CurLine=$TotLine
+    ShowPrompt
+else
+     bNoFile=Y
+     echo "Warning: No File to load"
+     TotLine=0
+     bFileNull=Y
+     CurLine=$TotLine
+     ShowPrompt
+fi
+
+while true
+do
+  read CmdLine
+  Cmd="$CmdLine"
+  CmdLeft=${CmdLine%%[?/a-z]*}
+  CmdRight=${CmdLine#$CmdLeft}
+  if [[ -n "$CmdRight" ]]                     # normal and RE command
+  then
+     ParseAdd "$CmdLeft"
+     if (( $? == 1 ))
+     then
+        ErrNum=0
+	ShowPrompt
+	continue
+     fi
+     c=${CmdRight:0:1}
+     case "$c" in                              # command list
+     /)                                        # / command
+        if [[ $Cmd == // ]] && [[ $bFileNull == N ]]
+        then
+	   if [[ $SearchStr != "" ]] 
+	   then
+	      Cmd="$SearchStr"
+           else 
+	      ErrNum=12
+	      ShowPrompt
+	      continue
+	   fi
+           Match 0
+           if [[ $? == 0 ]]
+           then
+              SearchStr="$Cmd"
+              echo "$CurLine p" > $TempSc
+              sed -n -f $TempSc $Buffer 2> /dev/null
+           fi
+        else
+	   if [[ $Cmd == /*/ ]]
+	   then
+	      Match 0
+              if [[ $? == 0 ]]
+              then
+                 SearchStr="$Cmd"
+                 echo "$CurLine p" > $TempSc
+                 sed -n -f $TempSc $Buffer 2> /dev/null
+              else
+	         ErrNum=4
+              fi
+           else
+              ErrNum=0
+	   fi
+        fi
+     ;;
+     \?)
+        if [[ $Cmd == \?\? ]] && [[ $bFileNull == N ]]
+        then
+	   if [[ $SearchStr != "" ]] 
+	   then
+	      Cmd="$SearchStr"
+           else 
+	      ErrNum=12
+	      ShowPrompt
+	      continue
+	   fi
+           Match 1
+           if [[ $? == 0 ]]
+           then
+              SearchStr="$Cmd"
+              echo "$CurLine p" > $TempSc
+              sed -n -f $TempSc $Buffer 2> /dev/null
+           else
+	      ErrNum=4
+           fi
+        else
+	   if [[ $Cmd == \?*\? ]]
+	   then
+	      Cmd=${Cmd%\?}
+	      Cmd=${Cmd#\?}
+	      Cmd=/$Cmd/
+	      Match 1
+              if [[ $? == 0 ]]
+              then
+                 SearchStr="$Cmd"
+                 echo "$CurLine p" > $TempSc
+                 sed -n -f $TempSc $Buffer 2> /dev/null
+              else
+	         ErrNum=4
+              fi
+           else
+              ErrNum=0
+	   fi
+        fi
+     ;;
+     a|i)                                      # a i command
+        if [[ $CmdRight == [ai] ]]
+        then   
+           if [[ $bFileNull == Y ]]
+           then
+	      if IsValid
+	      then
+     	         InsText 
+                 bFileNull=N
+	      else
+	         ErrNum=0
+		 ShowPrompt
+		 continue
+	      fi
+           else
+              if IsValid
+	      then
+                 InsText $LineDn $c
+	      else
+	         ErrNum=0
+		 ShowPrompt
+		 continue
+	      fi
+           fi
+           let TotLine=TotLine+$count
+           if [[ $CmdRight ==  i ]]
+           then
+             let CurLine=LineDn+$count-1
+           else
+             let CurLine=LineDn+$count
+           fi
+	   Modified=Y
+        else
+           ErrNum=6
+        fi
+     ;;
+     c)
+        if ! IsValid                           #  c command
+        then
+           ErrNum=0
+	   ShowPrompt
+	   continue
+        fi
+        
+	if [[ $CmdRight == c ]]
+        then   
+	   DelText
+	   if (( $TotLine > 0 ))
+	   then
+	      InsText $CurLine i
+	   else
+	      InsText
+	      LineDn=0
+	   fi
+	fi
+        let CurLine=LineDn+$count-1
+        let TotLine=TotLine+$count
+	if [[ $bFileNull = Y ]] && (( $TotLine > 0 ))
+	then
+	   bFileNull=N
+	fi
+
+     ;;
+     d)
+       if ! IsValid
+       then
+           ErrNum=0
+	   ShowPrompt
+	   continue
+       fi
+
+       if [[ $CmdRight == d ]]
+       then
+          DelText
+       else
+          ErrNum=2
+       fi
+     ;;
+     g)                                        
+        CmdRight=${CmdRight#g}
+	if [[ $CmdRight == /*/ ]]
+	then
+	   echo "$CmdRight p" > $TempSc
+	   sed -n -f $TempSc $Buffer 2> /dev/null
+        else
+	   ErrNum=6
+        fi
+     ;;
+     H|h)                                      # h H command
+        if [[ $CmdLeft != "" ]] 
+        then
+           ErrNum=0
+           ShowPrompt
+           continue
+        fi
+        case $CmdRight in
+        H)         
+           if [[ $bShowErrExtd == Y ]]
+           then
+              bShowErrExtd=N
+           else
+              bShowErrExtd=Y
+           fi
+        ;;
+        h)
+           if [[ $CmdRight == h ]]
+           then
+	      if (( $ErrNumBak >= 0 ))
+	      then
+                 let e=ErrNumBak+1
+                 echo ${Errors[$ErrNumBak]} ${Errors[$e]} 
+	      else
+	         echo ""
+	      fi
+           fi
+        ;;
+        *)
+           ErrNum=6
+        ;;
+        esac
+     ;;
+     p|l)                                       # p l command
+        if ! IsValid
+        then
+           ErrNum=0
+	   ShowPrompt
+	   continue
+        fi
+	
+	if (( LineUp + 25 < LineDn ))
+	then
+	   let iLine=$LineUp+25
+	else
+           let iLine=LineDn
+        fi
+        
+	while (( $iLine < $LineDn ))
+	do
+	   echo "$LineUp,$iLine $CmdRight" > $TempSc                         
+           sed -n -f $TempSc $Buffer 2> /dev/null     
+           if (( $? != 0 ))
+           then 
+              ErrNum=6
+              ShowPrompt
+	      continue
+	   fi
+           let LineUp=iLine+1
+	   let iLine=iLine+25
+	   echo -n "Press <Enter> to continue"
+           read
+	done
+
+        echo "$LineUp,$LineDn $CmdRight" > $TempSc                         
+        sed -n -f $TempSc $Buffer 2> /dev/null     
+        if (( $ErrNum < 0 ))
+	then
+           CurLine=$LineDn
+        fi 
+     ;;
+     P)                                         # P command
+        if [[ $CmdRight == P ]] && [[ -z "$CmdLeft" ]]
+        then
+           if [[ $bShowPrompt == Y ]]
+           then
+              bShowPrompt=N
+           else
+              bShowPrompt=Y
+           fi
+        else
+           ErrNum=6
+        fi
+     ;;
+     s)                                         # s command
+        if [[ $CmdRight == s*( )/*/*/*(g)*( ) ]]
+        then
+           echo "$LineUp,$LineDn $CmdRight" > $TempSc
+           sed -n -f $TempSc $Buffer -e "w $TempFile" /dev/null
+           if [[ $? != 0 ]]
+           then
+              ErrNum=6
+           else
+              CmdRight=${CmdRight#$c}
+              CmdRight=${CmdRight%/*/*}
+              CmdRight="$CmdRight/"
+              IsMatch $LineUp $LineDn
+              if ((  $? != 0 ))
+              then 
+                 ErrNum=4
+              fi
+              cat $TempFile > $Buffer
+              rm -f $TempFile
+	      Modified=Y
+           fi 
+        else
+           ErrNum=6    
+        fi
+     ;;   
+     q|Q)                                          # q  Q command
+
+        if [[ "$Cmd" == q ]]
+        then
+	   if [[ $Modified == N ]]
+	   then
+              quit
+	   else
+	      Modified=N
+	      ErrNum=10
+           fi
+        else
+	   if [[ "$Cmd" == Q ]]
+	   then
+	      quit
+	      trap 2
+	   else
+              ErrNum=6
+	   fi
+        fi
+     ;;
+     v)
+        CmdRight=${CmdRight#v}
+	if [[ $CmdRight == /*/ ]]
+	then
+           sed -n "$CmdRight=" $Buffer > $TempFile 2> /dev/null
+	   iLine=1
+           while (( $iLine <= $TotLine ))
+           do
+	      grep $iLine $TempFile >$ /dev/null
+              if (( $? == 1 ))
+              then
+                 sed -n "$iLine p" $Buffer 2> /dev/null
+	      fi
+              let iLine+=1
+           done
+        else
+	   ErrNum=6
+        fi
+     ;;
+     w)                                          # (,)w(filename) command
+        [[ -n $1 ]] && CmdRight=${CmdRight%%$1}
+        if [[ $CmdRight == w ]]
+        then
+	    if [[ -z "$CmdLeft" ]]
+	    then
+	       if [[ $bNoFile == Y ]]
+	       then
+	          ErrNum=14
+		  ShowPrompt
+		  continue
+	       fi
+	       echo "1,$TotLine p" > $TempSc
+            else
+               echo "$LineUp,$LineDn p" > $TempSc
+	    fi
+            sed -n -f $TempSc $Buffer >$TempFile 2> /dev/null
+            cat $TempFile > $1
+	    TotChar="$(wc -c $Buffer)"
+            TotChar=${TotChar// /}
+            TotChar=${TotChar%%[!0-9]*}
+            echo "$TotLine lines , totally $TotChar chars written"
+	    Modified=N
+        else
+	    if [[ -z "$CmdLeft" ]]
+	    then
+	       echo "1,$TotLine $CmdRight" > $TempSc
+            else
+               echo "$LineUp,$LineDn $CmdRight" > $TempSc
+	    fi
+            sed -n -f $TempSc $Buffer >& /dev/null
+	    TotChar="$(wc -c $Buffer)"
+            TotChar=${TotChar// /}
+            TotChar=${TotChar%%[!0-9]*}
+            echo "$TotLine lines , totally $TotChar chars written"
+	    Modified=N
+        fi
+     ;;
+     *)
+        ErrNum=6
+     ;;
+     esac
+   else                                          # line process command   
+     if [[ $CmdLeft == *( )=*( ) ]]              #  =  command
+     then 
+        echo $TotLine 
+        continue
+     fi
+     EvalLineCmd "$CmdLeft"                      # process line address
+     if [[ $InvalidCmd == Y ]]
+     then
+        ErrNum=6
+        InvalidCmd=N
+        ShowPrompt
+        continue
+     else
+        if IsValid $Num  
+        then
+           CurLine=$Num
+        else
+           ErrNum=0
+           ShowPrompt
+           continue
+        fi
+        if [[ $CmdLeft == *= ]]
+        then
+           echo $CurLine
+        else
+           echo "$CurLine p" > $TempSc
+           sed -n -f $TempSc $Buffer 2> /dev/null
+        fi
+     fi 
+   fi
+   LineUp=                                # set processing line to Null
+   LineDn=
+   ShowPrompt
+done
