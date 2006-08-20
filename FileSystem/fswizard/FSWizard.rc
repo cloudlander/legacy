@@ -1,0 +1,324 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Chinese (P.R.C.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+#ifdef _WIN32
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#pragma code_page(936)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
+    "#ifdef _WIN32\r\n"
+    "LANGUAGE 4, 2\r\n"
+    "#pragma code_page(936)\r\n"
+    "#endif //_WIN32\r\n"
+    "#include ""res\\FSWizard.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""l.chs\\afxres.rc""          // Standard components\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON    DISCARDABLE     "res\\FSWizard.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_FSWIZARD_DIALOG DIALOGEX 0, 0, 269, 167
+STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "AGILITY File System Assist for Win32"
+FONT 9, "宋体", 0, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Start",ID_START,199,107,50,14
+    PUSHBUTTON      "Exit",IDCANCEL,200,131,50,14
+    CONTROL         138,IDC_STATIC,"Static",SS_BITMAP,7,9,101,150
+    LISTBOX         IDC_LIST1,125,72,56,73,LBS_SORT | LBS_NOINTEGRALHEIGHT | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Welcome to AGILITY File System Startup Wizard!",
+                    IDC_STATIC,125,20,124,31
+    PUSHBUTTON      "New Disk",IDC_NEW,199,83,50,15
+    LTEXT           "",IDC_RESULT,125,58,124,13
+END
+
+IDD_PROPPAGE1 DIALOGEX 0, 0, 253, 181
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "Step 1 of Startup Wizard"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_EDIT1,129,109,85,16,ES_AUTOHSCROLL
+    RTEXT           ".VDK",IDC_STATIC,214,113,18,13,SS_NOPREFIX,
+                    WS_EX_TRANSPARENT
+    CONTROL         131,IDC_STATICBITMAP2,"Static",SS_BITMAP,7,7,101,166
+    LTEXT           "Please choose the Name for the Virtual Disk File:",
+                    IDC_STATIC,129,34,106,33
+    LTEXT           "New Virtual Disk File:",IDC_STATIC,129,81,96,18
+    LTEXT           "Note: Disk File Name must be\nWindows valid file name\n",
+                    IDC_STATIC,125,142,121,31
+END
+
+IDD_PROPPAGE2 DIALOG DISCARDABLE  0, 0, 267, 195
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "Step 2 of Startup Wizard"
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL         "Slider1",IDC_SLIDER1,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    TBS_TOP | WS_TABSTOP,120,100,128,37
+    LTEXT           "Please choose your Virtual Disk Size:",IDC_STATIC,129,
+                    27,107,28
+    LTEXT           "Your Virtual Disk Size is:",IDC_STATIC,129,76,107,17
+    LTEXT           "",IDC_DISKSIZE,170,52,31,18
+    CONTROL         132,IDC_STATIC,"Static",SS_BITMAP,7,7,101,180
+    LTEXT           "Note: disk size we support now:\nminimum: 128K\nmaximum: 2G",
+                    IDC_STATIC,124,147,136,40
+END
+
+IDD_PROPPAGE3 DIALOG DISCARDABLE  0, 0, 254, 186
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "Step 3 of Startup Wizard"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Please select your block size:",IDC_STATIC,122,26,113,
+                    21
+    CONTROL         "Slider1",IDC_SLIDER1,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,119,96,116,35
+    LTEXT           "Your Block Size is:",IDC_STATIC,126,74,101,22
+    LTEXT           "",IDC_BLOCKSIZE,161,57,41,18
+    CONTROL         133,IDC_STATIC,"Static",SS_BITMAP,7,7,101,171
+    LTEXT           "Note: Block size is relative\nto disk size\nAnd we support the minimum \nblock size is 128 Byte",
+                    IDC_STATIC,127,136,120,42
+END
+
+IDD_PROPPAGE4 DIALOG DISCARDABLE  0, 0, 272, 176
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "Congratulations!"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "",IDC_FINISH,117,69,148,77
+    LTEXT           "You have setup a virtul disk\nIt will be created after you \nclicked the finish button.\n\nits features are like these:",
+                    IDC_STATIC,114,7,151,51
+    CONTROL         134,IDC_STATIC,"Static",SS_BITMAP,7,7,100,160
+END
+
+IDD_SPLASH DIALOG DISCARDABLE  0, 0, 187, 98
+STYLE WS_POPUP
+FONT 10, "System"
+BEGIN
+END
+
+IDD_FSSTARTLOGO DIALOG DISCARDABLE  0, 0, 187, 98
+STYLE WS_POPUP
+FONT 10, "System"
+BEGIN
+END
+
+
+#ifndef _MAC
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404B0"
+        BEGIN
+            VALUE "CompanyName", "\0"
+            VALUE "FileDescription", "FSWizard Microsoft 基础类应用程序\0"
+            VALUE "FileVersion", "1, 0, 0, 1\0"
+            VALUE "InternalName", "FSWizard\0"
+            VALUE "LegalCopyright", "版权所有 (C) 2002\0"
+            VALUE "LegalTrademarks", "\0"
+            VALUE "OriginalFilename", "FSWizard.EXE\0"
+            VALUE "ProductName", "FSWizard 应用程序\0"
+            VALUE "ProductVersion", "1, 0, 0, 1\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x804, 1200
+    END
+END
+
+#endif    // !_MAC
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_FSWIZARD_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 262
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 160
+    END
+
+    IDD_PROPPAGE1, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 246
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 173
+    END
+
+    IDD_PROPPAGE2, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 260
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 187
+    END
+
+    IDD_PROPPAGE3, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 247
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 178
+    END
+
+    IDD_PROPPAGE4, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 265
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 168
+    END
+
+    IDD_SPLASH, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 91
+    END
+
+    IDD_FSSTARTLOGO, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 91
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_SPLASH              BITMAP  DISCARDABLE     "res\\FS_Splash.BMP"
+IDB_BITMAP2             BITMAP  DISCARDABLE     "res\\Bar_2_new.bmp"
+IDB_BITMAP3             BITMAP  DISCARDABLE     "res\\Bar_3_new.bmp"
+IDB_BITMAP4             BITMAP  DISCARDABLE     "res\\Bar_4_new.bmp"
+IDB_BITMAP5             BITMAP  DISCARDABLE     "res\\Agility_Logo.bmp"
+IDB_BITMAP1             BITMAP  DISCARDABLE     "res\\Bar_1_new.bmp"
+IDB_BITMAP6             BITMAP  DISCARDABLE     "res\\fsstart.BMP"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_PROPSHT_CAPTION     "Wizard"
+END
+
+#endif    // Chinese (P.R.C.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+#ifdef _WIN32
+LANGUAGE 4, 2
+#pragma code_page(936)
+#endif //_WIN32
+#include "res\FSWizard.rc2"  // non-Microsoft Visual C++ edited resources
+#include "l.chs\afxres.rc"          // Standard components
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

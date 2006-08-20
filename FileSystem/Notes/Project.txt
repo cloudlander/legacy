@@ -1,0 +1,20 @@
+Project
+
+用一个文件模拟一个磁盘, filesysyem管理这个磁盘; 提供命令:
+系统	format
+目录	cd		mkdir(md)		rd	
+文件	ls(dir)		cp(copy)	rm(del)
+			cat(type)	mv(ren)
+			open	  read	  write	     close	  seek
+			chmod
+其它	man(help)	showbuf	quit	fd
+四人一组完成，12月底检查
+
+
+fd 		    open   filename   mode 
+ mode:	“r”	“w”	“a”
+m		    read	fd  	n
+m		    write	fd	若干行字符串
+close(fd)	
+chmod   mode  filename
+

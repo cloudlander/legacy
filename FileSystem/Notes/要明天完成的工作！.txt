@@ -1,0 +1,21 @@
+
+
+明天完成的工作：
+
+  icelx -- 写两个类，分别用作Directory, File,包括所有的数据项和操作
+
+  pentium -- 写FS基类（定义基本常数和基本操作），VFSFile类（用作对VFSFile的读写操作）
+
+  zyk -- 写主函数（包括初始化，欢迎信息，接受用户输入命令的主命令循环switch，结束代码）
+
+  明天晚上10点前完成！！！！
+
+
+  btw.  zyk's work calls icelx's work (e.g. CDirectoryh.dir(), CFile.Open())...
+
+        icelx's work calls pentium's work (e.g. VFSFile.ReadBlock(), VFSFile.AllocFreeBlock())...
+
+  写的时候尽量看看我写的那份文档，尽量把定义部分写的清楚一点。谢谢！！！
+
+  另外，大家多想想文件系统的名字。。。 呵呵！！！ ADD OIL TO US!!!!!!!!!!!!!!!!!!!!!!
+
