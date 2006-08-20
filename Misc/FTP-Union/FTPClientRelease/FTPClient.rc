@@ -1,0 +1,258 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Chinese (P.R.C.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+#ifdef _WIN32
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#pragma code_page(936)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
+    "#ifdef _WIN32\r\n"
+    "LANGUAGE 4, 2\r\n"
+    "#pragma code_page(936)\r\n"
+    "#endif //_WIN32\r\n"
+    "#include ""res\\FTPClient.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""l.chs\\afxres.rc""          // Standard components\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON    DISCARDABLE     "res\\FTPClient.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 235, 55
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "关于 FTPClient"
+FONT 9, "宋体"
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
+    LTEXT           "FTPClient 1.0 版 Build 0423",IDC_STATIC,40,10,119,8,
+                    SS_NOPREFIX
+    LTEXT           "复旦FTP联盟版权所有 2002",IDC_STATIC,40,25,119,8
+    DEFPUSHBUTTON   "确定",IDOK,178,7,50,14,WS_GROUP
+END
+
+IDD_FTPCLIENT_DIALOG DIALOGEX 0, 0, 192, 235
+STYLE DS_MODALFRAME | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
+    WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "FTPClient"
+FONT 9, "宋体", 0, 0, 0x1
+BEGIN
+    GROUPBOX        "登录",IDC_STATIC,7,7,178,61
+    LTEXT           "FTP地址:",IDC_STATIC,12,19,33,8
+    CONTROL         "IPAddress1",IDC_FTP,"SysIPAddress32",WS_TABSTOP,46,17,
+                    72,12
+    CONTROL         "非匿名登陆",IDC_NEEDUSER,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,12,36,56,10
+    LTEXT           "登录名:",IDC_STATIC,12,51,29,8
+    EDITTEXT        IDC_FTPUSR,41,49,37,12,ES_AUTOHSCROLL | WS_DISABLED
+    LTEXT           "口令:",IDC_STATIC,84,51,21,8
+    EDITTEXT        IDC_FTPPWD,106,49,37,12,ES_PASSWORD | ES_AUTOHSCROLL | 
+                    WS_DISABLED
+    GROUPBOX        "",IDC_STATIC,7,74,178,45
+    CONTROL         "启用日志保存",IDC_NEEDLOG,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,14,73,64,10
+    LTEXT           "保存路径:",IDC_STATIC,12,87,37,8
+    EDITTEXT        IDC_PATH,12,99,102,12,ES_AUTOHSCROLL | ES_READONLY
+    PUSHBUTTON      "浏览...",IDC_BROWSE,127,98,50,14
+    LTEXT           "用户名:",IDC_STATIC,12,136,29,8
+    EDITTEXT        IDC_AUTHUSR,41,134,37,12,ES_AUTOHSCROLL
+    LTEXT           "口令:",IDC_STATIC,84,136,21,8
+    EDITTEXT        IDC_AUTHPWD,110,134,37,12,ES_PASSWORD | ES_AUTOHSCROLL
+    LTEXT           "授权地址:",IDC_STATIC,12,153,37,8
+    CONTROL         "IPAddress2",IDC_AUTHSVR,"SysIPAddress32",WS_TABSTOP,51,
+                    152,70,12
+    PUSHBUTTON      "授权",IDC_AUTHENTICATE,127,151,50,14
+    GROUPBOX        "",IDC_STATIC,7,181,104,32
+    CONTROL         "周期更新",IDC_NEEDLOOP,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,14,179,51,11
+    LTEXT           "每隔",IDC_STATIC,12,195,17,8
+    EDITTEXT        IDC_INTERVAL,30,193,25,12,ES_AUTOHSCROLL
+    LTEXT           "小时自动更新",IDC_STATIC,58,195,49,8
+    PUSHBUTTON      "开始",IDC_START,128,199,50,14
+    GROUPBOX        "授权",IDC_STATIC,7,124,178,50
+    LTEXT           "Reday",IDC_STATUS,7,220,178,8
+    EDITTEXT        IDC_PORT,144,17,24,12,ES_AUTOHSCROLL
+    LTEXT           "端口:",IDC_STATIC,122,19,21,8
+END
+
+
+#ifndef _MAC
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404b0"
+        BEGIN
+            VALUE "Comments", "\0"
+            VALUE "CompanyName", "\0"
+            VALUE "FileDescription", "FTPClient Microsoft 基础类应用程序\0"
+            VALUE "FileVersion", "1,0,0,1\0"
+            VALUE "InternalName", "FTPClient\0"
+            VALUE "LegalCopyright", "版权所有 (C) 2002\0"
+            VALUE "LegalTrademarks", "\0"
+            VALUE "OriginalFilename", "FTPClient.EXE\0"
+            VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "FTPClient 应用程序\0"
+            VALUE "ProductVersion", "1.0 Build 0423\0"
+            VALUE "SpecialBuild", "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x804, 1200
+    END
+END
+
+#endif    // !_MAC
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 228
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 48
+    END
+
+    IDD_FTPCLIENT_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 185
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 228
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_SYSTRAY_MENU MENU DISCARDABLE 
+BEGIN
+    POPUP "POPUP"
+    BEGIN
+        MENUITEM "还原",                        IDR_RESTORE
+        MENUITEM "退出",                        IDR_EXIT
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_ABOUTBOX            "关于 FTPClient(&A)..."
+END
+
+#endif    // Chinese (P.R.C.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+#ifdef _WIN32
+LANGUAGE 4, 2
+#pragma code_page(936)
+#endif //_WIN32
+#include "res\FTPClient.rc2"  // non-Microsoft Visual C++ edited resources
+#include "l.chs\afxres.rc"          // Standard components
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
