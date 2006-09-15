@@ -1,6 +1,10 @@
-main
+if CDBl(WScript.Version) < 5.6 then
+    MsgBox "This program only runs on Windows XP and above!",vbCritical,"Checking Version"
+else
+    Shutdown
+end if
 
-sub main
+sub Shutdown
     dim when
     dim ret
     when = ShutdownScheduled
