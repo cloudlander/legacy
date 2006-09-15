@@ -1,5 +1,5 @@
 my $PERL_POST_CMD="c:/perl/bin/post.bat";
-my $selfhelp_submit_url="http://sh1sdev195:8080/webtime/servlet/Task";
+my $selfhelp_submit_url="http://localhost:8080/webtime/servlet/Task";
 
 my %params;
 $params{'test_type'}='ixpcDebugCheckerTest';
