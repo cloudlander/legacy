@@ -16,7 +16,8 @@ sub main
             end if
         end if
     else
-        when = InputBox("When to shutdown your computer?" &  Chr(13) & Chr(10) & "Default is after 30 minutes ","Only 1 question :)",DateAdd("n",30,CDate(Hour(Now) & ":" & Minute(Now) & ":00")))
+        default = DateAdd("n",30,CDate(Year(Now) & "-" & Month(Now) & "-" & Day(Now) & " " & Hour(Now) & ":" & Minute(Now) & ":00"))
+        when = InputBox("When to shutdown your computer?" &  Chr(13) & Chr(10) & "Default is after 30 minutes ","Only 1 question :)",default)
         if when <> "" then
             ret = MsgBox("You want to hibernate or shutdown computer at " & when &"?" &  Chr(13) & Chr(10) & "Press Yes to hibernate,No to shutdown :)",vbYesNoCancel or vbQuestion,"Are you sure")
             if ret = vbCancel then
@@ -55,12 +56,12 @@ function ShutdownScheduled
     if ret > 0 then
         dim regEx,Match,Matches
         set regEx = New RegExp
-        regEx.Pattern = ".*SHUTDOWN\s*(\d{2}:\d{2}:\d{2}).*"
+        regEx.Pattern = ".*SHUTDOWN\s*(\d{2}:\d{2}:\d{2}),\s*(\d{4}-\d+-\d+).*"
         regEx.IgnoreCase = false
         regEx.Global = true
         set Matches = regEx.Execute(output)
         set Match = Matches(0)
-        ShutdownScheduled = Match.SubMatches(0)
+        ShutdownScheduled = Match.SubMatches(1) & " " & Match.SubMatches(0)
         if Err.Description <> "" then   ' Need to clean all NEVER RUN died shutdown tasks.
             ShutdownScheduled = ""
             MsgBox "There are inactive shutdown tasks which never run." & Chr(13) & Chr(10) & "I'll clean them now",vbOKOnly or vbInformation,"Just a reminder"
@@ -73,13 +74,27 @@ end function
 
 sub ScheduleShutdown(when,how)
     set WshShell = WScript.CreateObject("WScript.Shell")
-    if len(when) = 7 then   'schtasks requires "HH:MM:SS" format
-        when = "0" & when
-    end if
-    WshShell.Run "schtasks /create /TR """ & how &""" /ST """ & when & """ /sc once /tn SHUTDOWN /RU "" "" ",0,true
+    date_time = Split(when)
+    arrSchDate = Split(date_time(0),"-")
+    schYear = arrSchDate(0)
+    schMonth = arrSchDate(1)
+    schDay = arrSchDate(2)
+    ZeroPrefix schMonth,2
+    ZeroPrefix schDay,2
+    schDate = schYear & "/" & schMonth & "/" & schDay
+    schTime = date_time(1)
+    ZeroPrefix schTime,8
+    when = date_time(0) & " " & schTime
+    WshShell.Run "schtasks /create /TR """ & how &""" /ST """ & schTime & """ /sd """ & schDate & """ /sc once /tn SHUTDOWN /RU "" "" ",0,true
 end sub
 
 sub DeleteShutdown
     set WshShell = WScript.CreateObject("WScript.Shell")
     WshShell.Run "schtasks /delete /tn SHUTDOWN /F",0,true
+end sub
+
+sub ZeroPrefix(strng,length)
+    if len(strng) + 1 = length then
+        strng = "0" & strng
+    end if
 end sub
