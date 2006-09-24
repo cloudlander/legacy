@@ -21,7 +21,7 @@ sub Shutdown
         end if
     else
         default = DateAdd("n",30,CDate(Year(Now) & "-" & Month(Now) & "-" & Day(Now) & " " & Hour(Now) & ":" & Minute(Now) & ":00"))
-        when = InputBox("When to shutdown your computer?" &  Chr(13) & Chr(10) & "Default is after 30 minutes ","Only 1 question :)",default)
+        when = InputBox("When to shutdown your computer?" & Chr(13) & Chr(10) & "Default is after 30 minutes ","Only 1 question :)",default)
         if when <> "" then
             ret = MsgBox("You want to hibernate or shutdown computer at " & when &"?" &  Chr(13) & Chr(10) & "Press Yes to hibernate,No to shutdown :)",vbYesNoCancel or vbQuestion,"Are you sure")
             if ret = vbCancel then
@@ -31,7 +31,14 @@ sub Shutdown
                     case vbYes
                         msg = "hibernated"
                         DirectoryOfScript=WScript.CreateObject("WScript.Shell").CurrentDirectory
-                        how =  DirectoryOfScript & "\sleep.exe /h"
+                        Set fso = CreateObject("Scripting.FileSystemObject")
+                        If (fso.FileExists(DirectoryOfScript & "\sleep.exe")) Then
+                            Set f = fso.GetFile(DirectoryOfScript & "\sleep.exe")
+                            how = f.ShortPath & " /h" 'schtasks only work with 8.3 short path style
+                        else
+                            MsgBox "Utility sleep.exe not found in " & DirectoryOfScript & Chr(13) & Chr(10) & "Failed to schedule hibernate task.",vbCritical,"My God!"
+                            WScript.Quit(1)
+                        end if
                     case vbNo
                         msg = "halted"
                         how = "shutdown -s -t 5 -c " & Time
