@@ -40,10 +40,6 @@ sub run($)
 	while(1)
 	{
 		my $res = &getnext($webroot);
-		if($res =~/所有数据都已经为你显示完毕/)
-		{
-			return;	
-		}	
 		if($res =~/本页使用费用累计:(.*)小时/)
 		{
 #			print $1,"\n";
@@ -51,7 +47,14 @@ sub run($)
 			$res =~/ACTION="(.*)" METHOD/;
 #			print $1,"\n";
 			$webroot=$1;
-			next;
+		    if($res =~/所有数据都已经为你显示完毕/)
+		    {
+			    last;	
+		    }	
+            else
+            {
+                next;
+            }
 		}
 	}
 }
