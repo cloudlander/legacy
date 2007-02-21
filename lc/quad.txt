@@ -1,0 +1,62 @@
+	g[]	:=	1	
+	i	:=	0	
+L2=:	T2=	<=	i	9
+	GoFalse	T2=	L13
+	Write	"Input integer for g["	
+	Write	g[]	
+	Write	","	
+	Write	i	
+	Write	"]:"	
+	Read	t	
+	g[]	:=	t	
+	i	+	i	1
+	Goto	L2=
+L13:	i	:=	1	
+L14:	T14	<=	i	9
+	GoFalse	T14	L31
+	T16	-	9	i
+	j	:=	0	
+L18:	T18	<=	j	T16
+	GoFalse	T18	L29
+	T20	+	j	1
+	t	:=	T20	
+	T22	<	g[]	g[]
+	GoFalse	T22	L27
+	temp	:=	g[]	
+	g[]	:=	g[]	
+	g[]	:=	temp	
+L27:	j	+	j	1
+	Goto	L18
+L29:	i	+	i	1
+	Goto	L14
+L31:	Write	"After bubble sorting\n"	
+	i	:=	0	
+L33:	T33	<=	i	9
+	GoFalse	T33	L44
+	Write	"g["	
+	Write	h	
+	Write	","	
+	Write	i	
+	Write	"]="	
+	Write	g[]	
+	Write	"\n"	
+	i	+	i	1
+	Goto	L33
+L44:	i	:=	0	
+	j	:=	0	
+L46:	T46	<=	i	9
+	GoFalse	T46	L53
+	T48	+	j	g[]
+	j	:=	T48	
+	T50	+	i	1
+	i	:=	T50	
+	Goto	L46
+L53:	Write	"Show summary?"	
+	T54	==	sum	false
+	Write	sum	
+	Read	sum	
+	GoFalse	sum	L61
+	Write	"j="	
+	Write	j	
+	Write	"\n"	
+L61:	Halt		
