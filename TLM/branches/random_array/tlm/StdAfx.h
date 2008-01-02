@@ -15,6 +15,8 @@
 #include <wtypes.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
+#include <time.h>
 
 // TODO: reference additional headers your program requires here
 

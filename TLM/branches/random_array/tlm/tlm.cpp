@@ -8,14 +8,23 @@
 #endif
 
 #define DIMENSION 5
-#define MAX_VALUE 250
+#define MAX_VALUE 50
 #define MAX_CUBE MAX_VALUE*MAX_VALUE*MAX_VALUE
 #define MAX_LINE 255
 #define long double DOUBLE
 
 DOUBLE SB[DIMENSION+1][DIMENSION+1];
+/*
+DOUBLE RVB[DIMENSION+1][MAX_VALUE][MAX_VALUE][MAX_VALUE];
+DOUBLE IVB[DIMENSION+1][MAX_VALUE][MAX_VALUE][MAX_VALUE];
+*/
+
 DOUBLE RVB[DIMENSION+1][MAX_CUBE];
 DOUBLE IVB[DIMENSION+1][MAX_CUBE];
+
+int tagX[MAX_CUBE];
+int tagZ[MAX_CUBE];
+
 
 void SBL(DOUBLE Y,DOUBLE G)
 {
@@ -49,6 +58,9 @@ int main(int argc, char* argv[])
 	INT32 SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,T,NT,BL;
 	INT32 I,J,K,M,N;
 	
+	INT32 i,j;
+	int tmp;
+
 	DOUBLE H,ER,UR,SGM;
 	UINT32 U,V,W;
 
@@ -78,18 +90,54 @@ int main(int argc, char* argv[])
 	
 	SBL(YY,GY);
 
+	srand(time(0));
+
 #ifdef PARALLEL_OMP
     omp_set_num_threads(2);
 #endif
 
+
 	for(T=1;T<=NT;T++)
 	{
 
-    #pragma omp parallel for private(I)
+	for(i=SX;i<=ENDX;i++) 
+	{ 
+		tmp=SX+(int)((float)(ENDX-SX+1)*rand()/(RAND_MAX+1.0));
+		for(j=SX;j<i;j++)
+			if(tagX[j]==tmp)
+				break;
+		if(j==i)
+			tagX[j]=tmp;
+		else
+			i=i-1;
+	} 
+	for(i=SZ;i<=ENDZ;i++) 
+	{ 
+		tmp=SZ+(int)((float)(ENDZ-SZ+1)*rand()/(RAND_MAX+1.0));
+		for(j=SZ;j<i;j++)
+			if(tagZ[j]==tmp)
+				break;
+		if(j==i)
+			tagZ[j]=tmp;
+		else
+			i=i-1;
+	} 
+
+
+
+
+
+		/*
 		for(I=SX;I<=ENDX;I++)
-        {
 			for(K=SZ;K<=ENDZ;K++)
+			*/
+
+    #pragma omp parallel for private(i)
+		for(i=SX;i<=ENDX;i++)
+			for(j=SZ;j<=ENDZ;j++)
 			{
+				I=tagX[i];
+				K=tagZ[j];
 				for(M=1;M<=DIMENSION;M++)
 				{
 					RVB[M][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=0;
@@ -97,12 +145,43 @@ int main(int argc, char* argv[])
 						RVB[M][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=IVB[N][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]*SB[M][N]+RVB[M][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
 				}
 			}
-        }
-
+/*
 		for(I=SX;I<=ENDX;I++)
 		{
 			for(K=SZ;K<=ENDZ;K++)
 			{
+			*/
+
+	for(i=SX;i<=ENDX;i++) 
+	{ 
+		tmp=SX+(int)((float)(ENDX-SX+1)*rand()/(RAND_MAX+1.0));
+		for(j=SX;j<i;j++)
+			if(tagX[j]==tmp)
+				break;
+		if(j==i)
+			tagX[j]=tmp;
+		else
+			i=i-1;
+	} 
+	for(i=SZ;i<=ENDZ;i++) 
+	{ 
+		tmp=SZ+(int)((float)(ENDZ-SZ+1)*rand()/(RAND_MAX+1.0));
+		for(j=SZ;j<i;j++)
+			if(tagZ[j]==tmp)
+				break;
+		if(j==i)
+			tagZ[j]=tmp;
+		else
+			i=i-1;
+	} 
+
+
+			
+		for(i=SX;i<=ENDX;i++)
+			for(j=SZ;j<=ENDZ;j++)
+			{
+				I=tagX[i];
+				K=tagZ[j];
 				IVB[1][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=RVB[3][(I-1)*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
 				IVB[2][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=RVB[4][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K-1];
 				IVB[3][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=RVB[1][(I+1)*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
@@ -133,7 +212,10 @@ int main(int argc, char* argv[])
 				}
 
 			}
+				/*
+			}
 		}
+		*/
 
 		if(0==T%10)
 		{
@@ -143,5 +225,11 @@ int main(int argc, char* argv[])
 		printf(" % #.8f\n",EY);
 	}
 			
+	for(i=SX;i<=ENDX;i++)
+		fprintf(stderr,"%d\t",tagX[i]);
+	fprintf(stderr,"\n");
+	for(i=SX;i<=ENDX;i++)
+		fprintf(stderr,"%d\t",tagZ[i]);
+
 	return 0;
 }
