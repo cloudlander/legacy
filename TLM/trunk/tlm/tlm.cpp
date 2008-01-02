@@ -3,11 +3,19 @@
 
 #include "stdafx.h"
 
+#ifdef PARALLEL_OMP
+#include <omp.h>
+#endif
+
 #define DIMENSION 5
-#define MAX_VALUE 50
+#define MAX_VALUE 250
+#define MAX_CUBE MAX_VALUE*MAX_VALUE*MAX_VALUE
 #define MAX_LINE 255
 #define long double DOUBLE
+
 DOUBLE SB[DIMENSION+1][DIMENSION+1];
+DOUBLE RVB[DIMENSION+1][MAX_CUBE];
+DOUBLE IVB[DIMENSION+1][MAX_CUBE];
 
 void SBL(DOUBLE Y,DOUBLE G)
 {
@@ -25,12 +33,12 @@ void SBL(DOUBLE Y,DOUBLE G)
 		}
 }
 
-DOUBLE EJ(DOUBLE IV[DIMENSION+1][MAX_VALUE][MAX_VALUE][MAX_VALUE],DOUBLE Y,DOUBLE G,UINT32 I,UINT32 J,UINT32 K,UINT32 L)
+DOUBLE EJ(DOUBLE Y,DOUBLE G,UINT32 I,UINT32 J,UINT32 K,UINT32 L)
 {
 	DOUBLE E=0.0;
 	for(int i=1;i<=4;i++)
-		E+=IV[i][I][J][K];
-	E+=Y*IV[DIMENSION][I][J][K];
+		E+=IVB[i][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
+	E+=Y*IVB[DIMENSION][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
 	E=E*2/(L*(4+Y+G));
 	return E;
 }
@@ -38,26 +46,20 @@ DOUBLE EJ(DOUBLE IV[DIMENSION+1][MAX_VALUE][MAX_VALUE][MAX_VALUE],DOUBLE Y,DOUBL
 
 int main(int argc, char* argv[])
 {
-	UINT32 SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,T,NT,BL;
-	UINT32 I,J,K,M,N;
+	INT32 SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,T,NT,BL;
+	INT32 I,J,K,M,N;
 	
 	DOUBLE H,ER,UR,SGM;
 	UINT32 U,V,W;
-	DOUBLE RVB[DIMENSION+1][MAX_VALUE][MAX_VALUE][MAX_VALUE];
-	DOUBLE IVB[DIMENSION+1][MAX_VALUE][MAX_VALUE][MAX_VALUE];
 
 	DOUBLE EY;
 
 	char line[MAX_LINE]="";
 
 	FILE* input=fopen("twotlme.in","r");
-	fscanf(input,"%d %d %d %d %d %d %d %d %d %e %e %e %f %f %f %f %d %d",&SX,&SY,&SZ,&ENDX,&ENDY,&ENDZ,&X,&Y,&Z,&U,&V,&W,&H,&ER,&UR,&SGM,&NT,&BL);
+	fscanf(input,"%d %d %d %d %d %d %d %d %d %d %d %d %lf %lf %lf %lf %d %d",&SX,&SY,&SZ,&ENDX,&ENDY,&ENDZ,&X,&Y,&Z,&U,&V,&W,&H,&ER,&UR,&SGM,&NT,&BL);
+	fclose(input);
 
-	H=4.0;
-	ER=1.0;
-	UR=1.0;
-	SGM=0.0;
-	U=V=W=1;
 	DOUBLE U0=12566.3706144;
 	DOUBLE E0=8.854187818E-2;
 	DOUBLE Z0=sqrt(U0/E0);
@@ -69,66 +71,77 @@ int main(int argc, char* argv[])
 	for(I=SX;I<=ENDX;I++)
 		for(K=SZ;K<=ENDZ;K++)
 			for(T=1;T<=DIMENSION;T++)
-				IVB[T][I][J][K]=0;
+				IVB[T][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=0;
 
 	I=1;
-	IVB[I][X][Y][Z]=1;
+	IVB[I][X*MAX_VALUE*MAX_VALUE+Y*MAX_VALUE+Z]=1;
 	
 	SBL(YY,GY);
 
+#ifdef PARALLEL_OMP
+    omp_set_num_threads(2);
+#endif
+
 	for(T=1;T<=NT;T++)
 	{
+
+    #pragma omp parallel for private(I)
 		for(I=SX;I<=ENDX;I++)
+        {
 			for(K=SZ;K<=ENDZ;K++)
+			{
 				for(M=1;M<=DIMENSION;M++)
 				{
-					RVB[M][I][J][K]=0;
+					RVB[M][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=0;
 					for(N=1;N<=DIMENSION;N++)
-						RVB[M][I][J][K]=IVB[N][I][J][K]*SB[M][N]+RVB[M][I][J][K];
+						RVB[M][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=IVB[N][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]*SB[M][N]+RVB[M][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
 				}
+			}
+        }
 
 		for(I=SX;I<=ENDX;I++)
 		{
 			for(K=SZ;K<=ENDZ;K++)
 			{
-				IVB[1][I][J][K]=RVB[3][I-1][J][K];
-				IVB[2][I][J][K]=RVB[4][I][J][K-1];
-				IVB[3][I][J][K]=RVB[1][I+1][J][K];
-				IVB[4][I][J][K]=RVB[2][I][J][K+1];
-				IVB[5][I][J][K]=RVB[5][I][J][K];
+				IVB[1][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=RVB[3][(I-1)*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
+				IVB[2][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=RVB[4][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K-1];
+				IVB[3][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=RVB[1][(I+1)*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
+				IVB[4][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=RVB[2][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K+1];
+				IVB[5][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=RVB[5][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
 				
 				if(1==BL)
 				{
 					if(K==SZ)
-						IVB[2][I][J][K]=-RVB[2][I][J][K];
+						IVB[2][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=-RVB[2][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
 					if(K==ENDZ)
-						IVB[4][I][J][K]=-RVB[4][I][J][K];
+						IVB[4][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=-RVB[4][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
 					if(I==SX)
-						IVB[1][I][J][K]=-RVB[1][I][J][K];
+						IVB[1][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=-RVB[1][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
 					if(I==ENDX)
-						IVB[3][I][J][K]=-RVB[3][I][J][K];
+						IVB[3][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=-RVB[3][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K];
 				}
 				else if(0==BL)
 				{
 					if(K==SZ)
-						IVB[2][I][J][K]=0;
+						IVB[2][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=0;
 					if(K==ENDZ)
-						IVB[4][I][J][K]=0;
+						IVB[4][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=0;
 					if(I==SX)
-						IVB[1][I][J][K]=0;
+						IVB[1][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=0;
 					if(I==ENDX)
-						IVB[3][I][J][K]=0;
+						IVB[3][I*MAX_VALUE*MAX_VALUE+J*MAX_VALUE+K]=0;
 				}
+
 			}
 		}
+
 		if(0==T%10)
 		{
 			fprintf(stderr,"%d\n",T);
 		}
-		EY=EJ(IVB,YY,GY,X,Y,Z,V);
-		printf("  % #7g\n",EY);
+		EY=EJ(YY,GY,X,Y,Z,V);
+		printf(" % #.8f\n",EY);
 	}
 			
-
 	return 0;
 }
