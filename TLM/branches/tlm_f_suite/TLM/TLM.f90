@@ -17,8 +17,8 @@
       PROGRAM TWOTLME
       INTEGER SX,SY,SZ,ENDX,ENDY,ENDZ,NX,NY,NZ,X,Y,Z,T,BL
 !网格单位长度，起始网格位置结束网格位置，边界条件标志参数
-      REAL RVB(0:9,100,100,100)
-      REAL IVB(0:9,100,100,100)
+      REAL RVB(0:9,200,200,200)
+      REAL IVB(0:9,200,200,200)
       REAL SB(0:5,0:5)
       REAL SB2(9,9)
       REAL EY
@@ -47,7 +47,7 @@
       
       IF(SPLIT .EQ. 0) THEN
         FILE_UNIT=13
-        OPEN(13,FILE='ey.out',FORM='FORMATTED')
+        OPEN(13,FILE='EY.out',FORM='FORMATTED')
       ENDIF
       
       OPEN(14,FILE='result.gnu',FORM='FORMATTED')
@@ -96,9 +96,9 @@
       CC=3E8             !CC为光速
       PI=3.1415926
 
-      NX=100
-      NY=100
-      NZ=100
+      NX=200
+      NY=200
+      NZ=200
       
       U0=4*PI*1E-7		!真空中的磁导率
       E0=8.854187818E-12		!真空中的介电常数
@@ -149,7 +149,7 @@
     !             IVB(III,X,Y,Z)=sin(2*PI*FRE*T)  !为sin激发 单色波形式
     !             IVB(III,X,Y,Z)=sin(6.283E+10*(0.33333E-11)*T)  !为sin激发单色波形式
     !             0.3333E-11=1/3E-11=dl/CC=deltaL/C(一个格点宽度/光速)
-                 IVB(III,X,Y,Z)=sin(PI*T/15)  !为sin激发单色波形式
+                 IVB(III,X,Y,Z)=IVB(III,X,Y,Z)+sin(PI*T/15)  !为sin激发单色波形式
 
        335     CONTINUE
 
@@ -240,7 +240,7 @@
       WRITE(NAME_COUNT,'(I5)') T
       IF (SPLIT .EQ. 1) THEN
           FILE_UNIT=UNIT_BASE+T
-          OPEN(FILE_UNIT,FILE='ey/ey'//NAME_COUNT//'.out',FORM='FORMATTED')
+          OPEN(FILE_UNIT,FILE='EY/EY'//NAME_COUNT//'.out',FORM='FORMATTED')
       ENDIF
          
       WRITE(FILE_UNIT,*) "#T=",T
@@ -411,6 +411,6 @@
             E1=E1+IV(M,I,J,K);
   20001 CONTINUE
         E2=2*(Z0L+ZS)*IV(9,I,J,K);
-        E=(2*ZP*E1+E2)/(4*ZP+Z0L+ZS);
-!		E=(2*ZP*E1)/(4*ZP+Z0L+ZS);
+!        E=(2*ZP*E1+E2)/(4*ZP+Z0L+ZS);
+        E=(2*ZP*E1)/(4*ZP+Z0L+ZS);
       END
