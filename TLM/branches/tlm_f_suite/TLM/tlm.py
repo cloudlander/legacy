@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import time,subprocess,threading,Queue,os,sys,signal
 import StringIO
 import re
@@ -47,7 +48,7 @@ class Visualizer(ILineAware):
                     trunk=self._request()
                     if trunk != None:
                         #print self.getName(),":",trunk
-                        plot=subprocess.Popen("gnuplot.exe",stdin=subprocess.PIPE,universal_newlines=True)
+                        plot=subprocess.Popen("gnuplot",stdin=subprocess.PIPE,universal_newlines=True)
                         commands=open(str(plot.pid)+".gnu","wb")
                         commands.writelines(s)
                         for i in range(trunk['start'],trunk['end']+1):
@@ -122,7 +123,7 @@ class Visualizer(ILineAware):
             env_set.seek(0)
             return env_set
 
-    def __init__(self,config=Config(),threads=2):
+    def __init__(self,config=Config(),threads=1):
         self._config=config.getConfig()
         self._num_threads=threads*2
         self._threads=range(threads*2)
@@ -154,7 +155,7 @@ class Visualizer(ILineAware):
             return (self._trunk_start-1-self._surface_queue.qsize()*10)/total*100
 
     def printStatus(self):
-        print "TLM %.2f%% calculated, surface %.2f%% plotted, map %.2f%% plotted!"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus())
+        print "TLM %.2f%% calculated, surface %.2f%% plotted, map %.2f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus()),
 
     def encounterLine(self,line):
         try:
@@ -215,7 +216,7 @@ class Visualizer(ILineAware):
                 else:
                     time.sleep(1)
                     count=0
-            ani=subprocess.Popen("gen_ani.bat",stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            ani=subprocess.Popen("./gen_ani.sh",stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             ani.stdout.readlines()
             ani.stderr.readlines()
         except:
@@ -236,11 +237,11 @@ class Visualizer(ILineAware):
                     time.sleep(1)
                     count=0
         except:
-            print "Exceptions in join!"
+            print "Exceptions in killall!"
 
 
 class TLM:
-    def __init__(self,exe="Release/TLM.exe",visual=Visualizer,config=Config()):
+    def __init__(self,exe="./tlm",visual=Visualizer,config=Config()):
         self._exe=exe
         self._visualizer=visual(config)
         self._config=config.getConfig()
