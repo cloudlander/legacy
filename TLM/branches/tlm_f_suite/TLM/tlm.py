@@ -3,20 +3,31 @@ import time,subprocess,threading,Queue,os,sys,signal
 import StringIO
 import re
 
+
 class Config:
+    def __init__(self):
+        self._config={}
     def parseConfig(self):
-        return True
+        if sys.platform.find("win")==0:
+            self._config['GEN_ANI']="gen_ani.bat"
+            self._config['TLM_EXE']="Release/TLM.exe"
+            self._config['GNUPLOT']="gnuplot.exe"
+        else:
+            self._config['GEN_ANI']="./gen_ani.sh"
+            self._config['TLM_EXE']="./tlm"
+            self._config['GNUPLOT']="gnuplot"
     def resetConfig(self):
         return True
     def getConfig(self):
-        return {}
+        return self._config
 
 class FileConfig(Config):
     def __init__(self,f):
+        Config.__init__(self)
         self._input=f
-        self._config={}
         self.parseConfig()
     def parseConfig(self):
+        Config.parseConfig(self)
         input=open(self._input,"rb")
         data_line=input.readline()
         cmt_line=input.readline()
@@ -25,8 +36,6 @@ class FileConfig(Config):
         comment=re.split("[,\s]+",cmt_line)
         for (i,v) in enumerate(comment):
             self._config[v]=data[i]
-    def getConfig(self):
-        return self._config
 
 class ILineAware:
     def encounterLine(self,line):
@@ -48,7 +57,7 @@ class Visualizer(ILineAware):
                     trunk=self._request()
                     if trunk != None:
                         #print self.getName(),":",trunk
-                        plot=subprocess.Popen("gnuplot",stdin=subprocess.PIPE,universal_newlines=True)
+                        plot=subprocess.Popen(self._config['GNUPLOT'],stdin=subprocess.PIPE,universal_newlines=True)
                         commands=open(str(plot.pid)+".gnu","wb")
                         commands.writelines(s)
                         for i in range(trunk['start'],trunk['end']+1):
@@ -216,7 +225,7 @@ class Visualizer(ILineAware):
                 else:
                     time.sleep(1)
                     count=0
-            ani=subprocess.Popen("./gen_ani.sh",stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            ani=subprocess.Popen(self._config['GEN_ANI'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             ani.stdout.readlines()
             ani.stderr.readlines()
         except:
@@ -241,10 +250,11 @@ class Visualizer(ILineAware):
 
 
 class TLM:
-    def __init__(self,exe="./tlm",visual=Visualizer,config=Config()):
-        self._exe=exe
+    def __init__(self,visual=Visualizer,config=Config()):
         self._visualizer=visual(config)
         self._config=config.getConfig()
+        self._exe=self._config['TLM_EXE']
+        self._config['instance']=self
         self._killed=False
 
     def run(self):
@@ -277,15 +287,19 @@ class TLM:
         self._killed=True
         self._visualizer.killall()
 
-global tlm
-
 def handle_interrupt(sig,stack):
     if sig!=signal.SIGINT:
         print "caught unknown signal"
         sys.exit(1)
     else:
-        tlm.killall()
+        tlm_config.getConfig()['instance'].killall()
 
-signal.signal(signal.SIGINT,handle_interrupt)
-tlm=TLM(config=FileConfig("twotlme.in"))
-tlm.run()
+def main(tlm_config):
+    signal.signal(signal.SIGINT,handle_interrupt)
+    tlm=TLM(config=tlm_config)
+    tlm.run()
+
+
+tlm_config=FileConfig("twotlme.in")
+if __name__ == "__main__":
+    main(tlm_config)
