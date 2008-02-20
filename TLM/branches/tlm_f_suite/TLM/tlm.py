@@ -8,6 +8,7 @@ class Config:
     def __init__(self):
         self._config={}
     def parseConfig(self):
+        self._config['threads']=1
         if sys.platform.find("win")==0:
             self._config['GEN_ANI']="gen_ani.bat"
             self._config['TLM_EXE']="Release/TLM.exe"
@@ -132,10 +133,10 @@ class Visualizer(ILineAware):
             env_set.seek(0)
             return env_set
 
-    def __init__(self,config=Config(),threads=1):
+    def __init__(self,config=Config()):
         self._config=config.getConfig()
-        self._num_threads=threads*2
-        self._threads=range(threads*2)
+        self._num_threads=self._config['threads']*2
+        self._threads=range(self._num_threads)
         self._map_queue=Queue.Queue()
         self._surface_queue=Queue.Queue()
         self._trunk_start=1
@@ -215,7 +216,7 @@ class Visualizer(ILineAware):
         try:
             self.joining=True
             count=0
-            while True:
+            while not self.killed:
                 self.printStatus()
                 for i in range(self._num_threads):
                     if self._threads[i].isAlive():
@@ -225,18 +226,19 @@ class Visualizer(ILineAware):
                 else:
                     time.sleep(1)
                     count=0
-            ani=subprocess.Popen(self._config['GEN_ANI'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-            ani.stdout.readlines()
-            ani.stderr.readlines()
+            if not self.killed:
+                ani=subprocess.Popen(self._config['GEN_ANI'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                ani.stdout.readlines()
+                ani.stderr.readlines()
         except:
-            print "Exceptions in join!"
+            if not self.killed:
+                print "Exceptions in join!"
 
     def killall(self):
         try:
             self.killed=True
             count=0
             while True:
-                self.printStatus()
                 for i in range(self._num_threads):
                     if self._threads[i].isAlive():
                         count+=1
@@ -259,14 +261,18 @@ class TLM:
 
     def run(self):
         self._visualizer.start()
-        self._tlm=subprocess.Popen(self._exe,stdout=subprocess.PIPE,universal_newlines=True)
+        self._tlm=subprocess.Popen(self._exe,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
         while not self._killed:
-            line=self._tlm.stdout.readline()
-            if line:
-                print line,
-                self._visualizer.encounterLine(line)
-            else:
-                break
+            try:
+                line=self._tlm.stdout.readline()
+                if line:
+                    print line,
+                    self._visualizer.encounterLine(line)
+                else:
+                    break
+            except IOError:
+                if not self._killed:
+                    print "Exceptions in run"
         if not self._killed:
             self._visualizer.join()
         else:
@@ -280,12 +286,12 @@ class TLM:
             else:
                 os.kill(self._tlm.pid,signal.SIGINT)
             self._tlm.wait()
-            print "TLM aborted!"
 
     def killall(self):
         print "Terminating all calculating threads, this may take some minutes..."
         self._killed=True
         self._visualizer.killall()
+        print "TLM aborted!"
 
 def handle_interrupt(sig,stack):
     if sig!=signal.SIGINT:
