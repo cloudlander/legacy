@@ -9,6 +9,10 @@ class Config:
         self._config={}
     def parseConfig(self):
         self._config['threads']=1
+        self._config['+RANGE']=0.3
+        self._config['-RANGE']=-0.3
+        self._config['MAP']=1
+        self._config['SURFACE']=0
         if sys.platform.find("win")==0:
             self._config['GEN_ANI']="gen_ani.bat"
             self._config['TLM_EXE']="Release/TLM.exe"
@@ -100,8 +104,8 @@ class Visualizer(ILineAware):
                      'set ylabel "X"',"\n",
                      'set xrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
                      'set yrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
-                     'set zrange [-1.0:1.0] noreverse nowriteback',"\n",
-                     'set cbrange[-1.0:1.0] noreverse nowriteback',"\n",
+                     'set zrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
+                     'set cbrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
                      'set zero 1e-0020',"\n",
                      'set pm3d map',"\n",
                      'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
@@ -127,8 +131,8 @@ class Visualizer(ILineAware):
                      'set ylabel "X"',"\n",
                      'set xrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
                      'set yrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
-                     'set zrange [-1.0:1.0] noreverse nowriteback',"\n",
-                     'set cbrange[-1.0:1.0] noreverse nowriteback',"\n",
+                     'set zrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
+                     'set cbrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
                      'set zero 1e-0020',"\n",
                      'set pm3d at s',"\n",
                      'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
@@ -208,13 +212,19 @@ class Visualizer(ILineAware):
     def start(self):
         try:
             for i in range(self._num_threads/2):
-                self._threads[i]=self.MapWorker(self,self.map_request,self._config)
-                self._threads[i].setName("MapWorker"+str(i))
-                self._threads[i].start()
+                if self._config['MAP'] == 1:
+                    self._threads[i]=self.MapWorker(self,self.map_request,self._config)
+                    self._threads[i].setName("MapWorker"+str(i))
+                    self._threads[i].start()
+                else:
+                    self._threads[i]=None
             for i in range(self._num_threads/2,self._num_threads):
-                self._threads[i]=self.SurfaceWorker(self,self.surface_request,self._config)
-                self._threads[i].setName("SurfaceWorker"+str(i))
-                self._threads[i].start()
+                if self._config['SURFACE'] == 1:
+                    self._threads[i]=self.SurfaceWorker(self,self.surface_request,self._config)
+                    self._threads[i].setName("SurfaceWorker"+str(i))
+                    self._threads[i].start()
+                else:
+                    self._threads[i]=None
 
         except:
             print "Exceptions in start!"
@@ -226,7 +236,7 @@ class Visualizer(ILineAware):
             while not self.killed:
                 self.printStatus()
                 for i in range(self._num_threads):
-                    if self._threads[i].isAlive():
+                    if self._threads[i] != None and self._threads[i].isAlive():
                         count+=1
                 if count == 0:
                     break
@@ -247,7 +257,7 @@ class Visualizer(ILineAware):
             count=0
             while True:
                 for i in range(self._num_threads):
-                    if self._threads[i].isAlive():
+                    if self._threads[i] != None and self._threads[i].isAlive():
                         count+=1
                 if count == 0:
                     break
