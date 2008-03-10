@@ -17,15 +17,15 @@
       PROGRAM TWOTLME
       INTEGER SX,SY,SZ,ENDX,ENDY,ENDZ,NX,NY,NZ,X,Y,Z,T,BL,SIDE1,SIDE2   
 !网格单位长度，起始网格位置结束网格位置，边界条件标志参数
-      REAL RVB(5,100,100,100)
-      REAL IVB(5,100,100,100)
+      REAL RVB(5,200,200,200)
+      REAL IVB(5,200,200,200)
       
-   	  REAL REEY(10,100,100,100),IMEY(10,100,100,100)
+   	  REAL REEY(10,200,200,200),IMEY(10,200,200,200)
 
       REAL SB(5,5)
       REAL EY
-      REAL YY(100,100)
-      REAL YYY(100,100)
+      REAL YY(200,200)
+      INTEGER YYY(200,200)
       REAL ER,ER1,ER2
 	  INTEGER U,V,W
 	  INTEGER LN,LI,LL
@@ -35,19 +35,24 @@
       REAL time_begin, time_end
       INTEGER UNIT_BASE,UNIT_BASE2
       INTEGER FILE_UNIT
-      INTEGER START_ROW,START_COL,GRID_ROW,GRID_COL
+      INTEGER START_ROW,START_COL,GRID_ROW,GRID_COL   !网格开始位置
+      INTEGER COL  !网格总列数
+      REAL PART  !网格所占百分比
+      INTEGER PSX !输入脉冲开始位置
+      REAL PANGLE !输入脉冲直线与Z轴张角(角度参数)
+      REAL PP !脉冲直线计算参数
+      INTEGER PULSE(200,3) !脉冲点
+      INTEGER PIND, PLEN !脉冲点序号和总数
       
-      CHARACTER*(*) NAME_BASE
       CHARACTER(LEN=5) NAME_COUNT
-      PARAMETER (NAME_BASE = 'img/ey')
 
       UNIT_BASE=100
-      UNIT_BASE=16384
+      UNIT_BASE2=16384
       
       OPEN(11,FILE='twotlme.in',FORM='FORMATTED')
-!      OPEN(111,FILE='test.txt',FORM='FORMATTED')
+      OPEN(111,FILE='grid.dat',FORM='FORMATTED')
       
-      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SIDE1,SIDE2,ER1,ER2,FRE,LN,SPLIT
+      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SIDE1,SIDE2,ER1,ER2,FRE,LN,SPLIT,COL,PSX,PANGLE
 !读入数据固定参数计算结构参数时使用
       IF (LN .NE. 0) THEN
         DO 220 III=1,LN
@@ -86,20 +91,31 @@
       
       J=10
       
-      NX=100
-      NY=100
-      NZ=100
+      NX=200
+      NY=200
+      NZ=200
       U0=12566.3706144		!真空中的磁导率
       E0=8.854187818E-2		!真空中的介电常数
       Z0=SQRT(U0/E0)
       PI=3.1415926
-      
+
+      COL=COL-1
+      PART=REAL(COL*SIDE2)/(ENDZ-SZ)
       START_ROW=SX
-      START_COL=SZ+(ENDZ-SZ)/3
+      START_COL=SZ+(ENDZ-SZ)*(1-PART)/2
       GRID_ROW=(ENDX-SX+1)/SIDE1
-      GRID_COL=(ENDZ-SZ)/3/SIDE2
+      GRID_COL=(ENDZ-SZ)*PART/SIDE2
+      IF (GRID_COL+1 .EQ. COL) THEN
+           GRID_COL=COL
+      ELSE
+          IF (GRID_COL .NE. COL) THEN
+               WRITE(*,*) "COL NOT MATCH"
+               STOP
+          ENDIF
+      ENDIF
       ENDX=SX+GRID_ROW*SIDE1-1
       
+      !WRITE(*,*) ENDX,GRID_ROW,GRID_COL
 !      YY=2*(U*W*SQRT(H)*ER/V-2)    !介电常数支线结构参数的计算(方向5即为介电常数支线)
 
       DO 2221 II=SX,ENDX
@@ -109,6 +125,52 @@
  2222    CONTINUE
  2221 CONTINUE
 
+
+!  开始绘制脉冲空间位置(直线)
+      II=PSX
+      KK=START_COL
+      YYY(II,KK)=-1
+      PIND=1
+      PULSE(PIND,1)=II
+      PULSE(PIND,2)=J
+      PULSE(PIND,3)=KK
+      PANGLE=TAND(PANGLE)
+      IF(PANGLE .GT. 1) THEN
+        PP=2/PANGLE-1
+      ELSE
+        PP=2*PANGLE-1
+      ENDIF
+      DO WHILE(II .GT. SX .AND. KK .GT. SZ)
+         IF(PANGLE .GT. 1) THEN
+            II=II-1
+         ELSE
+            KK=KK-1
+         ENDIF
+         IF(PP .GE. 0) THEN
+            IF(PANGLE .GT. 1) THEN
+               KK=KK-1
+               PP=PP+2*(1/PANGLE-1)
+            ELSE
+               II=II-1
+               PP=PP+2*(PANGLE-1)
+            ENDIF
+         ELSE
+            IF(PANGLE .GT. 1) THEN
+               PP=PP+2/PANGLE
+            ELSE
+               PP=PP+2*PANGLE
+            ENDIF
+         ENDIF
+         PIND=PIND+1
+         PULSE(PIND,1)=II
+         PULSE(PIND,2)=J
+         PULSE(PIND,3)=KK
+         YYY(II,KK)=-1
+      ENDDO
+      PLEN=PIND
+            
+            
+!  开始绘制网格            
       DO 3331 II=0,GRID_ROW
          DO 3332 KK=0,GRID_COL
             IF ( MOD((II+KK),2) .EQ. 1 ) THEN
@@ -129,12 +191,13 @@
  3332    CONTINUE
  3331 CONTINUE
 
-!      DO 55 I=SX,ENDX
-!         DO 66 K=SZ,ENDZ
-!            WRITE (111,*),YYY(I,K)
-!   66    CONTINUE
-!   55 CONTINUE
-!      CLOSE(111)
+!  输出全X-Z平面
+      DO 55 I=SX,ENDX
+         DO 66 K=SZ,ENDZ
+            WRITE (111,*) K,I,YYY(I,K)
+   66    CONTINUE
+   55 CONTINUE
+      CLOSE(111)
 !      STOP
 
       GY=SGM*U*W*Z0/V              !损耗支线结构参数计算[SGM取0记不计该Gjj参数（程序中由GY表示）]
@@ -158,7 +221,11 @@
       DO 10 T=1,NT		!开始迭代
        
          DO 6 III=1,4
-             IVB(III,X,Y,Z)=IVB(III,X,Y,Z)+sin(PI*T/15)  !为sin激发单色波形式    
+                PIND=PLEN/2
+!             DO 992 PIND=1,PLEN
+                IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
+! 992         CONTINUE
+!             IVB(III,X,Y,Z)=IVB(III,X,Y,Z)+sin(PI*T/15)  !为sin激发单色波形式    
   6      CONTINUE
     
 
@@ -343,4 +410,14 @@
       TLBB=(LL*(0.1-0)/16384.0+0)
       FREAL=FREAL+E*COS(2*3.14159*T*TLBB/2.0)
       FIM=FIM+E*SIN(2*3.14159*T*TLBB/2.0)
+      END
+
+      FUNCTION GAUSS(T)
+      INTEGER T
+      REAL T0,TAO
+      REAL PI
+      PI=3.1415926
+      T0=0
+      TAO=1.0
+      GAUSS=EXP(-4.0*PI*(T-T0)*(T-T0)/(TAO*TAO))
       END

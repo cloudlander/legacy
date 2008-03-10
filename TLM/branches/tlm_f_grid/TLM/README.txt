@@ -32,6 +32,14 @@
 
 
 2. 使用步骤:
+    0.  如何查看X-Z空间介质分布
+         用Compaq Fortran打开dsw,点Run运行TLM.exe，等待出现10之后,按CTRL-C中止TLM
+         双击wgnuplot.exe,键入以下命令:
+            load 'set.gnu'
+            set pm3d map
+            set cbrange [-1:2]
+            set zrange [-1:2]
+            splot 'grid.dat'
     1.  修改源程序:
          如果需要编辑源程序,请双击TLM_F.dsw(如果已安装Compac Fortran6.5)或者TLM_F.sln(如果已安装Visual Studio 2005以及Intel Fortran Compiler)
          编辑完TLM.f90源程序后,根据实际需要编译成Release版本或者Debug版本
