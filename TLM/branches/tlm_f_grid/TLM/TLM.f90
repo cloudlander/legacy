@@ -38,6 +38,7 @@
       INTEGER START_ROW,START_COL,GRID_ROW,GRID_COL   !网格开始位置
       INTEGER COL  !网格总列数
       REAL PART  !网格所占百分比
+      INTEGER GTYPE !网格类型 0为矩形, 1为内切椭圆(正圆), 2为等腰三角形
       INTEGER PSX !输入脉冲开始位置
       REAL PANGLE !输入脉冲直线与Z轴张角(角度参数)
       REAL PP !脉冲直线计算参数
@@ -52,7 +53,7 @@
       OPEN(11,FILE='twotlme.in',FORM='FORMATTED')
       OPEN(111,FILE='grid.dat',FORM='FORMATTED')
       
-      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SIDE1,SIDE2,ER1,ER2,FRE,LN,SPLIT,COL,PSX,PANGLE
+      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SIDE1,SIDE2,ER1,ER2,GTYPE,FRE,LN,SPLIT,COL,PSX,PANGLE
 !读入数据固定参数计算结构参数时使用
       IF (LN .NE. 0) THEN
         DO 220 III=1,LN
@@ -171,22 +172,12 @@
             
             
 !  开始绘制网格            
-      DO 3331 II=0,GRID_ROW
-         DO 3332 KK=0,GRID_COL
+      DO 3331 II=0,GRID_ROW-1
+         DO 3332 KK=0,GRID_COL-1
             IF ( MOD((II+KK),2) .EQ. 1 ) THEN
-               DO 3333 III=0,SIDE1-1
-                  DO 3334 KKK=0,SIDE2-1
-                      YY(START_ROW+II*SIDE1+III,START_COL+KK*SIDE2+KKK)=2*(U*W*SQRT(H)*ER1/V-2)
-                      YYY(START_ROW+II*SIDE1+III,START_COL+KK*SIDE2+KKK)=1
- 3334             CONTINUE
- 3333          CONTINUE
+               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER1/V-2),1)
             ELSE
-               DO 3335 III=0,SIDE1-1
-                  DO 3336 KKK=0,SIDE2-1
-                      YY(START_ROW+II*SIDE1+III,START_COL+KK*SIDE2+KKK)=2*(U*W*SQRT(H)*ER2/V-2)
-                      YYY(START_ROW+II*SIDE1+III,START_COL+KK*SIDE2+KKK)=2
- 3336             CONTINUE
- 3335          CONTINUE 
+               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER2/V-2),2)
             ENDIF
  3332    CONTINUE
  3331 CONTINUE
@@ -282,12 +273,7 @@
 	         END IF
    40          CONTINUE   
    20    CONTINUE
-      
-      N1=MOD(T,10)
-      IF (N1.EQ.0) THEN
-	  WRITE(*,*)T
-      END IF
-      
+            
       WRITE(NAME_COUNT,'(I5)') T
       IF (SPLIT .EQ. 1) THEN
           FILE_UNIT=UNIT_BASE+T
@@ -317,7 +303,10 @@
          CLOSE(FILE_UNIT)
        ENDIF
 
-
+      N1=MOD(T,10)
+      IF (N1.EQ.0) THEN
+	  WRITE(*,*)T
+      END IF
    10 CONTINUE     
    
       DO 16386 LI=1,LN
@@ -420,4 +409,36 @@
       T0=0
       TAO=1.0
       GAUSS=EXP(-4.0*PI*(T-T0)*(T-T0)/(TAO*TAO))
+      END
+
+      SUBROUTINE COLOR(GTYPE,SIDE1,SIDE2,I,K,YY,YYY,NX,NZ,C,CC)
+      INTEGER GTYPE,SIDE1,SIDE2,I,K,NX,NZ,CC
+      REAL YY(NX,NZ)
+      INTEGER YYY(NX,NZ)
+      REAL C
+      REAL CROW,CCOL,A,B
+      A=SIDE1
+      B=SIDE2
+      CROW=A/2
+      CCOL=B/2
+      DO 3333 III=0,SIDE1-1
+         DO 3334 KKK=0,SIDE2-1
+             IF(GTYPE .EQ. 0) THEN     !矩形
+                 YY(I+III,K+KKK)=C
+                 YYY(I+III,K+KKK)=CC
+             ENDIF
+             IF(GTYPE .EQ. 1) THEN     !椭圆
+                 IF((III-CROW)*(III-CROW)/(CROW*CROW)+(KKK-CCOL)*(KKK-CCOL)/(CCOL*CCOL) .LE. 1) THEN
+                     YY(I+III,K+KKK)=C
+                     YYY(I+III,K+KKK)=CC
+                 ENDIF
+             ENDIF
+             IF(GTYPE .EQ. 2) THEN     !三角形
+                 IF(2*A*(B/2-KKK)/B .LE. III .AND. 2*A*(KKK-B/2)/B .LE. III) THEN
+                     YY(I+III,K+KKK)=C
+                     YYY(I+III,K+KKK)=CC
+                 ENDIF
+             ENDIF
+ 3334    CONTINUE
+ 3333 CONTINUE
       END
