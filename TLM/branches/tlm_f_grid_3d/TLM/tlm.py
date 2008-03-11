@@ -11,8 +11,9 @@ class Config:
         self._config['threads']=1
         self._config['+RANGE']=0.3
         self._config['-RANGE']=-0.3
-        self._config['MAP']=1
-        self._config['SURFACE']=0
+        self._config['MAP']=True
+        self._config['SURFACE']=False
+        self._config['CLEANUP']=True
         if sys.platform.find("win")==0:
             self._config['GEN_ANI']="gen_ani.bat"
             self._config['TLM_EXE']="Release/TLM.exe"
@@ -60,6 +61,9 @@ class Visualizer(ILineAware):
             self._request=request
             self._producer=producer
             self._config=config
+            self._enabled=True
+        def enable(self,status):
+            self._enabled=status
         def prepareWorker():
             pass
         def _worker(self):
@@ -68,22 +72,23 @@ class Visualizer(ILineAware):
                 while not self._producer.killed :
                     trunk=self._request()
                     if trunk != None:
-                        #print self.getName(),":",trunk
-                        plot=subprocess.Popen(self._config['GNUPLOT'],stdin=subprocess.PIPE,universal_newlines=True)
-                        commands=open(str(plot.pid)+".gnu","wb")
-                        commands.writelines(s)
-                        for i in range(trunk['start'],trunk['end']+1):
-                            print >>commands,"set output \"%s_%s/IMG%5d.png\""%(trunk['prefix'],trunk['dir'],i)
-                            if self._config['SPLIT']=='0':
-                                print >>commands,"splot \"%s.out\" index %d"%(trunk['prefix'],i-1)
-                            else:
-                                print >>commands,"splot \"%s/%s%5d.out\""%(trunk['prefix'],trunk['prefix'],i)
-                        commands.write("exit\n")
-                        commands.close()
-                        plot.stdin.write("load \""+str(plot.pid)+".gnu\"\n")
-                        plot.stdin.close()
-                        plot.wait()
-                        os.unlink(str(plot.pid)+".gnu")
+                        if self._enabled:
+                            plot=subprocess.Popen(self._config['GNUPLOT'],stdin=subprocess.PIPE,universal_newlines=True)
+                            commands=open(str(plot.pid)+".gnu","wb")
+                            commands.writelines(s)
+                            for i in range(trunk['start'],trunk['end']+1):
+                                print >>commands,"set output \"%s_%s/IMG%5d.png\""%(trunk['prefix'],trunk['dir'],i)
+                                if self._config['SPLIT']=='0':
+                                    print >>commands,"splot \"%s.out\" index %d"%(trunk['prefix'],i-1)
+                                else:
+                                    print >>commands,"splot \"%s/%s%5d.out\""%(trunk['prefix'],trunk['prefix'],i)
+                            commands.write("exit\n")
+                            commands.close()
+                            plot.stdin.write("load \""+str(plot.pid)+".gnu\"\n")
+                            plot.stdin.close()
+                            plot.wait()
+                            os.unlink(str(plot.pid)+".gnu")
+                        self._producer.finish_trunk(trunk)
                     elif self._producer.joining:
                         break
 
@@ -144,12 +149,44 @@ class Visualizer(ILineAware):
             env_set.seek(0)
             return env_set
 
+    class CleanupWorker(Worker):
+        def _worker(self):
+            trunks={}
+            if self._enabled and self._config['SPLIT']=='1':
+                try:
+                    pat=re.compile("(.+)_(\d+)_(\d+)")
+                    while not self._producer.killed :
+                        trunk=self._request()
+                        if trunk != None:
+                            trunks.setdefault(trunk['prefix']+"_"+str(trunk['start'])+"_"+str(trunk['end']),0)
+                            trunks[trunk['prefix']+"_"+str(trunk['start'])+"_"+str(trunk['end'])]+=1
+                            cleaning=[]
+                            remove_list=[]
+                            for key in trunks:
+                                if trunks[key] == 2:  # both MAP and SURFACE threads finished this trunk
+                                    mat=pat.match(key)
+                                    for i in range(int(mat.group(2)),int(mat.group(3))+1):
+                                        remove_list.append("%s/%s%5d.out"%(mat.group(1),mat.group(1),i))
+                                    cleaning.append(key)
+                            for key in cleaning:
+                                del trunks[key]
+                            try:
+                                for file in remove_list:
+                                    os.unlink(file)
+                            except:
+                                pass
+                        elif self._producer.joining:
+                            break
+                except:
+                    print "Exceptions in %s!"%(self.getName())
+
     def __init__(self,config=Config()):
         self._config=config.getConfig()
         self._num_threads=self._config['threads']*2
-        self._threads=range(self._num_threads)
+        self._threads=range(self._num_threads+1)
         self._map_queue=Queue.Queue()
         self._surface_queue=Queue.Queue()
+        self._finish_queue=Queue.Queue()
         self._trunk_start=1
         self.joining=False
         self.killed=False
@@ -189,6 +226,16 @@ class Visualizer(ILineAware):
             #print "Exceptions in encounterLine: %s"%(line)
             pass
 
+    def finish_trunk(self,trunk):
+        self._finish_queue.put(trunk,True)
+
+    def finish_request(self):
+        trunk=None
+        try:
+            trunk=self._finish_queue.get(True,1)
+        finally:
+            return trunk
+
     def map_request(self):
         trunk=None
         try:
@@ -212,20 +259,20 @@ class Visualizer(ILineAware):
     def start(self):
         try:
             for i in range(self._num_threads/2):
-                if self._config['MAP'] == 1:
-                    self._threads[i]=self.MapWorker(self,self.map_request,self._config)
-                    self._threads[i].setName("MapWorker"+str(i))
-                    self._threads[i].start()
-                else:
-                    self._threads[i]=None
+                self._threads[i]=self.MapWorker(self,self.map_request,self._config)
+                self._threads[i].setName("MapWorker"+str(i))
+                self._threads[i].start()
+                self._threads[i].enable(self._config['MAP'])
             for i in range(self._num_threads/2,self._num_threads):
-                if self._config['SURFACE'] == 1:
-                    self._threads[i]=self.SurfaceWorker(self,self.surface_request,self._config)
-                    self._threads[i].setName("SurfaceWorker"+str(i))
-                    self._threads[i].start()
-                else:
-                    self._threads[i]=None
-
+                self._threads[i]=self.SurfaceWorker(self,self.surface_request,self._config)
+                self._threads[i].setName("SurfaceWorker"+str(i))
+                self._threads[i].start()
+                self._threads[i].enable(self._config['SURFACE'])
+            i=self._num_threads
+            self._threads[i]=self.CleanupWorker(self,self.finish_request,self._config)
+            self._threads[i].setName("CleanupWorker")
+            self._threads[i].start()
+            self._threads[i].enable(self._config['CLEANUP'])
         except:
             print "Exceptions in start!"
 
@@ -235,8 +282,8 @@ class Visualizer(ILineAware):
             count=0
             while not self.killed:
                 self.printStatus()
-                for i in range(self._num_threads):
-                    if self._threads[i] != None and self._threads[i].isAlive():
+                for i in range(self._num_threads+1):
+                    if self._threads[i].isAlive():
                         count+=1
                 if count == 0:
                     break
@@ -256,8 +303,8 @@ class Visualizer(ILineAware):
             self.killed=True
             count=0
             while True:
-                for i in range(self._num_threads):
-                    if self._threads[i] != None and self._threads[i].isAlive():
+                for i in range(self._num_threads+1):
+                    if self._threads[i].isAlive():
                         count+=1
                 if count == 0:
                     break
