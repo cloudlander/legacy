@@ -8,12 +8,19 @@ class Config:
     def __init__(self):
         self._config={}
     def parseConfig(self):
-        self._config['threads']=1
+        self._config['threads']=2
+        self._config['PNG_SIZE']='1024,768'
         self._config['+RANGE']=0.3
         self._config['-RANGE']=-0.3
         self._config['MAP']=True
         self._config['SURFACE']=False
-        self._config['CLEANUP']=True
+        self._config['ANI']=True
+        self._config['DO_EX']='0'
+        self._config['DO_EY']='1'
+        self._config['DO_EZ']='0'
+        self._config['DO_HX']='0'
+        self._config['DO_HY']='0'
+        self._config['DO_HZ']='0'
         if sys.platform.find("win")==0:
             self._config['GEN_ANI']="gen_ani.bat"
             self._config['TLM_EXE']="Release/TLM.exe"
@@ -67,9 +74,10 @@ class Visualizer(ILineAware):
         def prepareWorker():
             pass
         def _worker(self):
-            try:
-                s=self.prepareWorker().readlines()
-                while not self._producer.killed :
+            filename=None
+            s=self.prepareWorker().readlines()
+            while not self._producer.killed :
+                try:
                     trunk=self._request()
                     if trunk != None:
                         if self._enabled:
@@ -87,13 +95,18 @@ class Visualizer(ILineAware):
                             plot.stdin.write("load \""+str(plot.pid)+".gnu\"\n")
                             plot.stdin.close()
                             plot.wait()
-                            os.unlink(str(plot.pid)+".gnu")
-                        self._producer.finish_trunk(trunk)
+                            if filename != None:
+                                os.unlink(filename)
+                            filename=str(plot.pid)+".gnu"
                     elif self._producer.joining:
                         break
-
+                except:
+                    print "Exceptions in %s!"%(self.getName())
+            try:
+                if filename != None:
+                    os.unlink(filename)
             except:
-                print "Exceptions in %s!"%(self.getName())
+                print "Unable to remove .gnu file(%s)"%(self.getName())
 
     class MapWorker(Worker):
         def prepareWorker(self):
@@ -101,6 +114,7 @@ class Visualizer(ILineAware):
             env_set.writelines(
                     ["set samples 100, 100","\n",
                      "set isosamples 10, 10","\n"
+                     "set palette model HSV functions gray, 1, 1","\n"
                      "set autoscale","\n",
                      "set size square","\n",
                      "set surface","\n",
@@ -114,7 +128,7 @@ class Visualizer(ILineAware):
                      'set zero 1e-0020',"\n",
                      'set pm3d map',"\n",
                      'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
-                     'set terminal png size 1024,768',"\n",
+                     'set terminal png size ',self._config['PNG_SIZE'],"\n",
                      'set xlabel "Z"',"\n",
                      'set ylabel "X"',"\n"
                     ])
@@ -128,6 +142,7 @@ class Visualizer(ILineAware):
             env_set.writelines(
                     ["set samples 100, 100","\n",
                      "set isosamples 10, 10","\n"
+                     "set palette model HSV functions gray, 1, 1","\n"
                      "set autoscale","\n",
                      "set size square","\n",
                      "set surface","\n",
@@ -141,7 +156,7 @@ class Visualizer(ILineAware):
                      'set zero 1e-0020',"\n",
                      'set pm3d at s',"\n",
                      'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
-                     'set terminal png size 1024,768',"\n",
+                     'set terminal png size ',self._config['PNG_SIZE'],"\n",
                      'set style data dots',"\n",
                      'set xlabel "Z"',"\n",
                      'set ylabel "X"',"\n"
@@ -149,47 +164,22 @@ class Visualizer(ILineAware):
             env_set.seek(0)
             return env_set
 
-    class CleanupWorker(Worker):
-        def _worker(self):
-            trunks={}
-            if self._enabled and self._config['SPLIT']=='1':
-                try:
-                    pat=re.compile("(.+)_(\d+)_(\d+)")
-                    while not self._producer.killed :
-                        trunk=self._request()
-                        if trunk != None:
-                            trunks.setdefault(trunk['prefix']+"_"+str(trunk['start'])+"_"+str(trunk['end']),0)
-                            trunks[trunk['prefix']+"_"+str(trunk['start'])+"_"+str(trunk['end'])]+=1
-                            cleaning=[]
-                            remove_list=[]
-                            for key in trunks:
-                                if trunks[key] == 2:  # both MAP and SURFACE threads finished this trunk
-                                    mat=pat.match(key)
-                                    for i in range(int(mat.group(2)),int(mat.group(3))+1):
-                                        remove_list.append("%s/%s%5d.out"%(mat.group(1),mat.group(1),i))
-                                    cleaning.append(key)
-                            for key in cleaning:
-                                del trunks[key]
-                            try:
-                                for file in remove_list:
-                                    os.unlink(file)
-                            except:
-                                pass
-                        elif self._producer.joining:
-                            break
-                except:
-                    print "Exceptions in %s!"%(self.getName())
-
     def __init__(self,config=Config()):
         self._config=config.getConfig()
         self._num_threads=self._config['threads']*2
-        self._threads=range(self._num_threads+1)
+        self._threads=range(self._num_threads)
         self._map_queue=Queue.Queue()
         self._surface_queue=Queue.Queue()
-        self._finish_queue=Queue.Queue()
         self._trunk_start=1
         self.joining=False
         self.killed=False
+
+    def getTotal(self):
+        nt=float(self._config['NT'])
+        ntask=0
+        for task in ('DO_EX','DO_EY','DO_EZ','DO_HX','DO_HY','DO_HZ'):
+            ntask+=int(self._config[task])
+        return nt*ntask
 
     def getTLMStatus(self):
         total=float(self._config['NT'])
@@ -199,18 +189,18 @@ class Visualizer(ILineAware):
             return (self._trunk_start-1)/total*100
 
     def getMapPlotStatus(self):
-        total=float(self._config['NT'])
-        if self._trunk_start > total:
-            return (total-self._map_queue.qsize()*10)/total*100
-        else:
-            return (self._trunk_start-1-self._map_queue.qsize()*10)/total*100
-
-    def getSurfacePlotStatus(self):
-        total=float(self._config['NT'])
-        if self._trunk_start > total:
+        total=float(self.getTotal())
+        if self._trunk_start > int(self._config['NT']):
             return (total-self._surface_queue.qsize()*10)/total*100
         else:
-            return (self._trunk_start-1-self._surface_queue.qsize()*10)/total*100
+            return ((self._trunk_start-1)/float(self._config['NT'])-self._map_queue.qsize()*10/total)*100
+
+    def getSurfacePlotStatus(self):
+        total=float(self.getTotal())
+        if self._trunk_start > int(self._config['NT']):
+            return (total-self._surface_queue.qsize()*10)/total*100
+        else:
+            return ((self._trunk_start-1)/float(self._config['NT'])-self._surface_queue.qsize()*10/total)*100
 
     def printStatus(self):
         print "TLM %.2f%% calculated, surface %.2f%% plotted, map %.2f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus()),
@@ -219,22 +209,14 @@ class Visualizer(ILineAware):
         try:
             end=int(line)
             if end % 10 == 0:
-                self.map_deposit({'start':self._trunk_start,'end':end,'prefix':'EY','dir':'MAP'})
-                self.surface_deposit({'start':self._trunk_start,'end':end,'prefix':'EY','dir':'3D'})
+                for task in ('EX','EY','EZ','HX','HY','HZ'):
+                    if self._config["DO_"+task] == '1':
+                        self.map_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'MAP'})
+                        self.surface_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'3D'})
                 self._trunk_start=end+1
         except:
             #print "Exceptions in encounterLine: %s"%(line)
             pass
-
-    def finish_trunk(self,trunk):
-        self._finish_queue.put(trunk,True)
-
-    def finish_request(self):
-        trunk=None
-        try:
-            trunk=self._finish_queue.get(True,1)
-        finally:
-            return trunk
 
     def map_request(self):
         trunk=None
@@ -268,11 +250,6 @@ class Visualizer(ILineAware):
                 self._threads[i].setName("SurfaceWorker"+str(i))
                 self._threads[i].start()
                 self._threads[i].enable(self._config['SURFACE'])
-            i=self._num_threads
-            self._threads[i]=self.CleanupWorker(self,self.finish_request,self._config)
-            self._threads[i].setName("CleanupWorker")
-            self._threads[i].start()
-            self._threads[i].enable(self._config['CLEANUP'])
         except:
             print "Exceptions in start!"
 
@@ -282,7 +259,7 @@ class Visualizer(ILineAware):
             count=0
             while not self.killed:
                 self.printStatus()
-                for i in range(self._num_threads+1):
+                for i in range(self._num_threads):
                     if self._threads[i].isAlive():
                         count+=1
                 if count == 0:
@@ -291,9 +268,11 @@ class Visualizer(ILineAware):
                     time.sleep(1)
                     count=0
             if not self.killed:
-                ani=subprocess.Popen(self._config['GEN_ANI'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-                ani.stdout.readlines()
-                ani.stderr.readlines()
+                if self._config['ANI']:
+                    ani=subprocess.Popen(self._config['GEN_ANI'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                    ani.stdout.readlines()
+                    ani.stderr.readlines()
+                    ani.wait()
         except:
             if not self.killed:
                 print "Exceptions in join!"
@@ -303,7 +282,7 @@ class Visualizer(ILineAware):
             self.killed=True
             count=0
             while True:
-                for i in range(self._num_threads+1):
+                for i in range(self._num_threads):
                     if self._threads[i].isAlive():
                         count+=1
                 if count == 0:
