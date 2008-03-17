@@ -54,10 +54,13 @@
       INTEGER START_ROW,START_COL,GRID_ROW,GRID_COL   !网格开始位置
       INTEGER COL  !网格总列数
       REAL PART  !网格所占百分比
-      REAL ANGLE !网格偏移角度(与Z轴张角,取值范围为(0,180) 90为不倾斜
+      REAL NANGLE !网格偏移角度(与Z轴张角,取值范围为(0,180) 90为不倾斜
       INTEGER GTYPE !网格类型 0为矩形, 1为内切椭圆(正圆), 2为等腰三角形
-      INTEGER PSX,PSY !输入脉冲开始位置
-      REAL PANGLE !输入脉冲直线与Z轴张角(角度参数)
+      INTEGER PSX,PSZ !输入脉冲开始位置
+      INTEGER PENDZ !输入脉冲结束的Z坐标
+      REAL PANGLE  !输入脉冲直线与Z轴的张角(角度)
+      REAL PLENGTH !输入脉冲直线的长度
+      INTEGER PN !输入脉冲数组(0:使用PSX,PSZ,PENDZ和PLENGTH自动生成脉冲直线  >0: 使用输入文件的X,Z坐标作为脉冲点)
       REAL PP !脉冲直线计算参数
       INTEGER PIND, PLEN !脉冲点序号和总数
 
@@ -71,22 +74,13 @@
       ER_COLOR="255 255 255 "  !默认为白色
       ER1_COLOR="255 0 0     "
       ER2_COLOR="0 0 255     "
-      P_COLOR="0 0 0       "   !激发为黑色
+      P_COLOR="0 255 0     "   !激发为绿色
 
       OPEN(11,FILE='twotlme.in',FORM='FORMATTED')
       OPEN(111,FILE='grid.ppm',FORM='FORMATTED')
       
-      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SIDE1,SIDE2,ER1,ER2,ANGLE,GTYPE,FRE,LN,SPLIT,COL,PSX,PANGLE,DO_EX,DO_EY,DO_EZ,DO_HX,DO_HY,DO_HZ,DO_FEX,DO_FEY,DO_FEZ,DO_FHX,DO_FHY,DO_FHZ
+      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,PN,PSX,PSZ,PENDZ,PANGLE,DO_EX,DO_EY,DO_EZ,DO_HX,DO_HY,DO_HZ,LN,DO_FEX,DO_FEY,DO_FEZ,DO_FHX,DO_FHY,DO_FHZ
 !读入数据固定参数计算结构参数时使用
-      ALLOCATE (L(LN))
-      IF (LN .NE. 0) THEN
-        DO 220 III=1,LN
-          READ(11,*)L(III)
-  220   CONTINUE
-      ELSE
-        LN=16384
-      ENDIF
-      CLOSE(11)
       
       ! 初始化文件句柄
       DO 17950 FUI=1,6
@@ -120,6 +114,7 @@
         ENDIF
       ENDIF
       
+      !set.gnu已无实际应用效果,具体调整在tlm.py中
       OPEN(10,FILE='set.gnu',FORM='FORMATTED')
       WRITE(10,*) "set samples 100, 100"
       WRITE(10,*) "set isosamples 10, 10"
@@ -182,15 +177,35 @@
       ALLOCATE (YX(NX,NZ),YY(NX,NZ),YZ(NX,NZ))
       ALLOCATE (YYX(NX,NZ),YYY(NX,NZ),YYZ(NX,NZ))
       ALLOCATE (PULSE(NX,3))
-      
-!      YY=2*(U*W*SQRT(H)*ER/V-2)    !介电常数支线结构参数的计算(方向5即为介电常数支线)
 
+      !初始化X-Z平面ER
       DO 2221 II=SX,ENDX
          DO 2222 KK=SZ,ENDZ
-            YY(II,KK)=2*(U*W*SQRT(H)*ER/V-2)
+            YY(II,KK)=2*(U*W*SQRT(H)*ER/V-2)  !介电常数支线结构参数的计算(方向5即为介电常数支线)
             YYY(II,KK)=ER_COLOR
  2222    CONTINUE
  2221 CONTINUE
+
+      !读入脉冲点位置数组X,Z坐标
+      IF(PN .GT. 0) THEN
+        DO 230 PIND=1,PN
+          READ(11,*)PULSE(PIND,1),PULSE(PIND,3)
+          PULSE(PIND,2)=Y
+          YYY(PULSE(PIND,1),PULSE(PIND,3))=P_COLOR
+  230   CONTINUE
+        PLEN=PN
+      ENDIF
+      
+      !读入频域点数组
+      ALLOCATE (L(LN))
+      IF (LN .NE. 0) THEN
+        DO 220 III=1,LN
+          READ(11,*)L(III)
+  220   CONTINUE
+      ELSE
+        LN=16384
+      ENDIF
+      CLOSE(11)
                         
 !  开始绘制网格            
       DO 3331 II=0,GRID_ROW-1
@@ -208,50 +223,52 @@
  3331 CONTINUE
 
       !  根据倾斜角度绘制介质网格
-      CALL INCLINE(PSX,PSY,ANGLE,START_COL,GRID_COL*SIDE2,SX,ENDX,SZ,ENDZ,NX,NZ,YY,YYY,2*(U*W*SQRT(H)*ER/V-2),ER_COLOR)
+      CALL INCLINE(PSX,PSY,NANGLE,START_COL,GRID_COL*SIDE2,SX,ENDX,SZ,ENDZ,NX,NZ,YY,YYY,2*(U*W*SQRT(H)*ER/V-2),ER_COLOR)
       
-      !  开始绘制脉冲空间位置(直线)
-      II=PSX
-      KK=PSY-1
-      YYY(II,KK)=P_COLOR
-      PIND=1
-      PULSE(PIND,1)=II
-      PULSE(PIND,2)=Y
-      PULSE(PIND,3)=KK
-      PANGLE=TAND(PANGLE)
-      IF(PANGLE .GT. 1) THEN
-        PP=2/PANGLE-1
-      ELSE
-        PP=2*PANGLE-1
+      !  开始绘制脉冲空间位置(直线),仅当不使用输入文件中指点的脉冲点时自动绘制直线
+      IF(PN .EQ. 0) THEN
+          II=PSX
+          KK=PSZ
+          YYY(II,KK)=P_COLOR
+          PIND=1
+          PULSE(PIND,1)=II
+          PULSE(PIND,2)=Y
+          PULSE(PIND,3)=KK
+          PANGLE=TAND(PANGLE)
+          IF(PANGLE .GT. 1) THEN
+            PP=2/PANGLE-1
+          ELSE
+            PP=2*PANGLE-1
+          ENDIF
+          DO WHILE(II .GT. SX .AND. KK .GT. PENDZ)
+             IF(PANGLE .GT. 1) THEN
+                II=II-1
+             ELSE
+                KK=KK-1
+             ENDIF
+             IF(PP .GE. 0) THEN
+                IF(PANGLE .GT. 1) THEN
+                   KK=KK-1
+                   PP=PP+2*(1/PANGLE-1)
+                ELSE
+                   II=II-1
+                   PP=PP+2*(PANGLE-1)
+                ENDIF
+             ELSE
+                IF(PANGLE .GT. 1) THEN
+                   PP=PP+2/PANGLE
+                ELSE
+                   PP=PP+2*PANGLE
+                ENDIF
+             ENDIF
+             PIND=PIND+1
+             PULSE(PIND,1)=II
+             PULSE(PIND,2)=Y
+             PULSE(PIND,3)=KK
+             YYY(II,KK)=P_COLOR
+          ENDDO
+          PLEN=PIND
       ENDIF
-      DO WHILE(II .GT. SX .AND. KK .GT. SZ)
-         IF(PANGLE .GT. 1) THEN
-            II=II-1
-         ELSE
-            KK=KK-1
-         ENDIF
-         IF(PP .GE. 0) THEN
-            IF(PANGLE .GT. 1) THEN
-               KK=KK-1
-               PP=PP+2*(1/PANGLE-1)
-            ELSE
-               II=II-1
-               PP=PP+2*(PANGLE-1)
-            ENDIF
-         ELSE
-            IF(PANGLE .GT. 1) THEN
-               PP=PP+2/PANGLE
-            ELSE
-               PP=PP+2*PANGLE
-            ENDIF
-         ENDIF
-         PIND=PIND+1
-         PULSE(PIND,1)=II
-         PULSE(PIND,2)=Y
-         PULSE(PIND,3)=KK
-         YYY(II,KK)=P_COLOR
-      ENDDO
-      PLEN=PIND
 
 !  输出全X-Z平面
       WRITE (111,'(A2)')"P3"
@@ -266,6 +283,10 @@
       WRITE (111,*)
       CLOSE(111)
       WRITE(*,*) "grid.ppm generated"
+      WRITE(*,*) "PULSE POINTS:"
+      DO 77 PIND=1,PLEN
+        WRITE(*,*) PULSE(PIND,1),PULSE(PIND,3)
+   77 CONTINUE
 !      STOP
 
       ZX=2*(V*W*SQRT(H)*UR/U-2)
@@ -303,12 +324,11 @@
       
       DO 10 T=1,NT		!开始迭代
        
-         DO 6 III=1,1
-                PIND=PLEN/2
-!             DO 992 PIND=1,PLEN
+         DO 6 III=2,2  !1上2右3下4左
+             DO 992 PIND=1,PLEN
                 IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
 !                IVD(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVD(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式                
-! 992         CONTINUE
+ 992         CONTINUE
 !             IVB(III,X,Y,Z)=IVB(III,X,Y,Z)+sin(PI*T/15)  !为sin激发单色波形式    
   6      CONTINUE
     
@@ -324,42 +344,42 @@
 		     DO 501 M=1,5
 		        RVA(M,I,J,K)=0
 		        DO 601 N=1,5 
-			       RVA(M,I,J,K)=IVA(N,I,J,K)*SA(M,N)+RVA(M,I,J,K)
+			       RVA(M,I,J,K)=SA(M,N)*IVA(N,I,J,K)+RVA(M,I,J,K)
   601           CONTINUE
   501        CONTINUE
   
 		     DO 502 M=1,5
 		        RVB(M,I,J,K)=0
 		        DO 602 N=1,5 
-			       RVB(M,I,J,K)=IVB(N,I,J,K)*SB(M,N)+RVB(M,I,J,K)
+			       RVB(M,I,J,K)=SB(M,N)*IVB(N,I,J,K)+RVB(M,I,J,K)
   602           CONTINUE
   502        CONTINUE
   
 		     DO 503 M=1,5
 		        RVC(M,I,J,K)=0
 		        DO 603 N=1,5 
-			       RVC(M,I,J,K)=IVC(N,I,J,K)*SC(M,N)+RVC(M,I,J,K)
+			       RVC(M,I,J,K)=SC(M,N)*IVC(N,I,J,K)+RVC(M,I,J,K)
   603           CONTINUE
   503        CONTINUE
       
 		     DO 504 M=1,5
 		        RVD(M,I,J,K)=0
 		        DO 604 N=1,5 
-			       RVD(M,I,J,K)=IVD(N,I,J,K)*SD(M,N)+RVD(M,I,J,K)
+			       RVD(M,I,J,K)=SD(M,N)*IVD(N,I,J,K)+RVD(M,I,J,K)
   604           CONTINUE
   504        CONTINUE
   
 		     DO 505 M=1,5
 		        RVE(M,I,J,K)=0
 		        DO 605 N=1,5 
-			       RVE(M,I,J,K)=IVE(N,I,J,K)*SE(M,N)+RVE(M,I,J,K)
+			       RVE(M,I,J,K)=SE(M,N)*IVE(N,I,J,K)+RVE(M,I,J,K)
   605           CONTINUE
   505        CONTINUE
 
 		     DO 506 M=1,5
 		        RVF(M,I,J,K)=0
 		        DO 606 N=1,5 
-			       RVF(M,I,J,K)=IVF(N,I,J,K)*SF(M,N)+RVF(M,I,J,K)
+			       RVF(M,I,J,K)=SF(M,N)*IVF(N,I,J,K)+RVF(M,I,J,K)
   606           CONTINUE
   506        CONTINUE
   
