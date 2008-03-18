@@ -33,6 +33,7 @@
       REAL, ALLOCATABLE:: YX(:,:),YY(:,:),YZ(:,:)
       INTEGER, ALLOCATABLE:: PULSE(:,:)   !脉冲点
       CHARACTER(LEN=12), ALLOCATABLE:: YYX(:,:),YYY(:,:),YYZ(:,:)      
+      REAL, ALLOCATABLE:: GAUSS(:,:,:)
       
       REAL SA(5,5),SB(5,5),SC(5,5),SD(5,5),SE(5,5),SF(5,5)
       
@@ -61,6 +62,7 @@
       REAL PANGLE  !输入脉冲直线与Z轴的张角(角度)
       REAL PLENGTH !输入脉冲直线的长度
       INTEGER PN !输入脉冲数组(0:使用PSX,PSZ,PENDZ和PLENGTH自动生成脉冲直线  >0: 使用输入文件的X,Z坐标作为脉冲点)
+      
       REAL PP !脉冲直线计算参数
       INTEGER PIND, PLEN !脉冲点序号和总数
 
@@ -173,7 +175,7 @@
       ALLOCATE (REHX(10,NX,NY,NZ),IMHX(10,NX,NY,NZ))
       ALLOCATE (REHY(10,NX,NY,NZ),IMHY(10,NX,NY,NZ))
       ALLOCATE (REHZ(10,NX,NY,NZ),IMHZ(10,NX,NY,NZ))
-
+      ALLOCATE (GAUSS(NX,NY,NZ))
       ALLOCATE (YX(NX,NZ),YY(NX,NZ),YZ(NX,NZ))
       ALLOCATE (YYX(NX,NZ),YYY(NX,NZ),YYZ(NX,NZ))
       ALLOCATE (PULSE(NX,3))
@@ -223,7 +225,7 @@
  3331 CONTINUE
 
       !  根据倾斜角度绘制介质网格
-      CALL INCLINE(PSX,PSY,NANGLE,START_COL,GRID_COL*SIDE2,SX,ENDX,SZ,ENDZ,NX,NZ,YY,YYY,2*(U*W*SQRT(H)*ER/V-2),ER_COLOR)
+      CALL INCLINE(PSX,PSZ,NANGLE,START_COL,GRID_COL*SIDE2,SX,ENDX,SZ,ENDZ,NX,NZ,YY,YYY,2*(U*W*SQRT(H)*ER/V-2),ER_COLOR)
       
       !  开始绘制脉冲空间位置(直线),仅当不使用输入文件中指点的脉冲点时自动绘制直线
       IF(PN .EQ. 0) THEN
@@ -299,6 +301,14 @@
       CALL SCL(SD,ZX)      !生成并联结点散射矩阵
       CALL SCL(SE,ZY)	
       CALL SCL(SF,ZZ)	    
+      
+      ! 应用用高斯函数
+      CALL GENGAUSS(GAUSS,NX,NY,NZ,X,Y,Z)
+      OPEN(131,FILE='gausA.out',FORM='FORMATTED')
+      DO 11111 I=SX,ENDX
+        WRITE(131,*) Y,I,GAUSS(I,Y,Z)
+11111 CONTINUE
+      CLOSE(131)
 
       DO 1 I=SX,ENDX           !初始化五个支线的输入向量，理解为五个不同的向量，分别代表物理上不同方向的支线
        DO 2 J=SY,ENDY
@@ -324,14 +334,15 @@
       
       DO 10 T=1,NT		!开始迭代
        
+       DO 1110 I=SX,ENDX
          DO 6 III=2,2  !1上2右3下4左
-             DO 992 PIND=1,PLEN
-                IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
+!             DO 992 PIND=1,PLEN
+!                IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
 !                IVD(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVD(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式                
- 992         CONTINUE
-!             IVB(III,X,Y,Z)=IVB(III,X,Y,Z)+sin(PI*T/15)  !为sin激发单色波形式    
+! 992         CONTINUE
+             IVB(III,I,Y,Z)=IVB(III,I,Y,Z)+GAUSS(I,Y,Z)*sin(PI*T/15)  !为sin激发单色波形式    
   6      CONTINUE
-    
+ 1110  CONTINUE
 
 	     DO 120 I=SX,ENDX		!结点散射的实施
 	      DO 130 J=SY,ENDY
@@ -775,14 +786,39 @@
       FIM=FIM+E*SIN(2*3.14159*T*TLBB/2.0)
       END
 
-      FUNCTION GAUSS(T)
-      INTEGER T
-      REAL T0,TAO
-      REAL PI
-      PI=3.1415926
-      T0=0
-      TAO=1.0
-      GAUSS=EXP(-4.0*PI*(T-T0)*(T-T0)/(TAO*TAO))
+      SUBROUTINE GENGAUSS(GAUSS,NX,NY,NZ,XP,YP,ZP)
+        INTEGER X0,Y0,Z0,NX,NY,NZ,XP,YP,ZP
+        REAL GAUSS(-NX/2+(1-MOD(NX,2)):NX/2,NY,NZ)
+	    REAL X,Y,Z
+        REAL C0,W0,Wz,PI,Zr,Rz,Lambda
+	    REAL AMAX
+        
+        PI=3.1415926
+        Z0=ZP
+ 	    Z=Z0
+        C0=1
+        W0=3.0
+        Lambda=1E-10
+        Zr=PI*W0*W0/Lambda
+     
+        DO 1007 X0=-NX/2+(1-MOD(NX,2)),NX/2
+          DO 2007 Y0=YP,YP
+			    X=X0
+			    Y=Y0
+			    Wz=W0*sqrt(1+((Lambda*Z)/(PI*W0*W0))*((Lambda*Z)/(PI*W0*W0)))
+			    GAUSS(X0,Y0,Z0)=exp(-(X*X+Y*Y)/(Wz*Wz))
+			    Rz=Z*(1+(Zr/Z)*(Zr/Z))
+                IF(X0 .EQ. 0 ) THEN
+			      AMAX=GAUSS(X0,Y0,Z0)
+		        ENDIF
+    2007   CONTINUE
+    1007 CONTINUE
+    
+        DO 1008 X0=-NX/2+(1-MOD(NX,2)),NX/2
+          DO 2008 Y0=YP,YP
+            GAUSS(X0,Y0,Z0)=GAUSS(X0,Y0,Z0)/AMAX
+   2008  CONTINUE
+   1008 CONTINUE
       END
 
       SUBROUTINE COLOR(GTYPE,SIDE1,SIDE2,I,K,YY,YYY,NX,NZ,C,CC)
