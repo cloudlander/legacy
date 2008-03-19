@@ -1,5 +1,3 @@
-!  TLM.f90 
-!
 !  FUNCTIONS:
 !	TLM      - Entry point of console application.
 !
@@ -65,6 +63,7 @@
       
       REAL PP !脉冲直线计算参数
       INTEGER PIND, PLEN !脉冲点序号和总数
+      REAL W0 !高斯函数光斑半径
 
       !是否输出对应的数据文件: 1为输出, 0为不输出
       INTEGER DO_EX,DO_EY,DO_EZ,DO_HX,DO_HY,DO_HZ,DO_FEX,DO_FEY,DO_FEZ,DO_FHX,DO_FHY,DO_FHZ
@@ -81,7 +80,7 @@
       OPEN(11,FILE='twotlme.in',FORM='FORMATTED')
       OPEN(111,FILE='grid.ppm',FORM='FORMATTED')
       
-      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,PN,PSX,PSZ,PENDZ,PANGLE,DO_EX,DO_EY,DO_EZ,DO_HX,DO_HY,DO_HZ,LN,DO_FEX,DO_FEY,DO_FEZ,DO_FHX,DO_FHY,DO_FHZ
+      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,W0,PN,PSX,PSZ,PENDZ,PANGLE,DO_EX,DO_EY,DO_EZ,DO_HX,DO_HY,DO_HZ,LN,DO_FEX,DO_FEY,DO_FEZ,DO_FHX,DO_FHY,DO_FHZ
 !读入数据固定参数计算结构参数时使用
       
       ! 初始化文件句柄
@@ -303,10 +302,12 @@
       CALL SCL(SF,ZZ)	    
       
       ! 应用用高斯函数
-      CALL GENGAUSS(GAUSS,NX,NY,NZ,X,Y,Z)
-      OPEN(131,FILE='gausA.out',FORM='FORMATTED')
+      CALL GENGAUSS(GAUSS,NX,NY,START_COL-SZ+1,X,Y,Z,FRE,W0)
+	  OPEN(131,FILE='gausA.out',FORM='FORMATTED')
       DO 11111 I=SX,ENDX
-        WRITE(131,*) Y,I,GAUSS(I,Y,Z)
+	    DO 11112 III=SZ,START_COL
+        WRITE(131,*) III,I,GAUSS(I,Y,III)
+11112   CONTINUE
 11111 CONTINUE
       CLOSE(131)
 
@@ -335,13 +336,15 @@
       DO 10 T=1,NT		!开始迭代
        
        DO 1110 I=SX,ENDX
+        DO 1120 K=SZ,START_COL
          DO 6 III=2,2  !1上2右3下4左
 !             DO 992 PIND=1,PLEN
 !                IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
 !                IVD(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVD(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式                
 ! 992         CONTINUE
-             IVB(III,I,Y,Z)=IVB(III,I,Y,Z)+GAUSS(I,Y,Z)*sin(PI*T/15)  !为sin激发单色波形式    
+             IVB(III,I,Y,K)=IVB(III,I,Y,K)+GAUSS(I,Y,K)*sin(PI*T/15)  !为sin激发单色波形式    
   6      CONTINUE
+ 1120   CONTINUE
  1110  CONTINUE
 
 	     DO 120 I=SX,ENDX		!结点散射的实施
@@ -786,36 +789,36 @@
       FIM=FIM+E*SIN(2*3.14159*T*TLBB/2.0)
       END
 
-      SUBROUTINE GENGAUSS(GAUSS,NX,NY,NZ,XP,YP,ZP)
+      SUBROUTINE GENGAUSS(GAUSS,NX,NY,NZ,XP,YP,ZP,FRE,W0)
         INTEGER X0,Y0,Z0,NX,NY,NZ,XP,YP,ZP
-        REAL GAUSS(-NX/2+(1-MOD(NX,2)):NX/2,NY,NZ)
+        REAL GAUSS(-XP+1:NX-XP,NY,-ZP+1:NZ-ZP)
 	    REAL X,Y,Z
-        REAL C0,W0,Wz,PI,Zr,Rz,Lambda
+	    REAL FRE
+        REAL C0,W0,Wy,PI,Yr,Ry,Lambda
 	    REAL AMAX
         
         PI=3.1415926
-        Z0=ZP
- 	    Z=Z0
+        Y0=YP
+ 	    Y=Y0
         C0=1
-        W0=3.0
-        Lambda=1E-10
-        Zr=PI*W0*W0/Lambda
+        Lambda=3.0E+8/FRE
+        Yr=PI*W0*W0/Lambda
      
-        DO 1007 X0=-NX/2+(1-MOD(NX,2)),NX/2
-          DO 2007 Y0=YP,YP
+        DO 1007 X0=-XP+1,NX-XP
+          DO 2007 Z0=-ZP+1,NZ-ZP
 			    X=X0
-			    Y=Y0
-			    Wz=W0*sqrt(1+((Lambda*Z)/(PI*W0*W0))*((Lambda*Z)/(PI*W0*W0)))
-			    GAUSS(X0,Y0,Z0)=exp(-(X*X+Y*Y)/(Wz*Wz))
-			    Rz=Z*(1+(Zr/Z)*(Zr/Z))
-                IF(X0 .EQ. 0 ) THEN
+			    Z=Z0
+			    Wy=W0*sqrt(1+((Lambda*Y)/(PI*W0*W0))*((Lambda*Y)/(PI*W0*W0)))
+			    GAUSS(X0,Y0,Z0)=exp(-(X*X+Z*Z)/(Wy*Wy))
+			    Ry=Y*(1+(Yr/Y)*(Yr/Y))
+                IF(X0 .EQ. 0 .AND. Z0 .EQ. 0 ) THEN
 			      AMAX=GAUSS(X0,Y0,Z0)
 		        ENDIF
     2007   CONTINUE
     1007 CONTINUE
     
-        DO 1008 X0=-NX/2+(1-MOD(NX,2)),NX/2
-          DO 2008 Y0=YP,YP
+        DO 1008 X0=-XP+1,NX-XP
+          DO 2008 Z0=-ZP+1,NZ-ZP
             GAUSS(X0,Y0,Z0)=GAUSS(X0,Y0,Z0)/AMAX
    2008  CONTINUE
    1008 CONTINUE
