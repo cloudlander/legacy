@@ -1,3 +1,5 @@
+!  TLM.f90 
+!
 !  FUNCTIONS:
 !	TLM      - Entry point of console application.
 !
@@ -60,10 +62,9 @@
       REAL PANGLE  !输入脉冲直线与Z轴的张角(角度)
       REAL PLENGTH !输入脉冲直线的长度
       INTEGER PN !输入脉冲数组(0:使用PSX,PSZ,PENDZ和PLENGTH自动生成脉冲直线  >0: 使用输入文件的X,Z坐标作为脉冲点)
-      
+      REAL W0 !高斯函数光斑半径
       REAL PP !脉冲直线计算参数
       INTEGER PIND, PLEN !脉冲点序号和总数
-      REAL W0 !高斯函数光斑半径
 
       !是否输出对应的数据文件: 1为输出, 0为不输出
       INTEGER DO_EX,DO_EY,DO_EZ,DO_HX,DO_HY,DO_HZ,DO_FEX,DO_FEY,DO_FEZ,DO_FHX,DO_FHY,DO_FHZ
@@ -302,12 +303,10 @@
       CALL SCL(SF,ZZ)	    
       
       ! 应用用高斯函数
-      CALL GENGAUSS(GAUSS,NX,NY,START_COL-SZ+1,X,Y,Z,FRE,W0)
-	  OPEN(131,FILE='gausA.out',FORM='FORMATTED')
+      CALL GENGAUSS(GAUSS,NX,NY,NZ,X,Y,Z,W0)
+      OPEN(131,FILE='gausA.out',FORM='FORMATTED')
       DO 11111 I=SX,ENDX
-	    DO 11112 III=SZ,START_COL
-        WRITE(131,*) III,I,GAUSS(I,Y,III)
-11112   CONTINUE
+        WRITE(131,*) Y,I,GAUSS(I,Y,Z)
 11111 CONTINUE
       CLOSE(131)
 
@@ -332,21 +331,28 @@
        
       CALL CPU_TIME ( time_begin )
       
-      
+      OPEN(8133,FILE="sin.out",FORM='FORMATTED')
+     
       DO 10 T=1,NT		!开始迭代
        
+	   WRITE(NAME_COUNT,'(I5)') T      
+
+	   OPEN(8134+T,FILE="GAUSS/GAUSS"//NAME_COUNT//".out",FORM='FORMATTED')
+
        DO 1110 I=SX,ENDX
-        DO 1120 K=SZ,START_COL
          DO 6 III=2,2  !1上2右3下4左
 !             DO 992 PIND=1,PLEN
 !                IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
 !                IVD(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVD(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式                
 ! 992         CONTINUE
-             IVB(III,I,Y,K)=IVB(III,I,Y,K)+GAUSS(I,Y,K)*sin(PI*T/15)  !为sin激发单色波形式    
+             IVB(III,I,Y,Z)=IVB(III,I,Y,Z)+GAUSS(I,Y,Z)*sin(PI*T/15)  !为sin激发单色波形式    
+			 write(8134+T,*) Z,I,GAUSS(I,Y,Z)*sin(PI*T/15)
   6      CONTINUE
- 1120   CONTINUE
  1110  CONTINUE
+       CLOSE(8134+T)			 
 
+      write(8133,*) T,sin(PI*T/15)
+      
 	     DO 120 I=SX,ENDX		!结点散射的实施
 	      DO 130 J=SY,ENDY
 	       DO 140 K=SZ,ENDZ
@@ -503,7 +509,6 @@
    30       CONTINUE
    20    CONTINUE
             
-      WRITE(NAME_COUNT,'(I5)') T      
       
       IF (SPLIT .EQ. 1) THEN
           IF(DO_EX .EQ. 1) THEN         
@@ -706,6 +711,7 @@
          ENDIF
       ENDIF
 	  
+	  CLOSE(8133)
 	  CALL CPU_TIME ( time_end )
 	  
 	  PRINT *, 'Time of operation was ',time_end - time_begin, ' seconds'
@@ -789,36 +795,35 @@
       FIM=FIM+E*SIN(2*3.14159*T*TLBB/2.0)
       END
 
-      SUBROUTINE GENGAUSS(GAUSS,NX,NY,NZ,XP,YP,ZP,FRE,W0)
+      SUBROUTINE GENGAUSS(GAUSS,NX,NY,NZ,XP,YP,ZP,W0)
         INTEGER X0,Y0,Z0,NX,NY,NZ,XP,YP,ZP
-        REAL GAUSS(-XP+1:NX-XP,NY,-ZP+1:NZ-ZP)
+        REAL GAUSS(-XP+1:NX-XP,NY,NZ)
 	    REAL X,Y,Z
-	    REAL FRE
-        REAL C0,W0,Wy,PI,Yr,Ry,Lambda
+        REAL C0,W0,Wz,PI,Zr,Rz,Lambda
 	    REAL AMAX
         
         PI=3.1415926
-        Y0=YP
- 	    Y=Y0
+        Z0=ZP
+ 	    Z=Z0
         C0=1
-        Lambda=3.0E+8/FRE
-        Yr=PI*W0*W0/Lambda
+        Lambda=1E-10
+        Zr=PI*W0*W0/Lambda
      
         DO 1007 X0=-XP+1,NX-XP
-          DO 2007 Z0=-ZP+1,NZ-ZP
+          DO 2007 Y0=YP,YP
 			    X=X0
-			    Z=Z0
-			    Wy=W0*sqrt(1+((Lambda*Y)/(PI*W0*W0))*((Lambda*Y)/(PI*W0*W0)))
-			    GAUSS(X0,Y0,Z0)=exp(-(X*X+Z*Z)/(Wy*Wy))
-			    Ry=Y*(1+(Yr/Y)*(Yr/Y))
-                IF(X0 .EQ. 0 .AND. Z0 .EQ. 0 ) THEN
+			    Y=Y0
+			    Wz=W0*sqrt(1+((Lambda*Z)/(PI*W0*W0))*((Lambda*Z)/(PI*W0*W0)))
+			    GAUSS(X0,Y0,Z0)=exp(-(X*X+Y*Y)/(Wz*Wz))
+			    Rz=Z*(1+(Zr/Z)*(Zr/Z))
+                IF(X0 .EQ. 0 ) THEN
 			      AMAX=GAUSS(X0,Y0,Z0)
 		        ENDIF
     2007   CONTINUE
     1007 CONTINUE
     
         DO 1008 X0=-XP+1,NX-XP
-          DO 2008 Z0=-ZP+1,NZ-ZP
+          DO 2008 Y0=YP,YP
             GAUSS(X0,Y0,Z0)=GAUSS(X0,Y0,Z0)/AMAX
    2008  CONTINUE
    1008 CONTINUE
