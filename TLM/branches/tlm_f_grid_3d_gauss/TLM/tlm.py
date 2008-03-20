@@ -81,10 +81,11 @@ class Visualizer(ILineAware):
             filename=None
             s=self.prepareWorker().readlines()
             while not self._producer.killed :
-                try:
+                #try:
                     trunk=self._request()
                     if trunk != None:
                         if self._enabled:
+                            plot=subprocess.Popen(self._config['GNUPLOT'],stdin=subprocess.PIPE,universal_newlines=True)
                             commands=open(str(plot.pid)+".gnu","wb")
                             commands.writelines(s)
                             for i in range(trunk['start'],trunk['end']+1):
@@ -95,7 +96,6 @@ class Visualizer(ILineAware):
                                     print >>commands,"splot \"%s/%s%5d.out\""%(trunk['prefix'],trunk['prefix'],i)
                             commands.write("exit\n")
                             commands.close()
-                            plot=subprocess.Popen(self._config['GNUPLOT'],stdin=subprocess.PIPE,universal_newlines=True)
                             plot.stdin.write("load \""+str(plot.pid)+".gnu\"\n")
                             plot.stdin.close()
                             plot.wait()
@@ -104,8 +104,8 @@ class Visualizer(ILineAware):
                             filename=str(plot.pid)+".gnu"
                     elif self._producer.joining:
                         break
-                except:
-                    print "Exceptions in %s!"%(self.getName())
+                #except:
+                #    print "Exceptions in %s!"%(self.getName())
             try:
                 if filename != None:
                     os.unlink(filename)
@@ -244,7 +244,7 @@ class Visualizer(ILineAware):
             return ((self._trunk_start-1)/float(self._config['NT'])-self._gauss_queue.qsize()*10/total)*100
 
     def printStatus(self):
-        print "TLM %.0f%% calculated, surface %.0f%% plotted, map %.0f%% plotted, Gauss %.0f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus(),self.getGaussPlotStatus()),
+        print "TLM %.0f%% calculated,surface %.0f%% plotted,map %.0f%% plotted,Gauss %.0f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus(),self.getGaussPlotStatus()),
 
     def encounterLine(self,line):
         try:
