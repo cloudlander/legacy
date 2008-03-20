@@ -81,7 +81,7 @@ class Visualizer(ILineAware):
             filename=None
             s=self.prepareWorker().readlines()
             while not self._producer.killed :
-                #try:
+                try:
                     trunk=self._request()
                     if trunk != None:
                         if self._enabled:
@@ -104,8 +104,8 @@ class Visualizer(ILineAware):
                             filename=str(plot.pid)+".gnu"
                     elif self._producer.joining:
                         break
-                #except:
-                #    print "Exceptions in %s!"%(self.getName())
+                except:
+                    print "Exceptions in %s!"%(self.getName())
             try:
                 if filename != None:
                     os.unlink(filename)
