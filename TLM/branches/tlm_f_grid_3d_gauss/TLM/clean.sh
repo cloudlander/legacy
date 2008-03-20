@@ -7,3 +7,6 @@ do
   read
   rm -rf $dir/*
 done
+rm -rf GAUSS_SIN
+echo "Delete all files in GAUSS? CTRL-C to cancel"
+rm -rf GAUSS
