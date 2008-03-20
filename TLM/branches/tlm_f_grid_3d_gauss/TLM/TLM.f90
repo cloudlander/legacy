@@ -30,9 +30,9 @@
       REAL, ALLOCATABLE:: REHY(:,:,:,:),IMHY(:,:,:,:)
       REAL, ALLOCATABLE:: REHZ(:,:,:,:),IMHZ(:,:,:,:)
       INTEGER, ALLOCATABLE:: L(:)
-      REAL, ALLOCATABLE:: YX(:,:),YY(:,:),YZ(:,:)
+      REAL, ALLOCATABLE:: YX(:,:),YY(:,:),YY2(:,:),YZ(:,:)
       INTEGER, ALLOCATABLE:: PULSE(:,:)   !脉冲点
-      CHARACTER(LEN=12), ALLOCATABLE:: YYX(:,:),YYY(:,:),YYZ(:,:)      
+      CHARACTER(LEN=12), ALLOCATABLE:: YYX(:,:),YYY(:,:),YYY2(:,:),YYZ(:,:)      
       REAL, ALLOCATABLE:: GAUSS(:,:,:)
       
       REAL SA(5,5),SB(5,5),SC(5,5),SD(5,5),SE(5,5),SF(5,5)
@@ -61,7 +61,12 @@
       INTEGER PENDZ !输入脉冲结束的Z坐标
       REAL PANGLE  !输入脉冲直线与Z轴的张角(角度)
       REAL PLENGTH !输入脉冲直线的长度
-      INTEGER PN !输入脉冲数组(0:使用PSX,PSZ,PENDZ和PLENGTH自动生成脉冲直线  >0: 使用输入文件的X,Z坐标作为脉冲点)
+      
+      !输入脉冲数组,以下为取值说明:
+      !=0: 使用PSX,PSZ,PENDZ和PLENGTH自动生成脉冲直线,直线旋转PANGLE角度,并且生成2个效果文件
+      !>0: 使用输入文件的X,Z坐标作为脉冲点,介质旋转PANGLE角度,生成一个效果文件
+      INTEGER PN 
+      
       REAL W0 !高斯函数光斑半径
       REAL PP !脉冲直线计算参数
       INTEGER PIND, PLEN !脉冲点序号和总数
@@ -69,6 +74,7 @@
       !是否输出对应的数据文件: 1为输出, 0为不输出
       INTEGER DO_EX,DO_EY,DO_EZ,DO_HX,DO_HY,DO_HZ,DO_FEX,DO_FEY,DO_FEZ,DO_FHX,DO_FHY,DO_FHZ
       
+      INTEGER OX,OZ !坐标旋转中心
       CHARACTER(LEN=5) NAME_COUNT
 
       UNIT_BASE=100
@@ -79,7 +85,6 @@
       P_COLOR="0 255 0     "   !激发为绿色
 
       OPEN(11,FILE='twotlme.in',FORM='FORMATTED')
-      OPEN(111,FILE='grid.ppm',FORM='FORMATTED')
       
       READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,W0,PN,PSX,PSZ,PENDZ,PANGLE,DO_EX,DO_EY,DO_EZ,DO_HX,DO_HY,DO_HZ,LN,DO_FEX,DO_FEY,DO_FEZ,DO_FHX,DO_FHY,DO_FHZ
 !读入数据固定参数计算结构参数时使用
@@ -176,112 +181,103 @@
       ALLOCATE (REHY(10,NX,NY,NZ),IMHY(10,NX,NY,NZ))
       ALLOCATE (REHZ(10,NX,NY,NZ),IMHZ(10,NX,NY,NZ))
       ALLOCATE (GAUSS(NX,NY,NZ))
-      ALLOCATE (YX(NX,NZ),YY(NX,NZ),YZ(NX,NZ))
-      ALLOCATE (YYX(NX,NZ),YYY(NX,NZ),YYZ(NX,NZ))
+      ALLOCATE (YX(NX,NZ),YY(NX,NZ),YY2(NX,NZ),YZ(NX,NZ))
+      ALLOCATE (YYX(NX,NZ),YYY(NX,NZ),YYY2(NX,NZ),YYZ(NX,NZ))
       ALLOCATE (PULSE(NX,3))
 
-      !初始化X-Z平面ER
+      !  初始化X-Z平面ER
       DO 2221 II=SX,ENDX
          DO 2222 KK=SZ,ENDZ
             YY(II,KK)=2*(U*W*SQRT(H)*ER/V-2)  !介电常数支线结构参数的计算(方向5即为介电常数支线)
             YYY(II,KK)=ER_COLOR
+            YY2(II,KK)=2*(U*W*SQRT(H)*ER/V-2)
+            YYY2(II,KK)=ER_COLOR            
  2222    CONTINUE
- 2221 CONTINUE
+ 2221 CONTINUE  
+ 
+      !  输出网格信息
+      WRITE(*,*) "START_COL=",START_COL
+
+      !  开始绘制网格            
+      DO 3331 II=0,GRID_ROW-1
+         DO 3332 KK=0,GRID_COL-1
+            IF ( MOD((II+KK),2) .EQ. 1 ) THEN
+               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY2,YYY2,NX,NZ,2*(U*W*SQRT(H)*ER1/V-2),ER1_COLOR)
+            ELSE
+               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY2,YYY2,NX,NZ,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR)
+            ENDIF
+ 3332    CONTINUE
+ 3331 CONTINUE
+
+      !  根据倾斜角度绘制介质网格
+      CALL INCLINE(PSX,PSZ,NANGLE,START_COL,GRID_COL*SIDE2,SX,ENDX,SZ,ENDZ,NX,NZ,YY2,YYY2,2*(U*W*SQRT(H)*ER/V-2),ER_COLOR)
+      
+      OZ=(START_COL+START_COL+SIDE2*COL)/2
+      OX=(SX+ENDX)/2
 
       !读入脉冲点位置数组X,Z坐标
       IF(PN .GT. 0) THEN
+     
+      !旋转PANGLE角度
+        CALL ROTATE(OZ,OX,PANGLE,YY,YY2,YYY,YYY2,SX,ENDX,SZ,ENDZ,NX,NZ)
+
         DO 230 PIND=1,PN
           READ(11,*)PULSE(PIND,1),PULSE(PIND,3)
           PULSE(PIND,2)=Y
           YYY(PULSE(PIND,1),PULSE(PIND,3))=P_COLOR
   230   CONTINUE
         PLEN=PN
-      ENDIF
-      
-      !读入频域点数组
-      ALLOCATE (L(LN))
-      IF (LN .NE. 0) THEN
-        DO 220 III=1,LN
-          READ(11,*)L(III)
-  220   CONTINUE
-      ELSE
-        LN=16384
-      ENDIF
-      CLOSE(11)
-                        
-!  开始绘制网格            
-      DO 3331 II=0,GRID_ROW-1
-         DO 3332 KK=0,GRID_COL-1
-            IF ( MOD((II+KK),2) .EQ. 1 ) THEN
-               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YX,YYX,NX,NZ,2*(V*W*SQRT(H)*ER1/V-2),ER1_COLOR)
-               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER1/V-2),ER1_COLOR)
-               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YZ,YYZ,NX,NZ,2*(V*U*SQRT(H)*ER1/V-2),ER1_COLOR)
-            ELSE
-               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YX,YYX,NX,NZ,2*(V*W*SQRT(H)*ER2/V-2),ER2_COLOR)
-               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR)
-               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YZ,YYZ,NX,NZ,2*(V*U*SQRT(H)*ER2/V-2),ER2_COLOR)            
-            ENDIF
- 3332    CONTINUE
- 3331 CONTINUE
-
-      !  根据倾斜角度绘制介质网格
-      CALL INCLINE(PSX,PSZ,NANGLE,START_COL,GRID_COL*SIDE2,SX,ENDX,SZ,ENDZ,NX,NZ,YY,YYY,2*(U*W*SQRT(H)*ER/V-2),ER_COLOR)
+        
+      ELSE IF(PN .EQ. 0) THEN
       
       !  开始绘制脉冲空间位置(直线),仅当不使用输入文件中指点的脉冲点时自动绘制直线
-      IF(PN .EQ. 0) THEN
-          II=PSX
-          KK=PSZ
-          YYY(II,KK)=P_COLOR
-          PIND=1
-          PULSE(PIND,1)=II
-          PULSE(PIND,2)=Y
-          PULSE(PIND,3)=KK
-          PANGLE=TAND(PANGLE)
-          IF(PANGLE .GT. 1) THEN
-            PP=2/PANGLE-1
-          ELSE
-            PP=2*PANGLE-1
-          ENDIF
-          DO WHILE(II .GT. SX .AND. KK .GT. PENDZ)
-             IF(PANGLE .GT. 1) THEN
-                II=II-1
-             ELSE
-                KK=KK-1
-             ENDIF
-             IF(PP .GE. 0) THEN
-                IF(PANGLE .GT. 1) THEN
-                   KK=KK-1
-                   PP=PP+2*(1/PANGLE-1)
-                ELSE
-                   II=II-1
-                   PP=PP+2*(PANGLE-1)
-                ENDIF
-             ELSE
-                IF(PANGLE .GT. 1) THEN
-                   PP=PP+2/PANGLE
-                ELSE
-                   PP=PP+2*PANGLE
-                ENDIF
-             ENDIF
-             PIND=PIND+1
-             PULSE(PIND,1)=II
-             PULSE(PIND,2)=Y
-             PULSE(PIND,3)=KK
-             YYY(II,KK)=P_COLOR
-          ENDDO
-          PLEN=PIND
+          CALL LINE(X,Y,Z,PSX,PSZ,PENDZ,SX,ENDX,PANGLE,YYY2,NX,NZ,PULSE,PIND,PLEN,P_COLOR)
+      !  输出全X-Z平面的旋转效果图
+          OPEN(111,FILE='grid_rot.ppm',FORM='FORMATTED')  
+          WRITE (111,'(A2)')"P3"
+          WRITE (111,'(5I )',advance='no')ENDZ-SZ+1
+          WRITE (111,'(5I)')ENDX-SX+1
+          WRITE (111,'(A3)')"255"
+          DO 55 I=ENDX,SX,-1
+             DO 66 K=SZ,ENDZ
+                WRITE (111,'(A12)',advance='no') YYY2(I,K)
+       66    CONTINUE
+       55 CONTINUE
+          WRITE (111,*)
+          CLOSE(111)
+          WRITE(*,*) "grid_rot.ppm generated"
+      !清空现有的脉冲直线
+          DO 250 PIND=1,PLEN
+            YYY2(PULSE(PIND,1),PULSE(PIND,3))=ER_COLOR
+   250    CONTINUE
+
+      !旋转-1*PANGLE角度(相当于顺时针旋转PANGLE角度)
+          CALL ROTATE(OZ,OX,-PANGLE,YY,YY2,YYY,YYY2,SX,ENDX,SZ,ENDZ,NX,NZ)
+      !计算出旋转后的脉冲直线起点和终点
+          PLEN=int((PSZ-PENDZ+1)*cosd(PANGLE))
+          PSX1=int(OX+(PSX-OX)*cosd(-PANGLE)+(PSZ-OZ)*sind(-PANGLE))
+          PSZ1=int(OZ+(PSZ-OZ)*cosd(-PANGLE)-(PSX-OX)*sind(-PANGLE))
+      !重新填充脉冲位置数组
+          DO 240 PIND=1,PLEN
+            PULSE(PIND,1)=PSX1
+            PULSE(PIND,2)=Y
+            PULSE(PIND,3)=PSZ1-PIND+1
+            YYY(PULSE(PIND,1),PULSE(PIND,3))=P_COLOR
+   240    CONTINUE
+   
       ENDIF
 
-!  输出全X-Z平面
+!  输出全X-Z平面的实际计算效果图
+      OPEN(111,FILE='grid.ppm',FORM='FORMATTED')
       WRITE (111,'(A2)')"P3"
       WRITE (111,'(5I )',advance='no')ENDZ-SZ+1
       WRITE (111,'(5I)')ENDX-SX+1
       WRITE (111,'(A3)')"255"
-      DO 55 I=ENDX,SX,-1
-         DO 66 K=SZ,ENDZ
+      DO 56 I=ENDX,SX,-1
+         DO 67 K=SZ,ENDZ
             WRITE (111,'(A12)',advance='no') YYY(I,K)
-   66    CONTINUE
-   55 CONTINUE
+   67    CONTINUE
+   56 CONTINUE
       WRITE (111,*)
       CLOSE(111)
       WRITE(*,*) "grid.ppm generated"
@@ -291,6 +287,17 @@
    77 CONTINUE
 !      STOP
 
+      !读入频域点数组
+      ALLOCATE (L(LN))
+      IF (LN .NE. 0) THEN
+        DO 220 III=1,LN
+          READ(11,*)L(III)
+  220   CONTINUE
+      ELSE
+        LN=16384
+      ENDIF
+      CLOSE(11)      
+      
       ZX=2*(V*W*SQRT(H)*UR/U-2)
       ZY=2*(U*W*SQRT(H)*UR/V-2)
       ZZ=2*(V*U*SQRT(H)*UR/W-2)
@@ -351,7 +358,7 @@
  1110  CONTINUE
        CLOSE(8134+T)			 
 
-      write(8133,*) T,sin(PI*T/15)
+       WRITE(8133,*) T,sin(PI*T/15)
       
 	     DO 120 I=SX,ENDX		!结点散射的实施
 	      DO 130 J=SY,ENDY
@@ -696,10 +703,6 @@
           
 16387 CONTINUE
    
-!      DO 222 T=1,NT
-!      WRITE(13,117) EY(T)		!保存模拟结果
-  222 CONTINUE
-
   117 format(I, I, 7f12.7)
   118 format(7f12.7)
   119 format(I)
@@ -862,10 +865,10 @@
  3333 CONTINUE
       END
       
-      SUBROUTINE INCLINE(PSX,PSY,ANGLE,START_COL,GRID,SX,ENDX,SZ,ENDZ,NX,NZ,YY,YYY,C,CC)
+      SUBROUTINE INCLINE(PSX,PSZ,ANGLE,START_COL,GRID,SX,ENDX,SZ,ENDZ,NX,NZ,YY,YYY,C,CC)
       REAL ANGLE
       INTEGER START_COL,GRID,NX,NZ
-      INTEGER PSX,PSY,SX,ENDX,SZ,ENDZ
+      INTEGER PSX,PSZ,SX,ENDX,SZ,ENDZ
       REAL YY(NX,NZ)
       CHARACTER(LEN=12) YYY(NX,NZ)
       CHARACTER(LEN=12) CC,CCTMP
@@ -873,13 +876,12 @@
       REAL D,P
       INTEGER SC,EC,DIR
       INTEGER L,LI,LJ
-      INTEGER CROP
+      INTEGER CROP,OVERLAP
       
       CROP=0  !标志是否被裁剪
-      PSY=-1  !标志是否得到有效激发点
+      OVERLAP=0  !标志是否和激发点重合
       
       IF(ANGLE .EQ. 90) THEN
-        PSY=START_COL-1
         RETURN
       ENDIF
       
@@ -916,8 +918,8 @@
           YY(LI,L)=C
           YYY(LI,L)=CC
           
-          IF(L .EQ. START_COL .AND. LI .EQ. PSX) THEN
-            PSY=LJ
+          IF (LI .EQ. PSX .AND. LJ .EQ. PSZ) THEN
+            OVERLAP=1
           ENDIF
         ENDDO
           
@@ -933,11 +935,85 @@
 
 3389  CONTINUE
 
-      IF(PSY .EQ. -1) THEN
-        WRITE(*,*) "WARNING: PULSE LINE OVERLAPPED!"
-        PSY=START_COL-1
+      IF(OVERLAP .EQ. 1) THEN
+        WRITE(*,*) "WARNING: PULSE POINTS OVERLAPPED!"
       ENDIF
       IF(CROP .EQ. 1) THEN
         WRITE(*,*) "WARNING: ANGLE NOT APPROPRIATE, CROPPED!"
       ENDIF
       END
+
+      SUBROUTINE ROTATE(OZ,OX,RANGLE,YY,YY2,YYY,YYY2,SX,ENDX,SZ,ENDZ,NX,NZ)
+      INTEGER OZ,OX,SX,ENDX,SZ,ENDZ,NX,NZ
+      REAL RANGLE
+      REAL YY(NX,NZ),YY2(NX,NZ)
+      CHARACTER(LEN=12) YYY(NX,NZ),YYY2(NX,NZ)
+      INTEGER IX,IZ,X,Z
+      DO 3390 IX=SX,ENDX
+        DO 3391 IZ=SZ,ENDZ
+          X=int(OX+(IX-OX)*cosd(RANGLE)+(IZ-OZ)*sind(RANGLE))
+          Z=int(OZ+(IZ-OZ)*cosd(RANGLE)-(IX-OX)*sind(RANGLE))
+          IF(X .LE. ENDX .AND. X .GE. SX .AND. Z .LE. ENDZ .AND. Z .GE. SZ) THEN
+            YYY(X,Z)=YYY2(IX,IZ)
+            YY(X,Z)=YY2(IX,IZ)
+            YYY(X-1,Z)=YYY2(IX,IZ)
+            YY(X-1,Z)=YY2(IX,IZ)
+            YYY(X+1,Z)=YYY2(IX,IZ)
+            YY(X+1,Z)=YY2(IX,IZ)
+          ENDIF
+3391    CONTINUE
+3390  CONTINUE
+      END
+      
+      SUBROUTINE LINE(X,Y,Z,PSX,PSZ,PENDZ,SX,ENDX,ANGLE,YYY,NX,NZ,PULSE,PIND,PLEN,P_COLOR)
+      INTEGER PSX,PSZ,PENDZ,SX,ENDX,NX,NZ,PIND,PLEN,X,Y,Z
+      REAL PP !脉冲直线计算参数
+      REAL PANGLE,ANGLE
+      CHARACTER(LEN=12) YYY(NX,NZ)
+      CHARACTER(LEN=12) P_COLOR
+      INTEGER PULSE(NX,3)
+      INTEGER II,KK
+      II=PSX
+      KK=PSZ
+      YYY(II,KK)=P_COLOR
+      PIND=1
+      PULSE(PIND,1)=II
+      PULSE(PIND,2)=Y
+      PULSE(PIND,3)=KK
+      PANGLE=TAND(ANGLE)
+      IF(PANGLE .GT. 1) THEN
+        PP=2/PANGLE-1
+      ELSE
+        PP=2*PANGLE-1
+      ENDIF
+      DO WHILE(II .GT. SX .AND. KK .GE. PENDZ)
+         IF(PANGLE .GT. 1) THEN
+            II=II-1
+         ELSE
+            KK=KK-1
+         ENDIF
+         IF(PP .GE. 0) THEN
+            IF(PANGLE .GT. 1) THEN
+               KK=KK-1
+               PP=PP+2*(1/PANGLE-1)
+            ELSE
+               II=II-1
+               PP=PP+2*(PANGLE-1)
+            ENDIF
+         ELSE
+            IF(PANGLE .GT. 1) THEN
+               PP=PP+2/PANGLE
+            ELSE
+               PP=PP+2*PANGLE
+            ENDIF
+         ENDIF
+         PIND=PIND+1
+         PULSE(PIND,1)=II
+         PULSE(PIND,2)=Y
+         PULSE(PIND,3)=KK
+         YYY(II,KK)=P_COLOR
+      ENDDO
+      PLEN=PIND
+      END
+      
+      
