@@ -8,13 +8,16 @@ class Config:
     def __init__(self):
         self._config={}
     def parseConfig(self):
-        self._config['threads']=2
+        self._config['threads']=1
         self._config['PNG_SIZE']='1024,768'
         self._config['+RANGE']=0.3
         self._config['-RANGE']=-0.3
         self._config['MAP']=True
         self._config['SURFACE']=False
         self._config['ANI']=True
+        self._config['+G_RANGE']=1.0
+        self._config['-G_RANGE']=-1.0
+        self._config['GAUSS']=True
         self._config['DO_EX']='0'
         self._config['DO_EY']='1'
         self._config['DO_EZ']='0'
@@ -81,7 +84,6 @@ class Visualizer(ILineAware):
                     trunk=self._request()
                     if trunk != None:
                         if self._enabled:
-                            plot=subprocess.Popen(self._config['GNUPLOT'],stdin=subprocess.PIPE,universal_newlines=True)
                             commands=open(str(plot.pid)+".gnu","wb")
                             commands.writelines(s)
                             for i in range(trunk['start'],trunk['end']+1):
@@ -92,6 +94,7 @@ class Visualizer(ILineAware):
                                     print >>commands,"splot \"%s/%s%5d.out\""%(trunk['prefix'],trunk['prefix'],i)
                             commands.write("exit\n")
                             commands.close()
+                            plot=subprocess.Popen(self._config['GNUPLOT'],stdin=subprocess.PIPE,universal_newlines=True)
                             plot.stdin.write("load \""+str(plot.pid)+".gnu\"\n")
                             plot.stdin.close()
                             plot.wait()
@@ -164,12 +167,42 @@ class Visualizer(ILineAware):
             env_set.seek(0)
             return env_set
 
+    class GaussWorker(Worker):
+        def prepareWorker(self):
+            env_set=StringIO.StringIO()
+            env_set.writelines(
+                    ["set samples 100, 100","\n",
+                     "set isosamples 10, 10","\n"
+                     "set palette model HSV functions gray, 1, 1","\n"
+                     "set autoscale","\n",
+                     "set size square","\n",
+                     "set surface","\n",
+                     'set title "TLM 2D Gauss Distribution"',"\n",
+                     'set xlabel "Z"',"\n",
+                     'set ylabel "X"',"\n",
+                     'set xrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
+                     'set yrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set zrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
+                     'set cbrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
+                     'set zero 1e-0020',"\n",
+                     'set pm3d at s',"\n",
+                     'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
+                     'set terminal png size ',self._config['PNG_SIZE'],"\n",
+                     'set style data dots',"\n",
+                     'set xlabel "Z"',"\n",
+                     'set ylabel "X"',"\n"
+                    ])
+            env_set.seek(0)
+            return env_set
+
     def __init__(self,config=Config()):
         self._config=config.getConfig()
-        self._num_threads=self._config['threads']*2
+        #self._num_threads=self._config['threads']*2
+        self._num_threads=self._config['threads']*3
         self._threads=range(self._num_threads)
         self._map_queue=Queue.Queue()
         self._surface_queue=Queue.Queue()
+        self._gauss_queue=Queue.Queue()
         self._trunk_start=1
         self.joining=False
         self.killed=False
@@ -202,8 +235,15 @@ class Visualizer(ILineAware):
         else:
             return ((self._trunk_start-1)/float(self._config['NT'])-self._surface_queue.qsize()*10/total)*100
 
+    def getGaussPlotStatus(self):
+        total=float(self.getTotal())
+        if self._trunk_start > int(self._config['NT']):
+            return (total-self._gauss_queue.qsize()*10)/total*100
+        else:
+            return ((self._trunk_start-1)/float(self._config['NT'])-self._gauss_queue.qsize()*10/total)*100
+
     def printStatus(self):
-        print "TLM %.2f%% calculated, surface %.2f%% plotted, map %.2f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus()),
+        print "TLM %.0f%% calculated, surface %.0f%% plotted, map %.0f%% plotted, Gauss %.0f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus(),self.getGaussPlotStatus()),
 
     def encounterLine(self,line):
         try:
@@ -213,6 +253,7 @@ class Visualizer(ILineAware):
                     if self._config["DO_"+task] == '1':
                         self.map_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'MAP'})
                         self.surface_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'3D'})
+                self.gauss_deposit({'start':self._trunk_start,'end':end,'prefix':"GAUSS",'dir':'SIN'})
                 self._trunk_start=end+1
         except:
             #print "Exceptions in encounterLine: %s"%(line)
@@ -238,18 +279,33 @@ class Visualizer(ILineAware):
     def surface_deposit(self,trunk):
         self._surface_queue.put(trunk,True)
 
+    def gauss_request(self):
+        trunk=None
+        try:
+            trunk=self._gauss_queue.get(True,1)
+        finally:
+            return trunk
+
+    def gauss_deposit(self,trunk):
+        self._gauss_queue.put(trunk,True)
+
     def start(self):
         try:
-            for i in range(self._num_threads/2):
+            for i in range(self._num_threads/3):
                 self._threads[i]=self.MapWorker(self,self.map_request,self._config)
                 self._threads[i].setName("MapWorker"+str(i))
                 self._threads[i].start()
                 self._threads[i].enable(self._config['MAP'])
-            for i in range(self._num_threads/2,self._num_threads):
+            for i in range(self._num_threads/3,self._num_threads*2/3):
                 self._threads[i]=self.SurfaceWorker(self,self.surface_request,self._config)
                 self._threads[i].setName("SurfaceWorker"+str(i))
                 self._threads[i].start()
                 self._threads[i].enable(self._config['SURFACE'])
+            for i in range(self._num_threads*2/3,self._num_threads):
+                self._threads[i]=self.GaussWorker(self,self.gauss_request,self._config)
+                self._threads[i].setName("GaussWorker"+str(i))
+                self._threads[i].start()
+                self._threads[i].enable(self._config['GAUSS'])
         except:
             print "Exceptions in start!"
 

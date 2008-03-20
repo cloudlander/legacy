@@ -1,5 +1,7 @@
 echo off
 for /D %%v in (EX EY EZ HX HY HZ) do call :clean %%v
+del GAUSS_SIN\*
+del GAUSS\* /Q
 goto :end
 
 :clean
