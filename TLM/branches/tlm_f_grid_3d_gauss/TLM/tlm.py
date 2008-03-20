@@ -12,6 +12,7 @@ class Config:
         self._config['PNG_SIZE']='1024,768'
         self._config['+RANGE']=0.3
         self._config['-RANGE']=-0.3
+        self._config['TLM']=True
         self._config['MAP']=True
         self._config['SURFACE']=False
         self._config['ANI']=True
@@ -224,7 +225,7 @@ class Visualizer(ILineAware):
     def getMapPlotStatus(self):
         total=float(self.getTotal())
         if self._trunk_start > int(self._config['NT']):
-            return (total-self._surface_queue.qsize()*10)/total*100
+            return (total-self._map_queue.qsize()*10)/total*100
         else:
             return ((self._trunk_start-1)/float(self._config['NT'])-self._map_queue.qsize()*10/total)*100
 
@@ -360,18 +361,22 @@ class TLM:
 
     def run(self):
         self._visualizer.start()
-        self._tlm=subprocess.Popen(self._exe,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
-        while not self._killed:
-            try:
-                line=self._tlm.stdout.readline()
-                if line:
-                    print line,
-                    self._visualizer.encounterLine(line)
-                else:
-                    break
-            except IOError:
-                if not self._killed:
-                    print "Exceptions in run"
+        if self._config['TLM']:
+            self._tlm=subprocess.Popen(self._exe,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+            while not self._killed:
+                try:
+                    line=self._tlm.stdout.readline()
+                    if line:
+                        print line,
+                        self._visualizer.encounterLine(line)
+                    else:
+                        break
+                except IOError:
+                    if not self._killed:
+                        print "Exceptions in run"
+        else:
+            for i in range(10,int(self._config['NT'])+1,10):
+                self._visualizer.encounterLine(str(i))
         if not self._killed:
             self._visualizer.join()
         else:
