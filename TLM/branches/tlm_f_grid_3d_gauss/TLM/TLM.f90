@@ -264,7 +264,9 @@
             PULSE(PIND,3)=PSZ1-PIND+1
             YYY(PULSE(PIND,1),PULSE(PIND,3))=P_COLOR
    240    CONTINUE
-   
+          IF (PSZ1-PLEN+1 < SZ) THEN
+            WRITE(*,*) "WARNING: PULSE POINT ILLEGAL AFTER ROTATION!"
+          ENDIF   
       ENDIF
 
 !  输出全X-Z平面的实际计算效果图
