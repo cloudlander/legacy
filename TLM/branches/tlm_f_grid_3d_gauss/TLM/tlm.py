@@ -133,8 +133,6 @@ class Visualizer(ILineAware):
                      'set pm3d map',"\n",
                      'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
                      'set terminal png size ',self._config['PNG_SIZE'],"\n",
-                     'set xlabel "Z"',"\n",
-                     'set ylabel "X"',"\n"
                     ])
             env_set.seek(0)
             return env_set
@@ -162,8 +160,6 @@ class Visualizer(ILineAware):
                      'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
                      'set terminal png size ',self._config['PNG_SIZE'],"\n",
                      'set style data dots',"\n",
-                     'set xlabel "Z"',"\n",
-                     'set ylabel "X"',"\n"
                     ])
             env_set.seek(0)
             return env_set
@@ -186,12 +182,15 @@ class Visualizer(ILineAware):
                      'set zrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
                      'set cbrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
                      'set zero 1e-0020',"\n",
-                     'set pm3d at s',"\n",
-                     'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
+                     #'set pm3d at s',"\n",
+                     #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
                      'set terminal png size ',self._config['PNG_SIZE'],"\n",
-                     'set style data dots',"\n",
-                     'set xlabel "Z"',"\n",
-                     'set ylabel "X"',"\n"
+                     #'set style data dots',"\n",
+                     'set style data points',"\n",
+                     #'set contour',"\n",
+                     #'set cntrparam levels incremental -0.2,0.01,0.2',"\n"
+                     #'unset surface',"\n",
+                     #'set view 0,0',"\n"
                     ])
             env_set.seek(0)
             return env_set
