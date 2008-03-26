@@ -12,13 +12,13 @@ class Config:
         self._config['PNG_SIZE']='1024,768'
         self._config['+RANGE']=0.3
         self._config['-RANGE']=-0.3
+        self._config['+G_RANGE']=1.0
+        self._config['-G_RANGE']=-1.0
         self._config['TLM']=True
         self._config['MAP']=True
         self._config['SURFACE']=False
-        self._config['ANI']=True
-        self._config['+G_RANGE']=1.0
-        self._config['-G_RANGE']=-1.0
         self._config['GAUSS']=True
+        self._config['ANI']=True
         self._config['DO_EX']='0'
         self._config['DO_EY']='1'
         self._config['DO_EZ']='0'
@@ -75,10 +75,16 @@ class Visualizer(ILineAware):
             self._enabled=True
         def enable(self,status):
             self._enabled=status
-        def prepareWorker():
+        def prepareWorker(self):
             pass
+	def removefile(self,filename):
+	    while True:
+              try:
+                    os.unlink(filename)
+                    return
+              except:
+                    time.sleep(1)
         def _worker(self):
-            filename=None
             s=self.prepareWorker().readlines()
             while not self._producer.killed :
                 try:
@@ -99,18 +105,11 @@ class Visualizer(ILineAware):
                             plot.stdin.write("load \""+str(plot.pid)+".gnu\"\n")
                             plot.stdin.close()
                             plot.wait()
-                            if filename != None:
-                                os.unlink(filename)
-                            filename=str(plot.pid)+".gnu"
+                            self.removefile(str(plot.pid)+".gnu")
                     elif self._producer.joining:
                         break
                 except:
                     print "Exceptions in %s!"%(self.getName())
-            try:
-                if filename != None:
-                    os.unlink(filename)
-            except:
-                print "Unable to remove .gnu file(%s)"%(self.getName())
 
     class MapWorker(Worker):
         def prepareWorker(self):
