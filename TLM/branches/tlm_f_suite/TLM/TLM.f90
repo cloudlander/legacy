@@ -182,7 +182,7 @@
 		          IVB(3,I,J,K)=RVB(1,I+1,J,K)
 		          IVB(4,I,J,K)=RVB(2,I,J,K+1)
 
-                  IF (CL .EQ. 1 .AND. K .GE. SZ+(ENDZ-SZ)/32 .AND. K .LE. SZ+(ENDZ-SZ)/3*2) THEN
+                  IF (CL .EQ. 1 .AND. K .GE. SZ+(ENDZ-SZ)/3 .AND. K .LE. SZ+(ENDZ-SZ)/3*2) THEN
 		             IVB(5,I,J,K)=RVB(5,I,J,K)      
 			         IVB(6,I,J,K)=RVB(6,I,J,K)
 			         IVB(7,I,J,K)=RVB(7,I,J,K)
