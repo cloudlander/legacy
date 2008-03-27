@@ -332,9 +332,10 @@ main (int argc, char *argv[])
     }
 
     /* CRS: give gnuplot enough time to start (1 sec.) */
-    if (WaitForInputIdle(piProcInfo.hProcess, 5000)) {
-	fprintf(stderr, "Timeout: gnuplot is not ready\n");
-	exit(EXIT_FAILURE);
+    while (WaitForInputIdle(piProcInfo.hProcess, 5000)) {
+	/*fprintf(stderr, "Timeout: gnuplot is not ready\n");*/
+	fprintf(stderr, "System is too slow,please reduce threads in tlm.py\n");
+	/*exit(EXIT_FAILURE);*/
     }
 
     /* CRS: get the HWND of the parent window and text windows */
@@ -370,7 +371,9 @@ main (int argc, char *argv[])
     while (IsWindow(hwndParent))
       Sleep(1);
 
-    CloseHandle(piProcInfo.hProcess);
+    
+    i=WaitForSingleObject(piProcInfo.hProcess,INFINITE);
     CloseHandle(piProcInfo.hThread);
+    CloseHandle(piProcInfo.hProcess);
     return EXIT_SUCCESS;
 }
