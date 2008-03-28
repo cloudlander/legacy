@@ -17,7 +17,10 @@ while X<=0 or Z<=0:
         print "Please give reasonable input!"
 
 def DFT(NT):
-    dft=subprocess.Popen("DFT.exe",stdin=subprocess.PIPE)
+    if sys.platform.find("win")==0:
+        dft=subprocess.Popen("DFT.exe",stdin=subprocess.PIPE)
+    else:
+        dft=subprocess.Popen("./dft",stdin=subprocess.PIPE)
     dft.stdin.write(str(NT)+"\n")
     dft.wait()
 
