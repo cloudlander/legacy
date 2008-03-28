@@ -8,11 +8,27 @@ class Config:
     def __init__(self):
         self._config={}
     def parseConfig(self):
-        self._config['threads']=1
+        self._config['threads']=2
+        self._config['PNG_SIZE']='1024,768'
+        self._config['+RANGE']=0.3
+        self._config['-RANGE']=-0.3
+        self._config['+G_RANGE']=1.0
+        self._config['-G_RANGE']=-1.0
+        self._config['TLM']=False
+        self._config['MAP']=True
+        self._config['SURFACE']=False
+        self._config['GAUSS']=False
+        self._config['ANI']=True
+        self._config['DO_EX']='0'
+        self._config['DO_EY']='1'
+        self._config['DO_EZ']='0'
+        self._config['DO_HX']='0'
+        self._config['DO_HY']='0'
+        self._config['DO_HZ']='0'
         if sys.platform.find("win")==0:
             self._config['GEN_ANI']="gen_ani.bat"
             self._config['TLM_EXE']="Release/TLM.exe"
-            self._config['GNUPLOT']="gnuplot.exe"
+            self._config['GNUPLOT']="wgnuplot.exe"
         else:
             self._config['GEN_ANI']="./gen_ani.sh"
             self._config['TLM_EXE']="./tlm"
@@ -31,12 +47,19 @@ class FileConfig(Config):
         Config.parseConfig(self)
         input=open(self._input,"rb")
         data_line=input.readline()
-        cmt_line=input.readline()
-        input.close()
         data=re.split("[,\s]+",data_line)
-        comment=re.split("[,\s]+",cmt_line)
-        for (i,v) in enumerate(comment):
-            self._config[v]=data[i]
+        while True:
+            line=input.readline()
+            if line:
+                try:
+                    comment=re.split("[,\s]+",line)
+                    for (i,v) in enumerate(comment):
+                        self._config[v]=data[i]
+                except:
+                    pass
+            else:
+                break
+        input.close()
 
 class ILineAware:
     def encounterLine(self,line):
@@ -49,35 +72,43 @@ class Visualizer(ILineAware):
             self._request=request
             self._producer=producer
             self._config=config
-        def prepareWorker():
+            self._enabled=True
+        def enable(self,status):
+            self._enabled=status
+        def prepareWorker(self):
             pass
+	def removefile(self,filename):
+	    while True:
+              try:
+                    os.unlink(filename)
+                    return
+              except:
+                    time.sleep(1)
         def _worker(self):
-            try:
-                s=self.prepareWorker().readlines()
-                while not self._producer.killed :
+            s=self.prepareWorker().readlines()
+            while not self._producer.killed :
+                try:
                     trunk=self._request()
                     if trunk != None:
-                        #print self.getName(),":",trunk
-                        plot=subprocess.Popen(self._config['GNUPLOT'],stdin=subprocess.PIPE,universal_newlines=True)
-                        commands=open(str(plot.pid)+".gnu","wb")
-                        commands.writelines(s)
-                        for i in range(trunk['start'],trunk['end']+1):
-                            print >>commands,"set output \"%s_%s/IMG%5d.png\""%(trunk['prefix'],trunk['dir'],i)
-                            if self._config['SPLIT']=='0':
-                                print >>commands,"splot \"%s.out\" index %d"%(trunk['prefix'],i-1)
-                            else:
-                                print >>commands,"splot \"%s/%s%5d.out\""%(trunk['prefix'],trunk['prefix'],i)
-                        commands.write("exit\n")
-                        commands.close()
-                        plot.stdin.write("load \""+str(plot.pid)+".gnu\"\n")
-                        plot.stdin.close()
-                        plot.wait()
-                        os.unlink(str(plot.pid)+".gnu")
+                        if self._enabled:
+                            filename=self.getName()+"_"+str(trunk['start'])+".gnu"
+                            commands=open(filename,"wb")
+                            commands.writelines(s)
+                            for i in range(trunk['start'],trunk['end']+1):
+                                print >>commands,"set output \"%s_%s/IMG%5d.png\""%(trunk['prefix'],trunk['dir'],i)
+                                if self._config['SPLIT']=='0':
+                                    print >>commands,"splot \"%s.out\" index %d"%(trunk['prefix'],i-1)
+                                else:
+                                    print >>commands,"splot \"%s/%s%5d.out\""%(trunk['prefix'],trunk['prefix'],i)
+                            commands.write("exit\n")
+                            commands.close()
+                            plot=subprocess.Popen([self._config['GNUPLOT'],filename],universal_newlines=True)
+                            plot.wait()
+                            self.removefile(filename)
                     elif self._producer.joining:
                         break
-
-            except:
-                print "Exceptions in %s!"%(self.getName())
+                except:
+                    print "Exceptions in %s!"%(self.getName())
 
     class MapWorker(Worker):
         def prepareWorker(self):
@@ -85,6 +116,7 @@ class Visualizer(ILineAware):
             env_set.writelines(
                     ["set samples 100, 100","\n",
                      "set isosamples 10, 10","\n"
+                     "set palette model HSV functions gray, 1, 1","\n"
                      "set autoscale","\n",
                      "set size square","\n",
                      "set surface","\n",
@@ -93,14 +125,12 @@ class Visualizer(ILineAware):
                      'set ylabel "X"',"\n",
                      'set xrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
                      'set yrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
-                     'set zrange [-1.0:1.0] noreverse nowriteback',"\n",
-                     'set cbrange[-0.3:0.3] noreverse nowriteback',"\n",
+                     'set zrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
+                     'set cbrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
                      'set zero 1e-0020',"\n",
                      'set pm3d map',"\n",
                      'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
-                     'set terminal png size 1024,768',"\n",
-                     'set xlabel "Z"',"\n",
-                     'set ylabel "X"',"\n"
+                     'set terminal png size ',self._config['PNG_SIZE'],"\n",
                     ])
             env_set.seek(0)
             return env_set
@@ -112,6 +142,7 @@ class Visualizer(ILineAware):
             env_set.writelines(
                     ["set samples 100, 100","\n",
                      "set isosamples 10, 10","\n"
+                     "set palette model HSV functions gray, 1, 1","\n"
                      "set autoscale","\n",
                      "set size square","\n",
                      "set surface","\n",
@@ -120,28 +151,66 @@ class Visualizer(ILineAware):
                      'set ylabel "X"',"\n",
                      'set xrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
                      'set yrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
-                     'set zrange [-1.0:1.0] noreverse nowriteback',"\n",
-                     'set cbrange[-0.3:0.3] noreverse nowriteback',"\n",
+                     'set zrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
+                     'set cbrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
                      'set zero 1e-0020',"\n",
                      'set pm3d at s',"\n",
                      'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
-                     'set terminal png size 1024,768',"\n",
+                     'set terminal png size ',self._config['PNG_SIZE'],"\n",
                      'set style data dots',"\n",
+                    ])
+            env_set.seek(0)
+            return env_set
+
+    class GaussWorker(Worker):
+        def prepareWorker(self):
+            env_set=StringIO.StringIO()
+            env_set.writelines(
+                    ["set samples 100, 100","\n",
+                     "set isosamples 10, 10","\n"
+                     "set palette model HSV functions gray, 1, 1","\n"
+                     "set autoscale","\n",
+                     "set size square","\n",
+                     "set surface","\n",
+                     'set title "TLM 2D Gauss Distribution"',"\n",
                      'set xlabel "Z"',"\n",
-                     'set ylabel "X"',"\n"
+                     'set ylabel "X"',"\n",
+                     'set xrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
+                     'set yrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set zrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
+                     'set cbrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
+                     'set zero 1e-0020',"\n",
+                     #'set pm3d at s',"\n",
+                     #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
+                     'set terminal png size ',self._config['PNG_SIZE'],"\n",
+                     #'set style data dots',"\n",
+                     'set style data points',"\n",
+                     #'set contour',"\n",
+                     #'set cntrparam levels incremental -0.2,0.01,0.2',"\n"
+                     #'unset surface',"\n",
+                     #'set view 0,0',"\n"
                     ])
             env_set.seek(0)
             return env_set
 
     def __init__(self,config=Config()):
         self._config=config.getConfig()
-        self._num_threads=self._config['threads']*2
+        #self._num_threads=self._config['threads']*2
+        self._num_threads=self._config['threads']*3
         self._threads=range(self._num_threads)
         self._map_queue=Queue.Queue()
         self._surface_queue=Queue.Queue()
+        self._gauss_queue=Queue.Queue()
         self._trunk_start=1
         self.joining=False
         self.killed=False
+
+    def getTotal(self):
+        nt=float(self._config['NT'])
+        ntask=0
+        for task in ('DO_EX','DO_EY','DO_EZ','DO_HX','DO_HY','DO_HZ'):
+            ntask+=int(self._config[task])
+        return nt*ntask
 
     def getTLMStatus(self):
         total=float(self._config['NT'])
@@ -151,28 +220,38 @@ class Visualizer(ILineAware):
             return (self._trunk_start-1)/total*100
 
     def getMapPlotStatus(self):
-        total=float(self._config['NT'])
-        if self._trunk_start > total:
+        total=float(self.getTotal())
+        if self._trunk_start > int(self._config['NT']):
             return (total-self._map_queue.qsize()*10)/total*100
         else:
-            return (self._trunk_start-1-self._map_queue.qsize()*10)/total*100
+            return ((self._trunk_start-1)/float(self._config['NT'])-self._map_queue.qsize()*10/total)*100
 
     def getSurfacePlotStatus(self):
-        total=float(self._config['NT'])
-        if self._trunk_start > total:
+        total=float(self.getTotal())
+        if self._trunk_start > int(self._config['NT']):
             return (total-self._surface_queue.qsize()*10)/total*100
         else:
-            return (self._trunk_start-1-self._surface_queue.qsize()*10)/total*100
+            return ((self._trunk_start-1)/float(self._config['NT'])-self._surface_queue.qsize()*10/total)*100
+
+    def getGaussPlotStatus(self):
+        total=float(self.getTotal())
+        if self._trunk_start > int(self._config['NT']):
+            return (total-self._gauss_queue.qsize()*10)/total*100
+        else:
+            return ((self._trunk_start-1)/float(self._config['NT'])-self._gauss_queue.qsize()*10/total)*100
 
     def printStatus(self):
-        print "TLM %.2f%% calculated, surface %.2f%% plotted, map %.2f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus()),
+        print "TLM %.0f%% calculated,surface %.0f%% plotted,map %.0f%% plotted,Gauss %.0f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus(),self.getGaussPlotStatus()),
 
     def encounterLine(self,line):
         try:
             end=int(line)
             if end % 10 == 0:
-                self.map_deposit({'start':self._trunk_start,'end':end,'prefix':'EY','dir':'MAP'})
-                self.surface_deposit({'start':self._trunk_start,'end':end,'prefix':'EY','dir':'3D'})
+                for task in ('EX','EY','EZ','HX','HY','HZ'):
+                    if self._config["DO_"+task] == '1':
+                        self.map_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'MAP'})
+                        self.surface_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'3D'})
+                self.gauss_deposit({'start':self._trunk_start,'end':end,'prefix':"GAUSS",'dir':'SIN'})
                 self._trunk_start=end+1
         except:
             #print "Exceptions in encounterLine: %s"%(line)
@@ -198,17 +277,33 @@ class Visualizer(ILineAware):
     def surface_deposit(self,trunk):
         self._surface_queue.put(trunk,True)
 
+    def gauss_request(self):
+        trunk=None
+        try:
+            trunk=self._gauss_queue.get(True,1)
+        finally:
+            return trunk
+
+    def gauss_deposit(self,trunk):
+        self._gauss_queue.put(trunk,True)
+
     def start(self):
         try:
-            for i in range(self._num_threads/2):
+            for i in range(self._num_threads/3):
                 self._threads[i]=self.MapWorker(self,self.map_request,self._config)
                 self._threads[i].setName("MapWorker"+str(i))
                 self._threads[i].start()
-            for i in range(self._num_threads/2,self._num_threads):
+                self._threads[i].enable(self._config['MAP'])
+            for i in range(self._num_threads/3,self._num_threads*2/3):
                 self._threads[i]=self.SurfaceWorker(self,self.surface_request,self._config)
                 self._threads[i].setName("SurfaceWorker"+str(i))
                 self._threads[i].start()
-
+                self._threads[i].enable(self._config['SURFACE'])
+            for i in range(self._num_threads*2/3,self._num_threads):
+                self._threads[i]=self.GaussWorker(self,self.gauss_request,self._config)
+                self._threads[i].setName("GaussWorker"+str(i))
+                self._threads[i].start()
+                self._threads[i].enable(self._config['GAUSS'])
         except:
             print "Exceptions in start!"
 
@@ -227,9 +322,11 @@ class Visualizer(ILineAware):
                     time.sleep(1)
                     count=0
             if not self.killed:
-                ani=subprocess.Popen(self._config['GEN_ANI'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-                ani.stdout.readlines()
-                ani.stderr.readlines()
+                if self._config['ANI']:
+                    ani=subprocess.Popen(self._config['GEN_ANI'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                    ani.stdout.readlines()
+                    ani.stderr.readlines()
+                    ani.wait()
         except:
             if not self.killed:
                 print "Exceptions in join!"
@@ -261,18 +358,22 @@ class TLM:
 
     def run(self):
         self._visualizer.start()
-        self._tlm=subprocess.Popen(self._exe,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
-        while not self._killed:
-            try:
-                line=self._tlm.stdout.readline()
-                if line:
-                    print line,
-                    self._visualizer.encounterLine(line)
-                else:
-                    break
-            except IOError:
-                if not self._killed:
-                    print "Exceptions in run"
+        if self._config['TLM']:
+            self._tlm=subprocess.Popen(self._exe,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+            while not self._killed:
+                try:
+                    line=self._tlm.stdout.readline()
+                    if line:
+                        print line,
+                        self._visualizer.encounterLine(line)
+                    else:
+                        break
+                except IOError:
+                    if not self._killed:
+                        print "Exceptions in run"
+        else:
+            for i in range(10,int(self._config['NT'])+1,10):
+                self._visualizer.encounterLine(str(i))
         if not self._killed:
             self._visualizer.join()
         else:

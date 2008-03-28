@@ -17,8 +17,19 @@
       PROGRAM TWOTLME
       INTEGER SX,SY,SZ,ENDX,ENDY,ENDZ,NX,NY,NZ,X,Y,Z,T,BL
 !网格单位长度，起始网格位置结束网格位置，边界条件标志参数
-      REAL RVB(0:9,200,200,200)
-      REAL IVB(0:9,200,200,200)
+
+      REAL, ALLOCATABLE:: RVA(:,:,:,:),RVB(:,:,:,:),RVC(:,:,:,:)
+      REAL, ALLOCATABLE:: RVD(:,:,:,:),RVE(:,:,:,:),RVF(:,:,:,:)
+      REAL, ALLOCATABLE:: IVA(:,:,:,:),IVB(:,:,:,:),IVC(:,:,:,:)
+      REAL, ALLOCATABLE:: IVD(:,:,:,:),IVE(:,:,:,:),IVF(:,:,:,:)
+
+      REAL, ALLOCATABLE:: REEX(:,:,:,:),IMEX(:,:,:,:)
+      REAL, ALLOCATABLE:: REEY(:,:,:,:),IMEY(:,:,:,:)
+      REAL, ALLOCATABLE:: REEZ(:,:,:,:),IMEZ(:,:,:,:)
+      REAL, ALLOCATABLE:: REHX(:,:,:,:),IMHX(:,:,:,:)
+      REAL, ALLOCATABLE:: REHY(:,:,:,:),IMHY(:,:,:,:)
+      REAL, ALLOCATABLE:: REHZ(:,:,:,:),IMHZ(:,:,:,:)
+      
       REAL SB(0:5,0:5)
       REAL SB2(9,9)
       REAL EY
@@ -34,9 +45,7 @@
       INTEGER UNIT_BASE
       INTEGER FILE_UNIT
       
-      CHARACTER*(*) NAME_BASE
       CHARACTER(LEN=5) NAME_COUNT
-      PARAMETER (NAME_BASE = 'img/ey')
 
       UNIT_BASE=100
             
@@ -50,35 +59,16 @@
         OPEN(13,FILE='EY.out',FORM='FORMATTED')
       ENDIF
       
-      OPEN(14,FILE='result.gnu',FORM='FORMATTED')
       OPEN(15,FILE='set.gnu',FORM='FORMATTED')
-      
-      WRITE(14,*) "set samples 100, 100"
-      WRITE(14,*) "set isosamples 10, 10"
-      WRITE(14,*) "set autoscale"
-      WRITE(14,*) "set size square"
-      WRITE(14,*) "set surface"
-      WRITE(14,*) 'set title "TLM 2D"'
-      WRITE(14,*) 'set xlabel "Z"'
-      WRITE(14,*) 'set ylabel "X"'
-      WRITE(14,*) "set xrange [",SZ,":",ENDZ,"] noreverse nowriteback"
-      WRITE(14,*) "set yrange [",SX,":",ENDX,"] noreverse nowriteback"
-      WRITE(14,*) "set zrange [ -0.300000 : 0.300000 ] noreverse nowriteback"
-      WRITE(14,*) "set cbrange [ -0.300000 : 0.300000 ] noreverse nowriteback"
-      WRITE(14,*) "set zero 1e-0020"
-      WRITE(14,*) "set pm3d at s"
-      WRITE(14,*) "set dgrid3d ",ENDZ-SZ+1,",",ENDX-SX+1
-      write(14,*) "set terminal png size 1024,768"
-      write(14,*) "set style data dots"
-  
+      !set.gnu已无实际应用效果,具体调整在tlm.py中
       WRITE(15,*) "set samples 100, 100"
       WRITE(15,*) "set isosamples 10, 10"
       WRITE(15,*) "set autoscale"
       WRITE(15,*) "set size square"
       WRITE(15,*) "set surface"
       WRITE(15,*) 'set title "TLM 2D"'
-      WRITE(14,*) 'set xlabel "Z"'
-      WRITE(14,*) 'set ylabel "X"'
+      WRITE(15,*) 'set xlabel "Z"'
+      WRITE(15,*) 'set ylabel "X"'
       WRITE(15,*) "set xrange [",SZ,":",ENDZ,"] noreverse nowriteback"
       WRITE(15,*) "set yrange [",SX,":",ENDX,"] noreverse nowriteback"
       WRITE(15,*) "set zrange [ -0.300000 : 0.300000 ] noreverse nowriteback"
@@ -86,20 +76,15 @@
       WRITE(15,*) "set zero 1e-0020"
       WRITE(15,*) "set pm3d at s"
       WRITE(15,*) "set dgrid3d ",ENDZ-SZ+1,",",ENDX-SX+1
-      write(15,*) "set style data dots"
-       
+      write(15,*) "set style data dots"       
 	  !"set xrange" 对应（ey.out第一列），为介质空间Z轴； "set yrange"对应（ey.out第二列），为介质空间X轴
 	  !"set zrange" 0.03变为1.03为了画图不出现白色块
 	  !"set pm3d map"为2D画图，"set pm3d at s"为3D画图
-      
+	  CLOSE(15)
       
       CC=3E8             !CC为光速
       PI=3.1415926
 
-      NX=200
-      NY=200
-      NZ=200
-      
       U0=4*PI*1E-7		!真空中的磁导率
       E0=8.854187818E-12		!真空中的介电常数
       Z0=SQRT(U0/E0)
@@ -122,6 +107,22 @@
       ZP=2*L0*VL/DL;
       ZN1=ZP*(ZS+Z0L)/(3*ZP+ZS+Z0L);
       ZN2=(ZS+Z0L)/4; 
+      
+      NX=ENDX-SX+3
+      NY=ENDY-SY+3
+      NZ=ENDZ-SZ+3
+      
+      ALLOCATE (RVA(0:9,NX,NY,NZ),RVB(0:9,NX,NY,NZ),RVC(0:9,NX,NY,NZ))      
+!      ALLOCATE (RVD(5,NX,NY,NZ),RVE(5,NX,NY,NZ),RVF(5,NX,NY,NZ))
+      ALLOCATE (IVA(0:9,NX,NY,NZ),IVB(0:9,NX,NY,NZ),IVC(0:9,NX,NY,NZ))
+!      ALLOCATE (IVD(5,NX,NY,NZ),IVE(5,NX,NY,NZ),IVF(5,NX,NY,NZ))
+     
+!      ALLOCATE (REEX(10,NX,NY,NZ),IMEX(10,NX,NY,NZ))
+!      ALLOCATE (REEY(10,NX,NY,NZ),IMEY(10,NX,NY,NZ))
+!      ALLOCATE (REEZ(10,NX,NY,NZ),IMEZ(10,NX,NY,NZ))
+!      ALLOCATE (REHX(10,NX,NY,NZ),IMHX(10,NX,NY,NZ))
+!      ALLOCATE (REHY(10,NX,NY,NZ),IMHY(10,NX,NY,NZ))
+!      ALLOCATE (REHZ(10,NX,NY,NZ),IMHZ(10,NX,NY,NZ))
 
       J=10
       
@@ -182,7 +183,7 @@
 		          IVB(3,I,J,K)=RVB(1,I+1,J,K)
 		          IVB(4,I,J,K)=RVB(2,I,J,K+1)
 
-                  IF (CL .EQ. 1 .AND. K .GE. SZ+(ENDZ-SZ)/32 .AND. K .LE. SZ+(ENDZ-SZ)/3*2) THEN
+                  IF (CL .EQ. 1 .AND. K .GE. SZ+(ENDZ-SZ)/3 .AND. K .LE. SZ+(ENDZ-SZ)/3*2) THEN
 		             IVB(5,I,J,K)=RVB(5,I,J,K)      
 			         IVB(6,I,J,K)=RVB(6,I,J,K)
 			         IVB(7,I,J,K)=RVB(7,I,J,K)
@@ -224,10 +225,6 @@
        40      CONTINUE   
        20    CONTINUE
       
-      N1=MOD(T,10)
-      IF (N1.EQ.0) THEN
-      WRITE(*,*)T
-      END IF
 
 !      DO 555 III=SX,ENDX
 !	    DO 666 KKK=SZ,ENDZ
@@ -261,13 +258,13 @@
        WRITE(FILE_UNIT,*)
        IF (SPLIT .EQ. 1) THEN
          CLOSE(FILE_UNIT)
-         write(14,*) 'set output '//'"img/img'//NAME_COUNT//'.png"'
-         WRITE(14,*) 'splot '//'"ey/ey'//NAME_COUNT//'.out"'
-       ELSE
-         write(14,*) 'set output '//'"img/img'//NAME_COUNT//'.png"'
-         WRITE(14,*) 'splot "ey.out" index ',T-1
        ENDIF
-
+       
+      N1=MOD(T,10)
+      IF (N1.EQ.0) THEN
+      WRITE(*,*)T
+      END IF
+      
    10 CONTINUE     
 !      DO 222 T=1,NT
 !      WRITE(13,117) EY(T)		!保存模拟结果
@@ -280,9 +277,6 @@
       IF (SPLIT .EQ. 0) THEN
          CLOSE(FILE_UNIT)
       ENDIF
-      WRITE(14,*) "exit"      
-      CLOSE(14)
-	  CLOSE(15)
 	  
 	  CALL CPU_TIME ( time_end )
 	  
