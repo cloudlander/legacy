@@ -28,7 +28,7 @@ class Config:
         if sys.platform.find("win")==0:
             self._config['GEN_ANI']="gen_ani.bat"
             self._config['TLM_EXE']="Release/TLM.exe"
-            self._config['GNUPLOT']="gnuplot.exe"
+            self._config['GNUPLOT']="wgnuplot.exe"
         else:
             self._config['GEN_ANI']="./gen_ani.sh"
             self._config['TLM_EXE']="./tlm"
@@ -91,8 +91,8 @@ class Visualizer(ILineAware):
                     trunk=self._request()
                     if trunk != None:
                         if self._enabled:
-                            plot=subprocess.Popen(self._config['GNUPLOT'],stdin=subprocess.PIPE,universal_newlines=True)
-                            commands=open(str(plot.pid)+".gnu","wb")
+                            filename=self.getName()+"_"+str(trunk['start'])+".gnu"
+                            commands=open(filename,"wb")
                             commands.writelines(s)
                             for i in range(trunk['start'],trunk['end']+1):
                                 print >>commands,"set output \"%s_%s/IMG%5d.png\""%(trunk['prefix'],trunk['dir'],i)
@@ -102,10 +102,9 @@ class Visualizer(ILineAware):
                                     print >>commands,"splot \"%s/%s%5d.out\""%(trunk['prefix'],trunk['prefix'],i)
                             commands.write("exit\n")
                             commands.close()
-                            plot.stdin.write("load \""+str(plot.pid)+".gnu\"\n")
-                            plot.stdin.close()
+                            plot=subprocess.Popen([self._config['GNUPLOT'],filename],universal_newlines=True)
                             plot.wait()
-                            self.removefile(str(plot.pid)+".gnu")
+                            self.removefile(filename)
                     elif self._producer.joining:
                         break
                 except:
