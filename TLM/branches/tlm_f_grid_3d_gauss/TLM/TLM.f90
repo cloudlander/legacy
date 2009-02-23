@@ -232,41 +232,15 @@
       
       !  开始绘制脉冲空间位置(直线),仅当不使用输入文件中指点的脉冲点时自动绘制直线
           CALL LINE(X,Y,Z,PSX,PSZ,PENDZ,SX,ENDX,PANGLE,YYY2,NX,NZ,PULSE,PIND,PLEN,P_COLOR)
-      !  输出全X-Z平面的旋转效果图
-          OPEN(111,FILE='grid_rot.ppm',FORM='FORMATTED')  
-          WRITE (111,'(A2)')"P3"
-          WRITE (111,'(5I )',advance='no')ENDZ-SZ+1
-          WRITE (111,'(5I)')ENDX-SX+1
-          WRITE (111,'(A3)')"255"
-          DO 55 I=ENDX,SX,-1
-             DO 66 K=SZ,ENDZ
-                WRITE (111,'(A12)',advance='no') YYY2(I,K)
-       66    CONTINUE
-       55 CONTINUE
-          WRITE (111,*)
-          CLOSE(111)
-          WRITE(*,*) "grid_rot.ppm generated"
-      !清空现有的脉冲直线
-          DO 250 PIND=1,PLEN
-            YYY2(PULSE(PIND,1),PULSE(PIND,3))=ER_COLOR
-   250    CONTINUE
-
-      !旋转-1*PANGLE角度(相当于顺时针旋转PANGLE角度)
-          CALL ROTATE(OZ,OX,-PANGLE,YY,YY2,YYY,YYY2,SX,ENDX,SZ,ENDZ,NX,NZ)
-      !计算出旋转后的脉冲直线起点和终点
-          PLEN=int((PSZ-PENDZ+1)*cosd(PANGLE))
-          PSX1=int(OX+(PSX-OX)*cosd(-PANGLE)+(PSZ-OZ)*sind(-PANGLE))
-          PSZ1=int(OZ+(PSZ-OZ)*cosd(-PANGLE)-(PSX-OX)*sind(-PANGLE))
-      !重新填充脉冲位置数组
-          DO 240 PIND=1,PLEN
-            PULSE(PIND,1)=PSX1
-            PULSE(PIND,2)=Y
-            PULSE(PIND,3)=PSZ1-PIND+1
-            YYY(PULSE(PIND,1),PULSE(PIND,3))=P_COLOR
-   240    CONTINUE
-          IF (PSZ1-PLEN+1 < SZ) THEN
-            WRITE(*,*) "WARNING: PULSE POINT ILLEGAL AFTER ROTATION!"
-          ENDIF   
+      
+          !更新X-Z平面ER
+          DO 2225 II=SX,ENDX
+            DO 2226 KK=SZ,ENDZ
+              YY(II,KK)=YY2(II,KK)
+              YYY(II,KK)=YYY2(II,KK)
+ 2226       CONTINUE
+ 2225    CONTINUE        
+          
       ENDIF
 
 !  输出全X-Z平面的实际计算效果图
@@ -312,10 +286,15 @@
       CALL SCL(SF,ZZ)	    
       
       ! 应用用高斯函数
-      CALL GENGAUSS(GAUSS,NX,NY,NZ,X,Y,Z,W0)
+	  DO 87 PIND=1,PLEN
+        CALL GENGAUSS(GAUSS,NX,NY,NZ,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3),W0)
+  87  CONTINUE
+
       OPEN(131,FILE='gausA.out',FORM='FORMATTED')
       DO 11111 I=SX,ENDX
-        WRITE(131,*) Y,I,GAUSS(I,Y,Z)
+        DO 11112 K=SZ,ENDZ        
+           WRITE(131,*) K,I,GAUSS(I,Y,K)
+11112   CONTINUE
 11111 CONTINUE
       CLOSE(131)
 
@@ -347,18 +326,18 @@
 	   WRITE(NAME_COUNT,'(I5)') T      
 
 	   OPEN(8134+T,FILE="GAUSS/GAUSS"//NAME_COUNT//".out",FORM='FORMATTED')
+	   OPEN(8135+T,FILE="ONLYSIN/ONLYSIN"//NAME_COUNT//".out",FORM='FORMATTED')
 
-       DO 1110 I=SX,ENDX
          DO 6 III=2,2  !1上2右3下4左
-!             DO 992 PIND=1,PLEN
-!                IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
-!                IVD(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVD(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式                
-! 992         CONTINUE
-             IVB(III,I,Y,Z)=IVB(III,I,Y,Z)+GAUSS(I,Y,Z)*sin(PI*T/15)  !为sin激发单色波形式    
-			 write(8134+T,*) Z,I,GAUSS(I,Y,Z)*sin(PI*T/15)
+             DO 992 PIND=1,1
+                IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+GAUSS(PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))*sin(PI*T/15)     
+			    write(8134+T,*) PULSE(PIND,3),PULSE(PIND,1),IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+GAUSS(PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))*sin(PI*T/15)
+				write(8135+T,*) PULSE(PIND,3),PULSE(PIND,1),IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))*sin(PI*T/15)
+ 992         CONTINUE  
+
   6      CONTINUE
- 1110  CONTINUE
        CLOSE(8134+T)			 
+	   CLOSE(8135+T)
 
        WRITE(8133,*) T,sin(PI*T/15)
       
@@ -802,26 +781,27 @@
 
       SUBROUTINE GENGAUSS(GAUSS,NX,NY,NZ,XP,YP,ZP,W0)
         INTEGER X0,Y0,Z0,NX,NY,NZ,XP,YP,ZP
-        REAL GAUSS(-XP+1:NX-XP,NY,NZ)
+        REAL GAUSS(-XP+1:NX-XP,NY,-ZP+1:NZ-ZP)
 	    REAL X,Y,Z
         REAL C0,W0,Wz,PI,Zr,Rz,Lambda
 	    REAL AMAX
         
+     
         PI=3.1415926
-        Z0=ZP
- 	    Z=Z0
+        Y0=YP
+ 	    Y=Y0
         C0=1
-        Lambda=1E-10
-        Zr=PI*W0*W0/Lambda
+        Lambda=31E-10
+        Yr=PI*W0*W0/Lambda
      
         DO 1007 X0=-XP+1,NX-XP
-          DO 2007 Y0=YP,YP
+          DO 2007 Z0=-ZP+1,NZ-ZP
 			    X=X0
-			    Y=Y0
-			    Wz=W0*sqrt(1+((Lambda*Z)/(PI*W0*W0))*((Lambda*Z)/(PI*W0*W0)))
-			    GAUSS(X0,Y0,Z0)=exp(-(X*X+Y*Y)/(Wz*Wz))
-			    Rz=Z*(1+(Zr/Z)*(Zr/Z))
-                IF(X0 .EQ. 0 ) THEN
+			    Z=Z0
+			    Wy=W0*sqrt(1+((Lambda*Y)/(PI*W0*W0))*((Lambda*Y)/(PI*W0*W0)))
+			    GAUSS(X0,Y0,Z0)=exp(-(X*X+Z*Z)/(Wy*Wy))
+			    Ry=Y*(1+(Yr/Y)*(Yr/Y))
+                IF(X0 .EQ. 0 .AND. Z0 .EQ. 0 ) THEN
 			      AMAX=GAUSS(X0,Y0,Z0)
 		        ENDIF
     2007   CONTINUE
@@ -829,7 +809,9 @@
     
         DO 1008 X0=-XP+1,NX-XP
           DO 2008 Y0=YP,YP
-            GAUSS(X0,Y0,Z0)=GAUSS(X0,Y0,Z0)/AMAX
+            DO 3008 Z0=-ZP+1,NZ-ZP
+              GAUSS(X0,Y0,Z0)=GAUSS(X0,Y0,Z0)/AMAX
+   3008     CONTINUE
    2008  CONTINUE
    1008 CONTINUE
       END

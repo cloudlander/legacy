@@ -16,8 +16,9 @@ class Config:
         self._config['-G_RANGE']=-1.0
         self._config['TLM']=True
         self._config['MAP']=True
-        self._config['SURFACE']=False
+        self._config['SURFACE']=True
         self._config['GAUSS']=True
+        self._config['ONLY_SIN']=True
         self._config['ANI']=True
         self._config['DO_EX']='0'
         self._config['DO_EY']='1'
@@ -193,14 +194,46 @@ class Visualizer(ILineAware):
             env_set.seek(0)
             return env_set
 
+    class OnlySinWorker(Worker):
+        def prepareWorker(self):
+            env_set=StringIO.StringIO()
+            env_set.writelines(
+                    ["set samples 100, 100","\n",
+                     "set isosamples 10, 10","\n"
+                     "set palette model HSV functions gray, 1, 1","\n"
+                     "set autoscale","\n",
+                     "set size square","\n",
+                     "set surface","\n",
+                     'set title "TLM 2D Only SIN Distribution"',"\n",
+                     'set xlabel "Z"',"\n",
+                     'set ylabel "X"',"\n",
+                     'set xrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
+                     'set yrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set zrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
+                     'set cbrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
+                     'set zero 1e-0020',"\n",
+                     #'set pm3d at s',"\n",
+                     #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
+                     'set terminal png size ',self._config['PNG_SIZE'],"\n",
+                     #'set style data dots',"\n",
+                     'set style data points',"\n",
+                     #'set contour',"\n",
+                     #'set cntrparam levels incremental -0.2,0.01,0.2',"\n"
+                     #'unset surface',"\n",
+                     #'set view 0,0',"\n"
+                    ])
+            env_set.seek(0)
+            return env_set
+
     def __init__(self,config=Config()):
         self._config=config.getConfig()
         #self._num_threads=self._config['threads']*2
-        self._num_threads=self._config['threads']*3
+        self._num_threads=self._config['threads']*4
         self._threads=range(self._num_threads)
         self._map_queue=Queue.Queue()
         self._surface_queue=Queue.Queue()
         self._gauss_queue=Queue.Queue()
+        self._only_sin_queue=Queue.Queue()
         self._trunk_start=1
         self.joining=False
         self.killed=False
@@ -240,8 +273,15 @@ class Visualizer(ILineAware):
         else:
             return ((self._trunk_start-1)/float(self._config['NT'])-self._gauss_queue.qsize()*10/total)*100
 
+    def getOnlySinPlotStatus(self):
+        total=float(self.getTotal())
+        if self._trunk_start > int(self._config['NT']):
+            return (total-self._only_sin_queue.qsize()*10)/total*100
+        else:
+            return ((self._trunk_start-1)/float(self._config['NT'])-self._only_sin_queue.qsize()*10/total)*100
+
     def printStatus(self):
-        print "TLM %.0f%% calculated,surface %.0f%% plotted,map %.0f%% plotted,Gauss %.0f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus(),self.getGaussPlotStatus()),
+        print "TLM %.0f%% calculated,surface %.0f%% plotted,map %.0f%% plotted,Gauss %.0f%% plotted,OnlySin %.0f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus(),self.getGaussPlotStatus(),self.getOnlySinPlotStatus()),
 
     def encounterLine(self,line):
         try:
@@ -252,6 +292,7 @@ class Visualizer(ILineAware):
                         self.map_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'MAP'})
                         self.surface_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'3D'})
                 self.gauss_deposit({'start':self._trunk_start,'end':end,'prefix':"GAUSS",'dir':'SIN'})
+                self.only_sin_deposit({'start':self._trunk_start,'end':end,'prefix':"ONLYSIN",'dir':'3D'})
                 self._trunk_start=end+1
         except:
             #print "Exceptions in encounterLine: %s"%(line)
@@ -287,23 +328,39 @@ class Visualizer(ILineAware):
     def gauss_deposit(self,trunk):
         self._gauss_queue.put(trunk,True)
 
+
+    def only_sin_request(self):
+        trunk=None
+        try:
+            trunk=self._only_sin_queue.get(True,1)
+        finally:
+            return trunk
+
+    def only_sin_deposit(self,trunk):
+        self._only_sin_queue.put(trunk,True)
+
     def start(self):
         try:
-            for i in range(self._num_threads/3):
+            for i in range(self._num_threads/4):
                 self._threads[i]=self.MapWorker(self,self.map_request,self._config)
                 self._threads[i].setName("MapWorker"+str(i))
                 self._threads[i].start()
                 self._threads[i].enable(self._config['MAP'])
-            for i in range(self._num_threads/3,self._num_threads*2/3):
+            for i in range(self._num_threads/4,self._num_threads/2):
                 self._threads[i]=self.SurfaceWorker(self,self.surface_request,self._config)
                 self._threads[i].setName("SurfaceWorker"+str(i))
                 self._threads[i].start()
                 self._threads[i].enable(self._config['SURFACE'])
-            for i in range(self._num_threads*2/3,self._num_threads):
+            for i in range(self._num_threads/2,self._num_threads*3/4):
                 self._threads[i]=self.GaussWorker(self,self.gauss_request,self._config)
                 self._threads[i].setName("GaussWorker"+str(i))
                 self._threads[i].start()
                 self._threads[i].enable(self._config['GAUSS'])
+            for i in range(self._num_threads*3/4,self._num_threads):
+                self._threads[i]=self.OnlySinWorker(self,self.only_sin_request,self._config)
+                self._threads[i].setName("OnlySinWorker"+str(i))
+                self._threads[i].start()
+                self._threads[i].enable(self._config['ONLY_SIN'])
         except:
             print "Exceptions in start!"
 
