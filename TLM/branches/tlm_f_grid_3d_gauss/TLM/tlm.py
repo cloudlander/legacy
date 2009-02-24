@@ -16,7 +16,7 @@ class Config:
         self._config['-G_RANGE']=-1.0
         self._config['TLM']=True
         self._config['MAP']=True
-        self._config['SURFACE']=True
+        self._config['SURFACE']=False
         self._config['GAUSS']=True
         self._config['ONLY_SIN']=True
         self._config['ANI']=True
