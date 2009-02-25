@@ -286,28 +286,28 @@
       CALL SCL(SE,ZY)	
       CALL SCL(SF,ZZ)	    
       
-	  DO 1003 X0=SX,ENDX
-            DO 3003 Z0=SZ,ENDZ
-			     GAUSS(X0,Y,Z0)=0
+	  DO 1003 I=SX,ENDX
+            DO 3003 K=SZ,ENDZ
+			     GAUSS(I,Y,K)=0
    3003     CONTINUE
    1003 CONTINUE
 
       ! 应用用高斯函数
 	  DO 87 PIND=1,PLEN
         CALL GENGAUSS(GAUSS2,NX,NY,NZ,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3),W0)
-		  DO 1005 X0=SX,ENDX
-            DO 3005 Z0=SZ,ENDZ
-			     GAUSS(X0,Y,Z0)=GAUSS(X0,Y,Z0)+GAUSS2(X0,Y,Z0)
+		  DO 1005 I=SX,ENDX
+            DO 3005 K=SZ,ENDZ
+			     GAUSS(I,Y,K)=GAUSS(I,Y,K)+GAUSS2(I,Y,K)
    3005     CONTINUE
    1005 CONTINUE
   87  CONTINUE
 
       GMAX=0
 
-        DO 1007 X0=SX,ENDX
-            DO 3007 Z0=SZ,ENDZ
-              IF(GAUSS(X0,Y,Z0) .GT. GMAX) THEN
-			     GMAX=GAUSS(X0,Y,Z0)
+        DO 1007 I=SX,ENDX
+            DO 3007 K=SZ,ENDZ
+              IF(GAUSS(I,Y,K) .GT. GMAX) THEN
+			     GMAX=GAUSS(I,Y,K)
 			  ENDIF
    3007     CONTINUE
    1007 CONTINUE
@@ -315,9 +315,9 @@
 
 	  WRITE(*,*) GMAX
 
-        DO 1006 X0=SX,ENDX
-            DO 3006 Z0=SZ,ENDZ
-			     GAUSS(X0,Y,Z0)=GAUSS(X0,Y,Z0)/GMAX
+        DO 1006 I=SX,ENDX
+            DO 3006 K=SZ,ENDZ
+			     GAUSS(I,Y,K)=GAUSS(I,Y,K)/GMAX
    3006     CONTINUE
    1006 CONTINUE
 
@@ -367,11 +367,11 @@
   6      CONTINUE
 
           III=2
-             DO 992 X0=SX,ENDX
-			   DO 994 Z0=SZ,ENDZ
-			      write(8134+T,*) Z0,X0,GAUSS(X0,Y,Z0)*IVB(III,X0,Y,Z0)
-				  write(8135+T,*) Z0,X0,IVB(III,X0,Y,Z0)
-                  IVB(III,X0,Y,Z0)=GAUSS(X0,Y,Z0)*IVB(III,X0,Y,Z0)    
+             DO 992 I=SX,ENDX
+			   DO 994 K=SZ,START_COL
+			      write(8134+T,*) K,I,GAUSS(I,Y,K)*IVB(III,I,Y,K)
+				  write(8135+T,*) K,I,IVB(III,I,Y,K)
+                  IVB(III,I,Y,K)=GAUSS(I,Y,K)*IVB(III,I,Y,K)    
  994           CONTINUE  
  992         CONTINUE
 

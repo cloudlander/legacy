@@ -1,22 +1,25 @@
 for /D %%v in (EX EY EZ HX HY HZ) do call :gen %%v
-cd GAUSS_SIN
-start "GAUSS_SIN" /WAIT ..\mencoder\mencoder mf://*.png -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o ..\gauss_sin.avi
-cd ..\ONLYSIN_3D
-start "ONLY_SIN" /WAIT ..\mencoder\mencoder mf://*.png -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o ..\only_sin.avi
+.\ls.exe GAUSS_SIN\*.png > list
+start "GAUSS_SIN" /WAIT mencoder\mencoder mf://@list -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o gauss_sin.avi
+.\ls.exe ONLYSIN_3D\*.png > list
+start "ONLY_SIN" /WAIT mencoder\mencoder mf://@list -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o only_sin.avi
 
-cd ..
 echo set terminal png size 1024,768 >> set.gnu
 echo set output "gausA.png" >> set.gnu
 echo load 'set.gnu' > gausA.cmd
 echo splot 'gausA.out' >> gausA.cmd
 wgnuplot gausA.cmd
 del gausA.cmd
+del list
 goto :end
 
 :gen
-cd %1_MAP
-start "%1_MAP" /WAIT ..\mencoder\mencoder mf://*.png -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o ..\%1_map_color.avi
-cd ..\%1_3D
-start "%1_3D" /WAIT ..\mencoder\mencoder mf://*.png -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o ..\%1_3d_color.avi
-cd ..
+if exist "%1_MAP\IMG    1.png" (
+.\ls.exe %1_MAP\*.png > list
+start "%1_MAP" /WAIT mencoder\mencoder mf://@list -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o %1_map_color.avi
+)
+if exist "%1_3D\IMG    1.png" (
+.\ls.exe %1_3D\*.png > list
+start "%1_3D" /WAIT mencoder\mencoder mf://@list -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o %1_3d_color.avi
+)
 :end
