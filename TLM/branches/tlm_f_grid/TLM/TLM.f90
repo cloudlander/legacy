@@ -37,7 +37,8 @@
 	  INTEGER LN,LI,LL
 
 	  INTEGER SPLIT !SPLIT=1 按T分割输出文件, SPLIT=0 不分割
-	  REAL FRE
+	  REAL FRE   !光波实际频率
+	  REAL NORMAL_FRE  !归一化频率
       REAL time_begin, time_end
       INTEGER UNIT_BASE,UNIT_BASE2
       INTEGER FILE_UNIT
@@ -73,7 +74,7 @@
       OPEN(11,FILE='twotlme.in',FORM='FORMATTED')
 
       !读入数据固定参数计算结构参数时使用      
-      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,W0,PN,PSX,PSZ,PENDZ,PANGLE,LN
+      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,NORMAL_FRE,W0,PN,PSX,PSZ,PENDZ,PANGLE,LN
       
       IF(SPLIT .EQ. 0) THEN
         FILE_UNIT=13
@@ -265,18 +266,27 @@
 	   OPEN(8134+T,FILE="GAUSS/GAUSS"//NAME_COUNT//".out",FORM='FORMATTED')
 	   OPEN(8135+T,FILE="ONLYSIN/ONLYSIN"//NAME_COUNT//".out",FORM='FORMATTED')
 
-         DO 6 III=1,4
+         DO 6 III=2,2
              DO 992 PIND=1,PLEN
-                IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
+    !		      IVB(III,X,Y,Z)=1  !为点光源持续一个幅度激励
+    !             IVB(III,X,Y,Z)=sin(2*PI*FRE*t)  !为sin激发 单色波形式
+    !             其中t=(deltaL/C)*T   ,T为NT循环的迭代变量,deltaL/C(一个格点宽度/光速=单位距离所用的时间),deltaL为单位距离，C为光速 
+	!             所以，IVB(III,X,Y,Z)=sin(2*PI*FRE*t)=sin(2*PI*FRE*(deltaL/C)*T)=sin(2*PI*NORMAL_FRE*T) 其中FRE*(deltaL/C)=FRE*deltaL/C为归一化频率 NORMAL_FRE
+
+	!             例如FRE=10GHz时，由于TLM色散限制 deltaL/lamd<0.1  ,此处取deltaL/lamd=(1/3)*0.1=3.33*E-2
+	!             !IVB(III,X,Y,Z)=sin(6.283E+10*(0.33333E-11)*T)  !为sin激发单色波形式 FRE=10GHz
+    !             !其中0.3333E-11=1/3E-11=dl/CC=deltaL/C(一个格点宽度/光速)  !dl取(3*E-2)*lamd=(3*E-2)*C/FRE 且取FRE=10GHz, C为光速
+                IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(2*PI*NORMAL_FRE*T)  !为sin激发单色波形式
+	!            IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
  992         CONTINUE 
   6      CONTINUE
 
-         DO 374 III=1,4
+         DO 374 III=2,2
              DO 993 I=SX,ENDX
 			   DO 994 K=SZ,PSZ
 			   	  write(8134+T,*) K,I,GAUSS(I,Y,K)*IVB(III,I,Y,K)
 				  write(8135+T,*) K,I,IVB(III,I,Y,K)
-!                  IVB(III,I,J,K)=GAUSS(I,J,K)*IVB(III,I,J,K)    
+                  IVB(III,I,J,K)=GAUSS(I,J,K)*IVB(III,I,J,K)    
  994           CONTINUE  
  993         CONTINUE
  374     CONTINUE
