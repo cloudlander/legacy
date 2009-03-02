@@ -17,19 +17,25 @@
       PROGRAM TWOTLME
       INTEGER SX,SY,SZ,ENDX,ENDY,ENDZ,NX,NY,NZ,X,Y,Z,T,BL,SIDE1,SIDE2   
 !网格单位长度，起始网格位置结束网格位置，边界条件标志参数
-      REAL RVB(5,200,200,200)
-      REAL IVB(5,200,200,200)
-      
-   	  REAL REEY(10,200,200,200),IMEY(10,200,200,200)
+
+      REAL, ALLOCATABLE:: RVB(:,:,:,:),IVB(:,:,:,:)
+      REAL, ALLOCATABLE:: REEY(:,:,:,:),IMEY(:,:,:,:)
 
       REAL SB(5,5)
-      REAL EY
-      REAL YY(200,200)
-      INTEGER YYY(200,200)
+      REAL EY,FEY
+
+      INTEGER, ALLOCATABLE:: PULSE(:,:)   !脉冲点
+      INTEGER, ALLOCATABLE:: L(:)
+      REAL, ALLOCATABLE:: YY(:,:)
+	  CHARACTER(LEN=12), ALLOCATABLE:: YYY(:,:)
+      REAL, ALLOCATABLE:: GAUSS(:,:,:),GAUSS2(:,:,:)
+      CHARACTER(LEN=12) ER_COLOR,ER1_COLOR,ER2_COLOR,P_COLOR  !介质的颜色
+
+	  REAL GMAX,W0
       REAL ER,ER1,ER2
 	  INTEGER U,V,W
 	  INTEGER LN,LI,LL
-	  INTEGER L(10)
+
 	  INTEGER SPLIT !SPLIT=1 按T分割输出文件, SPLIT=0 不分割
 	  REAL FRE
       REAL time_begin, time_end
@@ -38,37 +44,43 @@
       INTEGER START_ROW,START_COL,GRID_ROW,GRID_COL   !网格开始位置
       INTEGER COL  !网格总列数
       REAL PART  !网格所占百分比
+      
+	  !!!!!!!!!!!!!        NANGLE参数在2D版本中不再生效       !!!!!!!!!!!!!!1
+	  REAL NANGLE !网格偏移角度(与Z轴张角,取值范围为(0,180) 90为不倾斜
+
       INTEGER GTYPE !网格类型 0为矩形, 1为内切椭圆(正圆), 2为等腰三角形
-      INTEGER PSX !输入脉冲开始位置
+      INTEGER PSX,PSZ !输入脉冲开始位置
+	  INTEGER PENDZ !输入脉冲结束的Z坐标
       REAL PANGLE !输入脉冲直线与Z轴张角(角度参数)
+      REAL PLENGTH !输入脉冲直线的长度
       REAL PP !脉冲直线计算参数
-      INTEGER PULSE(200,3) !脉冲点
       INTEGER PIND, PLEN !脉冲点序号和总数
       
+	  !输入脉冲数组,以下为取值说明:
+      !=0: 使用PSX,PSZ,PENDZ和PLENGTH自动生成脉冲直线,直线旋转PANGLE角度,并且生成2个效果文件
+      !>0: 使用输入文件的X,Z坐标作为脉冲点,介质旋转PANGLE角度,生成一个效果文件
+      INTEGER PN 
+
       CHARACTER(LEN=5) NAME_COUNT
 
       UNIT_BASE=100
       UNIT_BASE2=16384
-      
+      ER_COLOR="255 255 255 "  !默认为白色
+      ER1_COLOR="255 0 0     "
+      ER2_COLOR="0 0 255     "
+      P_COLOR="0 255 0     "   !激发为绿色
+	        
       OPEN(11,FILE='twotlme.in',FORM='FORMATTED')
-      OPEN(111,FILE='grid.dat',FORM='FORMATTED')
-      
-      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SIDE1,SIDE2,ER1,ER2,GTYPE,FRE,LN,SPLIT,COL,PSX,PANGLE
-!读入数据固定参数计算结构参数时使用
-      IF (LN .NE. 0) THEN
-        DO 220 III=1,LN
-          READ(11,*)L(III)
-  220   CONTINUE
-      ELSE
-        LN=16384
-      ENDIF
-      CLOSE(11)
+
+      !读入数据固定参数计算结构参数时使用      
+      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,W0,PN,PSX,PSZ,PENDZ,PANGLE,LN
       
       IF(SPLIT .EQ. 0) THEN
         FILE_UNIT=13
         OPEN(13,FILE='EY.out',FORM='FORMATTED')
       ENDIF
       
+      !set.gnu已无实际应用效果,具体调整在tlm.py中
       OPEN(15,FILE='set.gnu',FORM='FORMATTED')
       WRITE(15,*) "set samples 100, 100"
       WRITE(15,*) "set isosamples 10, 10"
@@ -90,7 +102,6 @@
 	  !"set zrange" 0.03变为1.03为了画图不出现白色块
 	  !"set pm3d map"为2D画图，"set pm3d at s"为3D画图
       
-      J=10
       
       NX=200
       NY=200
@@ -115,85 +126,126 @@
           ENDIF
       ENDIF
       ENDX=SX+GRID_ROW*SIDE1-1
-      
-      !WRITE(*,*) ENDX,GRID_ROW,GRID_COL
-!      YY=2*(U*W*SQRT(H)*ER/V-2)    !介电常数支线结构参数的计算(方向5即为介电常数支线)
 
+      ALLOCATE (RVB(5,NX,NY,NZ),IVB(5,NX,NY,NZ))
+      ALLOCATE (REEY(10,NX,NY,NZ),IMEY(10,NX,NY,NZ))
+
+      ALLOCATE (GAUSS(NX,NY,NZ),GAUSS2(NX,NY,NZ))
+      ALLOCATE (YY(NX,NZ))
+	  ALLOCATE (YYY(NX,NZ))
+      ALLOCATE (PULSE(NX,3))
+
+      !  初始化X-Z平面ER
       DO 2221 II=SX,ENDX
          DO 2222 KK=SZ,ENDZ
-            YY(II,KK)=2*(U*W*SQRT(H)*ER/V-2)
-            YYY(II,KK)=0
+            YY(II,KK)=2*(U*W*SQRT(H)*ER/V-2)  !介电常数支线结构参数的计算(方向5即为介电常数支线)
+            YYY(II,KK)=ER_COLOR
  2222    CONTINUE
  2221 CONTINUE
 
-
-!  开始绘制脉冲空间位置(直线)
-      II=PSX
-      KK=START_COL
-      YYY(II,KK)=-1
-      PIND=1
-      PULSE(PIND,1)=II
-      PULSE(PIND,2)=J
-      PULSE(PIND,3)=KK
-      PANGLE=TAND(PANGLE)
-      IF(PANGLE .GT. 1) THEN
-        PP=2/PANGLE-1
-      ELSE
-        PP=2*PANGLE-1
-      ENDIF
-      DO WHILE(II .GT. SX .AND. KK .GT. SZ)
-         IF(PANGLE .GT. 1) THEN
-            II=II-1
-         ELSE
-            KK=KK-1
-         ENDIF
-         IF(PP .GE. 0) THEN
-            IF(PANGLE .GT. 1) THEN
-               KK=KK-1
-               PP=PP+2*(1/PANGLE-1)
-            ELSE
-               II=II-1
-               PP=PP+2*(PANGLE-1)
-            ENDIF
-         ELSE
-            IF(PANGLE .GT. 1) THEN
-               PP=PP+2/PANGLE
-            ELSE
-               PP=PP+2*PANGLE
-            ENDIF
-         ENDIF
-         PIND=PIND+1
-         PULSE(PIND,1)=II
-         PULSE(PIND,2)=J
-         PULSE(PIND,3)=KK
-         YYY(II,KK)=-1
-      ENDDO
-      PLEN=PIND
-            
-            
 !  开始绘制网格            
       DO 3331 II=0,GRID_ROW-1
          DO 3332 KK=0,GRID_COL-1
             IF ( MOD((II+KK),2) .EQ. 1 ) THEN
-               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER1/V-2),1)
+               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER1/V-2),ER1_COLOR)
             ELSE
-               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER2/V-2),2)
+               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR)
             ENDIF
  3332    CONTINUE
  3331 CONTINUE
 
-!  输出全X-Z平面
-      DO 55 I=SX,ENDX
-         DO 66 K=SZ,ENDZ
-            WRITE (111,*) K,I,YYY(I,K)
-   66    CONTINUE
-   55 CONTINUE
-      CLOSE(111)
-!      STOP
+      !读入脉冲点位置数组X,Z坐标
+      IF(PN .GT. 0) THEN
 
+        DO 230 PIND=1,PN
+          READ(11,*)PULSE(PIND,1),PULSE(PIND,3)
+          PULSE(PIND,2)=Y
+          YYY(PULSE(PIND,1),PULSE(PIND,3))=P_COLOR
+  230   CONTINUE
+        PLEN=PN
+        
+      ELSE IF(PN .EQ. 0) THEN
+      
+      !  开始绘制脉冲空间位置(直线),仅当不使用输入文件中指点的脉冲点时自动绘制直线
+          CALL LINE(X,Y,Z,PSX,PSZ,PENDZ,SX,ENDX,PANGLE,YYY,NX,NZ,PULSE,PIND,PLEN,P_COLOR)      
+          
+      ENDIF
+
+
+!  输出全X-Z平面的实际计算效果图
+      OPEN(111,FILE='grid.ppm',FORM='FORMATTED')
+      WRITE (111,'(A2)')"P3"
+      WRITE (111,'(5I )',advance='no')ENDZ-SZ+1
+      WRITE (111,'(5I)')ENDX-SX+1
+      WRITE (111,'(A3)')"255"
+      DO 56 I=ENDX,SX,-1
+         DO 67 K=SZ,ENDZ
+            WRITE (111,'(A12)',advance='no') YYY(I,K)
+   67    CONTINUE
+   56 CONTINUE
+      WRITE (111,*)
+      CLOSE(111)
+      WRITE(*,*) "grid.ppm generated"
+	  WRITE(*,*) "START_COL:", START_COL
+      WRITE(*,*) "PULSE POINTS:"
+      DO 77 PIND=1,PLEN
+        WRITE(*,*) PULSE(PIND,1),PULSE(PIND,3)
+   77 CONTINUE
+
+      !读入频域点数组
+	  ALLOCATE (L(LN))
+      IF (LN .NE. 0) THEN
+        DO 220 III=1,LN
+          READ(11,*)L(III)
+  220   CONTINUE
+      ELSE
+        LN=16384
+      ENDIF
+      CLOSE(11)
+     
+      ! 应用用高斯函数
+	  DO 87 PIND=1,PLEN
+        CALL GENGAUSS(GAUSS2,NX,NY,NZ,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3),W0)
+		  DO 1005 I=SX,ENDX
+            DO 3005 K=SZ,ENDZ
+			     GAUSS(I,Y,K)=GAUSS(I,Y,K)+GAUSS2(I,Y,K)
+   3005     CONTINUE
+   1005 CONTINUE
+  87  CONTINUE
+
+      GMAX=0
+
+        DO 1007 I=SX,ENDX
+            DO 3007 K=SZ,ENDZ
+              IF(GAUSS(I,Y,K) .GT. GMAX) THEN
+			     GMAX=GAUSS(I,Y,K)
+			  ENDIF
+   3007     CONTINUE
+   1007 CONTINUE
+      
+	  WRITE(*,*) "GAUSS MAX IS:",GMAX
+
+        DO 1006 I=SX,ENDX
+            DO 3006 K=SZ,ENDZ
+			     GAUSS(I,Y,K)=GAUSS(I,Y,K)/GMAX
+   3006     CONTINUE
+   1006 CONTINUE
+
+
+      OPEN(131,FILE='gausA.out',FORM='FORMATTED')
+      DO 11111 I=SX,ENDX
+        DO 11112 K=SZ,ENDZ        
+           WRITE(131,*) K,I,GAUSS(I,Y,K)
+11112   CONTINUE
+11111 CONTINUE
+      CLOSE(131)
+
+
+      !J方向固定为输入参数Yin
+      J=Y 
+	  
       GY=SGM*U*W*Z0/V              !损耗支线结构参数计算[SGM取0记不计该Gjj参数（程序中由GY表示）]
       
-
       DO 1 I=SX,ENDX           !初始化五个支线的输入向量，理解为五个不同的向量，分别代表物理上不同方向的支线
 	    DO 3 K=SZ,ENDZ
 	       DO 4 T=1,5   
@@ -201,24 +253,38 @@
    4       CONTINUE
    3    CONTINUE
    1  CONTINUE
-     
-!     DO 5 I=1,1
-!	    IVB(1,X,Y,Z)=1	!激励（选择激励点支线方向位置，赋激励值1，代表1v电压）
-!   5 CONTINUE
-       
+
       CALL CPU_TIME ( time_begin )
       
-      
+      OPEN(8133,FILE="sin.out",FORM='FORMATTED')
+
       DO 10 T=1,NT		!开始迭代
-       
+
+       WRITE(NAME_COUNT,'(I5)') T      
+
+	   OPEN(8134+T,FILE="GAUSS/GAUSS"//NAME_COUNT//".out",FORM='FORMATTED')
+	   OPEN(8135+T,FILE="ONLYSIN/ONLYSIN"//NAME_COUNT//".out",FORM='FORMATTED')
+
          DO 6 III=1,4
-                PIND=PLEN/2
-!             DO 992 PIND=1,PLEN
+             DO 992 PIND=1,PLEN
                 IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
-! 992         CONTINUE
-!             IVB(III,X,Y,Z)=IVB(III,X,Y,Z)+sin(PI*T/15)  !为sin激发单色波形式    
+ 992         CONTINUE 
   6      CONTINUE
-    
+
+         DO 374 III=1,4
+             DO 993 I=SX,ENDX
+			   DO 994 K=SZ,PSZ
+			   	  write(8134+T,*) K,I,GAUSS(I,Y,K)*IVB(III,I,Y,K)
+				  write(8135+T,*) K,I,IVB(III,I,Y,K)
+!                  IVB(III,I,J,K)=GAUSS(I,J,K)*IVB(III,I,J,K)    
+ 994           CONTINUE  
+ 993         CONTINUE
+ 374     CONTINUE
+
+
+       CLOSE(8134+T)			 
+	   CLOSE(8135+T)
+       WRITE(8133,*) T,sin(PI*T/15)
 
 	     DO 120 I=SX,ENDX		!结点散射的实施
 	       DO 140 K=SZ,ENDZ
@@ -274,7 +340,6 @@
    40          CONTINUE   
    20    CONTINUE
             
-      WRITE(NAME_COUNT,'(I5)') T
       IF (SPLIT .EQ. 1) THEN
           FILE_UNIT=UNIT_BASE+T
           OPEN(FILE_UNIT,FILE='EY/EY'//NAME_COUNT//'.out',FORM='FORMATTED')
@@ -356,6 +421,7 @@
       ENDIF
 	  CLOSE(15)
 	  
+	  CLOSE(8133)
 	  CALL CPU_TIME ( time_end )
 	  
 	  PRINT *, 'Time of operation was ',time_end - time_begin, ' seconds'
@@ -401,20 +467,11 @@
       FIM=FIM+E*SIN(2*3.14159*T*TLBB/2.0)
       END
 
-      FUNCTION GAUSS(T)
-      INTEGER T
-      REAL T0,TAO
-      REAL PI
-      PI=3.1415926
-      T0=0
-      TAO=1.0
-      GAUSS=EXP(-4.0*PI*(T-T0)*(T-T0)/(TAO*TAO))
-      END
-
       SUBROUTINE COLOR(GTYPE,SIDE1,SIDE2,I,K,YY,YYY,NX,NZ,C,CC)
-      INTEGER GTYPE,SIDE1,SIDE2,I,K,NX,NZ,CC
+      INTEGER GTYPE,SIDE1,SIDE2,I,K,NX,NZ
+      CHARACTER(LEN=12) CC
       REAL YY(NX,NZ)
-      INTEGER YYY(NX,NZ)
+      CHARACTER(LEN=12) YYY(NX,NZ)
       REAL C
       REAL CROW,CCOL,A,B
       A=SIDE1
@@ -441,4 +498,93 @@
              ENDIF
  3334    CONTINUE
  3333 CONTINUE
+      END
+
+
+      SUBROUTINE GENGAUSS(GAUSS,NX,NY,NZ,XP,YP,ZP,W0)
+        INTEGER X0,Y0,Z0,NX,NY,NZ,XP,YP,ZP
+        REAL GAUSS(-XP+1:NX-XP,NY,-ZP+1:NZ-ZP)
+	    REAL X,Y,Z
+        REAL C0,W0,Wz,PI,Zr,Rz,Lambda
+	    REAL AMAX
+        
+     
+        PI=3.1415926
+        Y0=YP
+ 	    Y=Y0
+        C0=1
+        Lambda=31E-10
+        Yr=PI*W0*W0/Lambda
+     
+        DO 1007 X0=-XP+1,NX-XP
+          DO 2007 Z0=-ZP+1,NZ-ZP
+			    X=X0
+			    Z=Z0
+			    Wy=W0*sqrt(1+((Lambda*Y)/(PI*W0*W0))*((Lambda*Y)/(PI*W0*W0)))
+			    GAUSS(X0,Y0,Z0)=exp(-(X*X+Z*Z)/(Wy*Wy))
+			    Ry=Y*(1+(Yr/Y)*(Yr/Y))
+                IF(X0 .EQ. 0 .AND. Z0 .EQ. 0 ) THEN
+			      AMAX=GAUSS(X0,Y0,Z0)
+		        ENDIF
+    2007   CONTINUE
+    1007 CONTINUE
+    
+        DO 1008 X0=-XP+1,NX-XP
+          DO 2008 Y0=YP,YP
+            DO 3008 Z0=-ZP+1,NZ-ZP
+              GAUSS(X0,Y0,Z0)=GAUSS(X0,Y0,Z0)/AMAX
+   3008     CONTINUE
+   2008  CONTINUE
+   1008 CONTINUE
+      END
+
+	  SUBROUTINE LINE(X,Y,Z,PSX,PSZ,PENDZ,SX,ENDX,ANGLE,YYY,NX,NZ,PULSE,PIND,PLEN,P_COLOR)
+      INTEGER PSX,PSZ,PENDZ,SX,ENDX,NX,NZ,PIND,PLEN,X,Y,Z
+      REAL PP !脉冲直线计算参数
+      REAL PANGLE,ANGLE
+      CHARACTER(LEN=12) YYY(NX,NZ)
+      CHARACTER(LEN=12) P_COLOR
+      INTEGER PULSE(NX,3)
+      INTEGER II,KK
+      II=PSX
+      KK=PSZ
+      YYY(II,KK)=P_COLOR
+      PIND=1
+      PULSE(PIND,1)=II
+      PULSE(PIND,2)=Y
+      PULSE(PIND,3)=KK
+      PANGLE=TAND(ANGLE)
+      IF(PANGLE .GT. 1) THEN
+        PP=2/PANGLE-1
+      ELSE
+        PP=2*PANGLE-1
+      ENDIF
+      DO WHILE(II .GT. SX .AND. KK .GE. PENDZ)
+         IF(PANGLE .GT. 1) THEN
+            II=II-1
+         ELSE
+            KK=KK-1
+         ENDIF
+         IF(PP .GE. 0) THEN
+            IF(PANGLE .GT. 1) THEN
+               KK=KK-1
+               PP=PP+2*(1/PANGLE-1)
+            ELSE
+               II=II-1
+               PP=PP+2*(PANGLE-1)
+            ENDIF
+         ELSE
+            IF(PANGLE .GT. 1) THEN
+               PP=PP+2/PANGLE
+            ELSE
+               PP=PP+2*PANGLE
+            ENDIF
+         ENDIF
+         PIND=PIND+1
+         PULSE(PIND,1)=II
+         PULSE(PIND,2)=Y
+         PULSE(PIND,3)=KK
+         YYY(II,KK)=P_COLOR
+      ENDDO
+      PLEN=PIND
       END
