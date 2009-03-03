@@ -14,6 +14,10 @@ echo splot 'gausA.out' >> gausA.cmd
 wgnuplot gausA.cmd
 del gausA.cmd
 del list
+
+REM transfrom grid ppm to jpg:
+.\convert.exe grid.ppm -quality 100 grid.jpg
+del grid.ppm
 goto :end
 
 :gen
