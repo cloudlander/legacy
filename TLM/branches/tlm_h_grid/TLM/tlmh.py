@@ -10,15 +10,15 @@ class Config:
     def parseConfig(self):
         self._config['threads']=3
         self._config['PNG_SIZE']='1024,768'
-        self._config['+RANGE']=0.001
-        self._config['-RANGE']=-0.001
-        self._config['+G_RANGE']=0.001
-        self._config['-G_RANGE']=-0.001
-        self._config['TLM']=True
+        self._config['+RANGE']=0.002
+        self._config['-RANGE']=-0.002
+        self._config['+G_RANGE']=1.0
+        self._config['-G_RANGE']=-1.0
+        self._config['TLM']=False
         self._config['MAP']=True
-        self._config['SURFACE']=True
-        self._config['GAUSS']=True
-        self._config['ONLY_SIN']=True
+        self._config['SURFACE']=False
+        self._config['GAUSS']=False
+        self._config['ONLY_SIN']=False
         self._config['ANI']=True
         self._config['DO_HX']='0'
         self._config['DO_HY']='1'

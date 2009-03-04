@@ -60,21 +60,25 @@
 	  !输入脉冲数组,以下为取值说明:
       !=0: 使用PSX,PSZ,PENDZ和PLENGTH自动生成脉冲直线,直线旋转PANGLE角度,并且生成2个效果文件
       !>0: 使用输入文件的X,Z坐标作为脉冲点,介质旋转PANGLE角度,生成一个效果文件
-      INTEGER PN 
+      INTEGER PN
+	  
+	  !吸收边界的Z值 
+      INTEGER BP
 
       CHARACTER(LEN=5) NAME_COUNT
 
       UNIT_BASE=100
       UNIT_BASE2=16384
-      ER_COLOR="255 255 255 "  !默认为白色
-      ER1_COLOR="255 0 0     "
-      ER2_COLOR="0 0 255     "
-      P_COLOR="0 255 0     "   !激发为绿色
+      ER_COLOR="0 0 0 "  !默认为黑色
+      ER1_COLOR="12 175 159     "
+    !  ER2_COLOR="0 0 255     "
+	  ER2_COLOR="0 0 0     "
+      P_COLOR="255 255 255     "   !激发为白色
 	        
       OPEN(11,FILE='twotlmh.in',FORM='FORMATTED')
 
       !读入数据固定参数计算结构参数时使用      
-      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,NORMAL_FRE,W0,PN,PSX,PSZ,PENDZ,PANGLE,LN
+      READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,NORMAL_FRE,W0,PN,PSX,PSZ,PENDZ,PANGLE,LN,BP
       
       IF(SPLIT .EQ. 0) THEN
         FILE_UNIT=13
@@ -148,9 +152,9 @@
       DO 3331 II=0,GRID_ROW-1
          DO 3332 KK=0,GRID_COL-1
             IF ( MOD((II+KK),2) .EQ. 1 ) THEN
-               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,ZY,ZYY,NX,NZ,2*(U*W*SQRT(H)*ER1/V-2),ER1_COLOR)
+               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,ZY,ZYY,NX,NZ,2*(U*W*SQRT(H)*ER1/V-2),ER1_COLOR, 1.0)
             ELSE
-               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,ZY,ZYY,NX,NZ,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR)
+               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,ZY,ZYY,NX,NZ,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 1.0)
             ENDIF
  3332    CONTINUE
  3331 CONTINUE
@@ -319,6 +323,9 @@
 		        END IF
 		     END IF
 	         IF (BL.EQ.0) THEN		!吸收边界条件的处理
+	            IF (K.EQ.BP) THEN
+		           !IVE(2,I,J,K)=0
+	            END IF			    
 	            IF (K.EQ.SZ) THEN
 		           IVE(2,I,J,K)=0
 	            END IF
@@ -484,19 +491,28 @@
       FIM=FIM+E*SIN(2*3.14159*T*TLBB/2.0)
       END
 
-      SUBROUTINE COLOR(GTYPE,SIDE1,SIDE2,I,K,ZY,ZYY,NX,NZ,C,CC)
-      INTEGER GTYPE,SIDE1,SIDE2,I,K,NX,NZ
+      SUBROUTINE COLOR(GTYPE,S1,S2,I,K,ZY,ZYY,NX,NZ,C,CC, SHRINK)
+      INTEGER GTYPE,S1,S2,I,K,NX,NZ,SIDE1,SIDE2
+	  REAL SHRINK
       CHARACTER(LEN=12) CC
       REAL ZY(NX,NZ)
       CHARACTER(LEN=12) ZYY(NX,NZ)
       REAL C
       REAL CROW,CCOL,A,B
+      INTEGER IGAP,KGAP
+
+	  SIDE1=S1*SHRINK
+	  SIDE2=S2*SHRINK
+
+      IGAP=S1-SIDE1
+	  KGAP=S2-SIDE2
+
       A=SIDE1
       B=SIDE2
       CROW=A/2
       CCOL=B/2
-      DO 3333 III=0,SIDE1-1
-         DO 3334 KKK=0,SIDE2-1
+      DO 3333 III=0,S1-1-IGAP
+         DO 3334 KKK=0,S2-1-KGAP
              IF(GTYPE .EQ. 0) THEN     !矩形
                  ZY(I+III,K+KKK)=C
                  ZYY(I+III,K+KKK)=CC
