@@ -1,5 +1,5 @@
 echo off
-for /D %%v in (EY) do call :clean %%v
+for /D %%v in (HY) do call :clean %%v
 del GAUSS_SIN\*
 del GAUSS\* /Q
 del ONLYSIN\*

@@ -8,23 +8,20 @@ class Config:
     def __init__(self):
         self._config={}
     def parseConfig(self):
-        self._config['threads']=1
+        self._config['threads']=3
         self._config['PNG_SIZE']='1024,768'
-        self._config['+RANGE']=1.0
-        self._config['-RANGE']=-1.0
-        self._config['+G_RANGE']=1.0
-        self._config['-G_RANGE']=-1.0
+        self._config['+RANGE']=0.001
+        self._config['-RANGE']=-0.001
+        self._config['+G_RANGE']=0.001
+        self._config['-G_RANGE']=-0.001
         self._config['TLM']=True
         self._config['MAP']=True
         self._config['SURFACE']=True
         self._config['GAUSS']=True
         self._config['ONLY_SIN']=True
         self._config['ANI']=True
-        self._config['DO_EX']='0'
-        self._config['DO_EY']='1'
-        self._config['DO_EZ']='0'
         self._config['DO_HX']='0'
-        self._config['DO_HY']='0'
+        self._config['DO_HY']='1'
         self._config['DO_HZ']='0'
         if sys.platform.find("win")==0:
             self._config['GEN_ANI']="gen_ani.bat"
@@ -241,7 +238,7 @@ class Visualizer(ILineAware):
     def getTotal(self):
         nt=float(self._config['NT'])
         ntask=0
-        for task in ('DO_EX','DO_EY','DO_EZ','DO_HX','DO_HY','DO_HZ'):
+        for task in ('DO_HX','DO_HY','DO_HZ'):
             ntask+=int(self._config[task])
         return nt*ntask
 
@@ -287,7 +284,7 @@ class Visualizer(ILineAware):
         try:
             end=int(line)
             if end % 10 == 0:
-                for task in ('EX','EY','EZ','HX','HY','HZ'):
+                for task in ('HX','HY','HZ'):
                     if self._config["DO_"+task] == '1':
                         self.map_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'MAP'})
                         self.surface_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'3D'})
@@ -464,6 +461,6 @@ def main(tlm_config):
     tlm.run()
 
 
-tlm_config=FileConfig("twotlme.in")
+tlm_config=FileConfig("twotlmh.in")
 if __name__ == "__main__":
     main(tlm_config)

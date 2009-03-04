@@ -1,4 +1,4 @@
-for /D %%v in (EX EY EZ HX HY HZ) do call :gen %%v
+for /D %%v in (HX HY HZ) do call :gen %%v
 if exist "GAUSS_SIN\IMG    1.png" (
 .\ls.exe GAUSS_SIN\*.png > list
 start "GAUSS_SIN" /WAIT mencoder\mencoder mf://@list -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o gauss_sin.avi
