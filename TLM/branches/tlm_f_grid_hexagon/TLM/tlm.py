@@ -20,9 +20,9 @@ class Config:
         self._config['GAUSS']=False
         self._config['ONLY_SIN']=False
         self._config['ANI']=True
-        self._config['DO_HX']='0'
-        self._config['DO_HY']='1'
-        self._config['DO_HZ']='0'
+        self._config['DO_EX']='0'
+        self._config['DO_EY']='1'
+        self._config['DO_EZ']='0'
         if sys.platform.find("win")==0:
             self._config['GEN_ANI']="gen_ani.bat"
             self._config['TLM_EXE']="Release/TLM.exe"
@@ -112,8 +112,8 @@ class Visualizer(ILineAware):
         def prepareWorker(self):
             env_set=StringIO.StringIO()
             env_set.writelines(
-                    ["set samples 100, 100","\n",
-                     "set isosamples 10, 10","\n"
+                    [#"set samples 100, 100","\n",
+                     #"set isosamples 10, 10","\n"
                      "set palette model HSV functions gray, 1, 1","\n"
                      "set autoscale","\n",
                      "set size square","\n",
@@ -127,7 +127,7 @@ class Visualizer(ILineAware):
                      'set cbrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
                      'set zero 1e-0020',"\n",
                      'set pm3d map',"\n",
-                     'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
+                     #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
                      'set terminal png size ',self._config['PNG_SIZE'],"\n",
                     ])
             env_set.seek(0)
@@ -138,8 +138,8 @@ class Visualizer(ILineAware):
         def prepareWorker(self):
             env_set=StringIO.StringIO()
             env_set.writelines(
-                    ["set samples 100, 100","\n",
-                     "set isosamples 10, 10","\n"
+                    [#"set samples 100, 100","\n",
+                     #"set isosamples 10, 10","\n"
                      "set palette model HSV functions gray, 1, 1","\n"
                      "set autoscale","\n",
                      "set size square","\n",
@@ -153,7 +153,7 @@ class Visualizer(ILineAware):
                      'set cbrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
                      'set zero 1e-0020',"\n",
                      'set pm3d at s',"\n",
-                     'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
+                     #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
                      'set terminal png size ',self._config['PNG_SIZE'],"\n",
                      'set style data dots',"\n",
                     ])
@@ -195,8 +195,8 @@ class Visualizer(ILineAware):
         def prepareWorker(self):
             env_set=StringIO.StringIO()
             env_set.writelines(
-                    ["set samples 100, 100","\n",
-                     "set isosamples 10, 10","\n"
+                    [#"set samples 100, 100","\n",
+                     #"set isosamples 10, 10","\n"
                      "set palette model HSV functions gray, 1, 1","\n"
                      "set autoscale","\n",
                      "set size square","\n",
@@ -238,7 +238,7 @@ class Visualizer(ILineAware):
     def getTotal(self):
         nt=float(self._config['NT'])
         ntask=0
-        for task in ('DO_HX','DO_HY','DO_HZ'):
+        for task in ('DO_EX','DO_EY','DO_EZ'):
             ntask+=int(self._config[task])
         return nt*ntask
 
@@ -284,7 +284,7 @@ class Visualizer(ILineAware):
         try:
             end=int(line)
             if end % 10 == 0:
-                for task in ('HX','HY','HZ'):
+                for task in ('EX','EY','EZ'):
                     if self._config["DO_"+task] == '1':
                         self.map_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'MAP'})
                         self.surface_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'3D'})
