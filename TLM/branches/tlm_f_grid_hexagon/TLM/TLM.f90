@@ -80,7 +80,7 @@
 	  ER2_COLOR="35 35 35     "
       P_COLOR="255 255 255     "   !激发为白色
 	        
-      OPEN(11,FILE='twotlm.in',FORM='FORMATTED')
+      OPEN(11,FILE='twotlme.in',FORM='FORMATTED')
 
       !读入数据固定参数计算结构参数时使用      
       READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,NORMAL_FRE,W0,PN,PSX,PSZ,PENDZ,PANGLE,LN,BP,SCALE
@@ -159,33 +159,35 @@
  2224    CONTINUE
  2223 CONTINUE
  
-!  开始绘制网格            
-!      DO 3331 II=0,GRID_ROW-1
-!         DO 3332 KK=0,GRID_COL-1
-!            IF ( MOD((II+KK),2) .EQ. 1 ) THEN
-!               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,ZY,ZYY,NX,NZ,2*(U*W*SQRT(H)*ER1/V-2),ER1_COLOR, 0.8)
-!            ELSE
-!               CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,ZY,ZYY,NX,NZ,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 1.0)
-!            ENDIF
-! 3332    CONTINUE
-! 3331 CONTINUE
-      II=SX
-      CC=0
-      KK=START_COL
-      DO WHILE(II .LE. ENDX)
-        DO WHILE(KK .LE. START_COL+GRID_COL*SIDE2)
-           CALL HEXAGON(GTYPE,SIDE1*4,SIDE2*4,II,KK,YY,YYY,NX,NZ,ENDX,START_COL+GRID_COL*SIDE2,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 0.8)
-           KK=KK+6*SIDE2
-        ENDDO
-        II=II+2*SIDE1
-        CC=CC+2
-        IF(MOD(CC,4) .EQ. 0) THEN
-           KK=START_COL      
-        ELSE
-           KK=START_COL+3*SIDE2
-        ENDIF
-      ENDDO
-      
+      !开始绘制网格            
+	  IF(GTYPE .NE. 3) THEN   !绘制矩形,椭圆和三角形
+		  DO 3331 II=0,GRID_ROW-1
+			 DO 3332 KK=0,GRID_COL-1
+				IF ( MOD((II+KK),2) .EQ. 1 ) THEN
+				   CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER1/V-2),ER1_COLOR, 0.8)
+				ELSE
+				   CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 1.0)
+				ENDIF
+	 3332    CONTINUE
+	 3331 CONTINUE
+	  ELSE
+		  II=SX               !绘制蜂窝状六角形
+		  CC=0
+		  KK=START_COL
+		  DO WHILE(II .LE. ENDX)
+			DO WHILE(KK .LE. START_COL+GRID_COL*SIDE2)
+			   CALL HEXAGON(GTYPE,SIDE1*4,SIDE2*4,II,KK,YY,YYY,NX,NZ,ENDX,START_COL+GRID_COL*SIDE2,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 0.8)
+			   KK=KK+6*SIDE2
+			ENDDO
+			II=II+2*SIDE1
+			CC=CC+2
+			IF(MOD(CC,4) .EQ. 0) THEN
+			   KK=START_COL      
+			ELSE
+			   KK=START_COL+3*SIDE2
+			ENDIF
+		  ENDDO
+      ENDIF
 
       !读入脉冲点位置数组X,Z坐标
       IF(PN .GT. 0) THEN
@@ -391,6 +393,9 @@
 		        END IF
 		     END IF
 	         IF (BL.EQ.0) THEN		!吸收边界条件的处理
+			    IF (K.EQ.BP) THEN
+                   !IVB(2,I,J,K)=0
+				ENDIF
 	            IF (K.EQ.SZ) THEN
 		           IVB(2,I,J,K)=0
 	            END IF
@@ -572,13 +577,7 @@
                      ZY(I+III,K+KKK)=C
                      ZYY(I+III,K+KKK)=CC
                  ENDIF
-             ENDIF
-             IF(GTYPE .EQ. 3) THEN     !六边形                                  
-                 IF((B/2-KKK) .LE. III .AND. (KKK-B/2) .LT. III .AND. (B/2-KKK)+III .LE. A .AND. (KKK-B/2)+III .LT. A) THEN
-                     ZY(I+III,K+KKK)=C
-                     ZYY(I+III,K+KKK)=CC
-                 ENDIF
-             ENDIF             
+             ENDIF            
  3334    CONTINUE
  3333 CONTINUE
       END

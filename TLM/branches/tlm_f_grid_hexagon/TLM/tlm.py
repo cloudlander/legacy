@@ -8,15 +8,15 @@ class Config:
     def __init__(self):
         self._config={}
     def parseConfig(self):
-        self._config['threads']=1
+        self._config['threads']=16
         self._config['PNG_SIZE']='1024,768'
-        self._config['+RANGE']=0.00005
-        self._config['-RANGE']=-0.00005
+        self._config['+RANGE']=0.15
+        self._config['-RANGE']=-0.15
         self._config['+G_RANGE']=1.0
         self._config['-G_RANGE']=-1.0
-        self._config['TLM']=False
+        self._config['TLM']=True
         self._config['MAP']=True
-        self._config['SURFACE']=False
+        self._config['SURFACE']=True
         self._config['GAUSS']=False
         self._config['ONLY_SIN']=False
         self._config['ANI']=True
@@ -114,7 +114,8 @@ class Visualizer(ILineAware):
             env_set.writelines(
                     [#"set samples 100, 100","\n",
                      #"set isosamples 10, 10","\n"
-                     "set palette model HSV functions gray, 1, 1","\n"
+                     #"set palette model HSV functions gray, 1, 1","\n"
+                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n",
                      "set autoscale","\n",
                      "set size square","\n",
                      "set surface","\n",
@@ -140,7 +141,8 @@ class Visualizer(ILineAware):
             env_set.writelines(
                     [#"set samples 100, 100","\n",
                      #"set isosamples 10, 10","\n"
-                     "set palette model HSV functions gray, 1, 1","\n"
+                     #"set palette model HSV functions gray, 1, 1","\n"
+                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n",
                      "set autoscale","\n",
                      "set size square","\n",
                      "set surface","\n",
@@ -461,6 +463,6 @@ def main(tlm_config):
     tlm.run()
 
 
-tlm_config=FileConfig("twotlmh.in")
+tlm_config=FileConfig("twotlme.in")
 if __name__ == "__main__":
     main(tlm_config)
