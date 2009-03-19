@@ -28,9 +28,10 @@
       INTEGER, ALLOCATABLE:: L(:)
       REAL, ALLOCATABLE:: YY(:,:)
 	  
-	  CHARACTER(LEN=12), ALLOCATABLE:: YYY(:,:)
+	  INTEGER, ALLOCATABLE:: YYY(:,:)
+	  INTEGER P_COLOR,ER_COLOR,ER1_COLOR,ER2_COLOR
 	  REAL GMAX,W0
-      CHARACTER(LEN=12) ER_COLOR,ER1_COLOR,ER2_COLOR,P_COLOR  !介质的颜色
+      CHARACTER(LEN=12) COLORS(0:3)  !介质颜色表
 
       REAL ER,ER1,ER2
 	  INTEGER U,V,W
@@ -43,8 +44,8 @@
       REAL time_begin, time_end
       INTEGER UNIT_BASE,UNIT_BASE2
       INTEGER FILE_UNIT
-      INTEGER START_ROW,START_COL,GRID_ROW,GRID_COL   !网格开始位置
-      INTEGER COL  !网格总列数
+      INTEGER START_ROW,START_COL,END_COL,GRID_ROW,GRID_COL   !网格开始位置
+      REAL COL  !网格总列数
       REAL PART  !网格所占百分比
       
 	  !!!!!!!!!!!!!        NANGLE参数在2D版本中不再生效       !!!!!!!!!!!!!!1
@@ -74,11 +75,18 @@
 
       UNIT_BASE=100
       UNIT_BASE2=16384
-      ER_COLOR="35 35 35 "  !默认为黑色
-      ER1_COLOR="12 175 159     "
-    !  ER2_COLOR="0 0 255     "
-	  ER2_COLOR="35 35 35     "
-      P_COLOR="255 255 255     "   !激发为白色
+
+      !介质颜色, 0:激励, 1:ER, 2:ER1, 3:ER2
+      P_COLOR=0    
+	  ER_COLOR=1
+	  ER1_COLOR=2
+	  ER2_COLOR=3
+
+      COLORS(0)="255 255 255     "   !激发为白色
+      COLORS(1)="35 35 35 "          !默认为黑色(ER)
+      COLORS(2)="12 175 159     "    !ER1
+    !  COLORS(2)="0 0 255     "      !ER1
+	  COLORS(3)="35 35 35     "       !ER2
 	        
       OPEN(11,FILE='twotlme.in',FORM='FORMATTED')
 
@@ -105,8 +113,8 @@
       WRITE(15,*) "set zrange [ -0.300000 : 0.300000 ] noreverse nowriteback"
       WRITE(15,*) "set cbrange [ -0.300000 : 0.300000 ] noreverse nowriteback"
       WRITE(15,*) "set zero 1e-0020"
-      WRITE(15,*) "set pm3d at s"
-      WRITE(15,*) "set style data dots"
+      WRITE(15,*) "set pm3d map"
+      !WRITE(15,*) "set style data dots"
 	  !"set xrange" 对应（HY.out第一列），为介质空间Z轴； "set yrange"对应（HY.out第二列），为介质空间X轴
 	  !"set zrange" 0.03变为1.03为了画图不出现白色块
 	  !"set pm3d map"为2D画图，"set pm3d at s"为3D画图
@@ -131,6 +139,7 @@
 !          ENDIF
 !      ENDIF
       ENDX=SX+GRID_ROW*SIDE1-1
+	  END_COL=START_COL+GRID_COL*SIDE2-1
 
       NX=ENDX+1
       NY=30
@@ -153,7 +162,7 @@
  2221 CONTINUE
 
       DO 2223 II=SX,ENDX
-         DO 2224 KK=START_COL,START_COL+GRID_COL*SIDE2
+         DO 2224 KK=START_COL,END_COL
             YY(II,KK)=2*(U*W*SQRT(H)*ER1/V-2)  !介电常数支线结构参数的计算(方向5即为介电常数支线)
             YYY(II,KK)=ER1_COLOR
  2224    CONTINUE
@@ -173,44 +182,64 @@
 	  ELSE
 		  II=SX               !绘制蜂窝状六角形
 		  CC=0
-		  KK=START_COL
+		  IF(MOD(GRID_COL,4) .EQ. 0) THEN        !调整蜂窝起始位置,尽量模拟从中心向两边扩展的分布
+             KKK=-SIDE2
+	      ELSE IF(MOD(GRID_COL,4) .EQ. 1) THEN
+		     KKK=-2*SIDE2
+	      ELSE IF(MOD(GRID_COL,4) .EQ. 2) THEN
+		     KKK=-3*SIDE2
+	      ELSE IF(MOD(GRID_COL,4) .EQ. 3) THEN
+		     KKK=-2*SIDE2
+          ENDIF
+		  KK=START_COL+KKK
 		  DO WHILE(II .LE. ENDX)
-			DO WHILE(KK .LE. START_COL+GRID_COL*SIDE2)
-			   CALL HEXAGON(GTYPE,SIDE1*4,SIDE2*4,II,KK,YY,YYY,NX,NZ,ENDX,START_COL+GRID_COL*SIDE2,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 0.8)
+			DO WHILE(KK .LE. END_COL)
+			   CALL HEXAGON(GTYPE,SIDE1*4,SIDE2*4,II,KK,YY,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 0.8)
 			   KK=KK+6*SIDE2
 			ENDDO
 			II=II+2*SIDE1
 			CC=CC+2
 			IF(MOD(CC,4) .EQ. 0) THEN
-			   KK=START_COL      
+			   KK=START_COL+KKK 
 			ELSE
-			   KK=START_COL+3*SIDE2
+			   KK=START_COL+KKK+3*SIDE2
 			ENDIF
 		  ENDDO
       ENDIF
 
       !读入脉冲点位置数组X,Z坐标
-      IF(PN .GT. 0) THEN
+	  IF(SCALE .EQ. 0) THEN
+		  IF(PN .GT. 0) THEN
 
-        DO 230 PIND=1,PN
-          READ(11,*)PULSE(PIND,1),PULSE(PIND,3)
-          PULSE(PIND,2)=Y
-!          YYY(PULSE(PIND,1),PULSE(PIND,3))=P_COLOR
-  230   CONTINUE
-        PLEN=PN
+			DO 230 PIND=1,PN
+			  READ(11,*)PULSE(PIND,1),PULSE(PIND,3)
+			  PULSE(PIND,2)=Y
+	  230   CONTINUE
+			PLEN=PN
         
-      ELSE IF(PN .EQ. 0) THEN
+		  ELSE IF(PN .EQ. 0) THEN
       
-      !  开始绘制脉冲空间位置(直线),仅当不使用输入文件中指点的脉冲点时自动绘制直线
-          CALL LINE(X,Y,Z,PSX,PSZ,PENDZ,SX,ENDX,PANGLE,YYY,NX,NZ,PULSE,PIND,PLEN,P_COLOR)      
+		  !  开始绘制脉冲空间位置(直线),仅当不使用输入文件中指点的脉冲点时自动绘制直线
+			  CALL LINE(X,Y,Z,PSX,PSZ,PENDZ,SX,ENDX,PANGLE,YYY,NX,NZ,PULSE,PIND,PLEN,P_COLOR)      
           
-      ENDIF
+		  ENDIF
+      ELSE
+	      PLEN=1
+		  PIND=1
+		  PULSE(PIND,1)=ENDX/2
+		  PULSE(PIND,2)=Y
+		  PULSE(PIND,3)=START_COL-(GRID_COL*SIDE2/SCALE)
+	  ENDIF
 
-      PIND=1
-      PULSE(PIND,1)=ENDX/2
-      PULSE(PIND,2)=Y
-      PULSE(PIND,3)=START_COL-(GRID_COL*SIDE2/SCALE)
-      YYY(PULSE(PIND,1),PULSE(PIND,3))=P_COLOR   
+      !检验激励点的合法性
+	  DO 231 PIND=1,PN
+	    IF(PULSE(PIND,1) .GE. SX .AND. PULSE(PIND,1) .LE. ENDX .AND. PULSE(PIND,3) .GE. SZ .AND. PULSE(PIND,3) .LE. ENDZ) THEN
+	  	  YYY(PULSE(PIND,1),PULSE(PIND,3))=P_COLOR
+	    ELSE
+		  WRITE(*,*) "ERROR: PULSE POINT NOT VALID!",PULSE(PIND,1),PULSE(PIND,3)
+		  STOP
+		ENDIF
+  231 CONTINUE
 
       OPEN(132,FILE='ER.out',FORM='FORMATTED')
       DO 11113 I=SX,ENDX
@@ -219,7 +248,18 @@
 11114   CONTINUE
         WRITE(132,*)
 11113 CONTINUE
-      CLOSE(132)
+      CLOSE(132) 
+
+      OPEN(133,FILE='screen.txt',FORM='FORMATTED')
+	  WRITE(133,*) "START_COL:", START_COL
+	  WRITE(133,*) "END_COL:", END_COL
+	  WRITE(133,*) "GRID:", GRID_ROW,GRID_COL
+	  WRITE(133,*) "MESH SIZE:", ENDX-SX+1, ENDZ-SZ+1
+      WRITE(133,*) "PULSE POINTS:"
+      DO 76 PIND=1,PLEN
+        WRITE(133,*) PULSE(PIND,1),PULSE(PIND,3)
+   76 CONTINUE
+      CLOSE(133)
 
       EXPAND=1
 !  输出全X-Z平面的实际计算效果图
@@ -231,7 +271,7 @@
       DO 56 I=ENDX,SX,-1
          DO 67 K=SZ,ENDZ
             DO 156 II=1,EXPAND
-               WRITE (111,'(A12)',advance='no') YYY(I,K)
+               WRITE (111,'(A12)',advance='no') COLORS(YYY(I,K))
    156      CONTINUE
             
    67    CONTINUE
@@ -240,6 +280,8 @@
       CLOSE(111)
       WRITE(*,*) "grid.ppm generated"
 	  WRITE(*,*) "START_COL:", START_COL
+	  WRITE(*,*) "END_COL:", END_COL
+	  WRITE(*,*) "GRID:", GRID_ROW,GRID_COL
 	  WRITE(*,*) "MESH SIZE:", ENDX-SX+1, ENDZ-SZ+1
       WRITE(*,*) "PULSE POINTS:"
       DO 77 PIND=1,PLEN
@@ -343,11 +385,13 @@
 
          DO 374 III=2,2
              DO 993 I=SX,ENDX
-			   DO 994 K=SZ,PSZ
+			   DO 994 K=SZ,START_COL
 			   	  write(8134+T,*) K,I,GAUSS(I,Y,K)*IVB(III,I,Y,K)
 				  write(8135+T,*) K,I,IVB(III,I,Y,K)
     !              IVB(III,I,J,K)=GAUSS(I,J,K)*IVB(III,I,J,K)    
  994           CONTINUE  
+               WRITE(8134+T,*)
+			   WRITE(8135+T,*)
  993         CONTINUE
  374     CONTINUE
 
@@ -422,7 +466,12 @@
       DO 101 II=SX,ENDX        
 	       DO 102 KK=SZ,ENDZ
                 CALL EJ(EY,IVB,YY,GY,II,J,KK,V,NX,NY,NZ)		!将电压转换为电场
-                WRITE(FILE_UNIT,117) KK,II,EY
+                   
+				IF(YYY(II,KK) .EQ. ER1_COLOR)  THEN     !绘制介质图像
+                  WRITE(FILE_UNIT,*) KK,II,-2
+				ELSE
+                  WRITE(FILE_UNIT,117) KK,II,EY
+			    ENDIF
                 
                 DO 16384 LI=1,LN
                    IF(LN .EQ. 16384) THEN
@@ -543,9 +592,9 @@
       SUBROUTINE COLOR(GTYPE,S1,S2,I,K,ZY,ZYY,NX,NZ,C,CC, SHRINK)
       INTEGER GTYPE,S1,S2,I,K,NX,NZ,SIDE1,SIDE2
 	  REAL SHRINK
-      CHARACTER(LEN=12) CC
+      INTEGER CC
       REAL ZY(NX,NZ)
-      CHARACTER(LEN=12) ZYY(NX,NZ)
+      INTEGER ZYY(NX,NZ)
       REAL C
       REAL CROW,CCOL,A,B,AX
       INTEGER IGAP,KGAP
@@ -582,12 +631,12 @@
  3333 CONTINUE
       END
 
-      SUBROUTINE HEXAGON(GTYPE,S1,S2,I,K,ZY,ZYY,NX,NZ,ENDX,ENDZ,C,CC, SHRINK)
-      INTEGER GTYPE,S1,S2,I,K,NX,NZ,ENDX,ENDZ,SIDE1,SIDE2
+      SUBROUTINE HEXAGON(GTYPE,S1,S2,I,K,ZY,ZYY,NX,NZ,SX,ENDX,SZ,ENDZ,C,CC, SHRINK)
+      INTEGER GTYPE,S1,S2,I,K,NX,NZ,SX,ENDX,SZ,ENDZ,SIDE1,SIDE2
 	  REAL SHRINK
-      CHARACTER(LEN=12) CC
+      INTEGER CC
       REAL ZY(NX,NZ)
-      CHARACTER(LEN=12) ZYY(NX,NZ)
+      INTEGER ZYY(NX,NZ)
       REAL C
       REAL CROW,CCOL,A,B,AX
       INTEGER IGAP,KGAP
@@ -606,7 +655,7 @@
          DO 3334 KKK=0,S2-1-KGAP
              IF(GTYPE .EQ. 3) THEN     !六边形                                  
                  IF((B/4-KKK)/(B/4) .LE. III/(A/2) .AND. (KKK-3*B/4)/(B/4) .LT. III/(A/2) .AND. (B/4-KKK)/(B/4) .LE. (A-III)/(A/2) .AND. (KKK-3*B/4)/(B/4) .LT. (A-III)/(A/2)) THEN
-                   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ) THEN
+                   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
                      ZY(I+III,K+KKK)=C
                      ZYY(I+III,K+KKK)=CC
                    ENDIF
@@ -658,8 +707,8 @@
       INTEGER PSX,PSZ,PENDZ,SX,ENDX,NX,NZ,PIND,PLEN,X,Y,Z
       REAL PP !脉冲直线计算参数
       REAL PANGLE,ANGLE
-      CHARACTER(LEN=12) ZYY(NX,NZ)
-      CHARACTER(LEN=12) P_COLOR
+      INTEGER ZYY(NX,NZ)
+      INTEGER P_COLOR
       INTEGER PULSE(NX,3)
       INTEGER II,KK
       II=PSX

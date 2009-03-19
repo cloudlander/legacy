@@ -8,17 +8,17 @@ class Config:
     def __init__(self):
         self._config={}
     def parseConfig(self):
-        self._config['threads']=16
+        self._config['threads']=4
         self._config['PNG_SIZE']='1024,768'
-        self._config['+RANGE']=0.15
-        self._config['-RANGE']=-0.15
+        self._config['+RANGE']=0.2
+        self._config['-RANGE']=-0.2
         self._config['+G_RANGE']=1.0
         self._config['-G_RANGE']=-1.0
         self._config['TLM']=True
         self._config['MAP']=True
         self._config['SURFACE']=True
-        self._config['GAUSS']=False
-        self._config['ONLY_SIN']=False
+        self._config['GAUSS']=True
+        self._config['ONLY_SIN']=True
         self._config['ANI']=True
         self._config['DO_EX']='0'
         self._config['DO_EY']='1'
@@ -110,20 +110,22 @@ class Visualizer(ILineAware):
 
     class MapWorker(Worker):
         def prepareWorker(self):
+            ratio=float(int(self._config['ENDX'])-int(self._config['SX']))/(int(self._config['ENDZ'])-int(self._config['SZ']))
             env_set=StringIO.StringIO()
             env_set.writelines(
                     [#"set samples 100, 100","\n",
                      #"set isosamples 10, 10","\n"
                      #"set palette model HSV functions gray, 1, 1","\n"
-                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n",
-                     "set autoscale","\n",
-                     "set size square","\n",
+                     #"set autoscale","\n",
+                     #"set size square","\n",
+                     "set size ratio ",str(ratio)," \n",
+                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n"
                      "set surface","\n",
                      'set title "TLM 2D"',"\n",
                      'set xlabel "Z"',"\n",
                      'set ylabel "X"',"\n",
-                     'set xrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
-                     'set yrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set xrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set yrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
                      'set zrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
                      'set cbrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
                      'set zero 1e-0020',"\n",
@@ -137,54 +139,59 @@ class Visualizer(ILineAware):
 
     class SurfaceWorker(Worker):
         def prepareWorker(self):
+            ratio=float(int(self._config['ENDX'])-int(self._config['SX']))/(int(self._config['ENDZ'])-int(self._config['SZ']))
             env_set=StringIO.StringIO()
             env_set.writelines(
                     [#"set samples 100, 100","\n",
                      #"set isosamples 10, 10","\n"
                      #"set palette model HSV functions gray, 1, 1","\n"
-                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n",
-                     "set autoscale","\n",
-                     "set size square","\n",
+                     #"set autoscale","\n",
+                     #"set size square","\n",
+                     "set size ratio ",str(ratio)," \n",
+                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n"
                      "set surface","\n",
                      'set title "TLM 2D"',"\n",
                      'set xlabel "Z"',"\n",
                      'set ylabel "X"',"\n",
-                     'set xrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
-                     'set yrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set xrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set yrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
                      'set zrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
                      'set cbrange [',self._config['-RANGE'],":",self._config['+RANGE'],'] noreverse nowriteback',"\n",
                      'set zero 1e-0020',"\n",
                      'set pm3d at s',"\n",
                      #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
                      'set terminal png size ',self._config['PNG_SIZE'],"\n",
-                     'set style data dots',"\n",
+                     #'set style data dots',"\n",
                     ])
             env_set.seek(0)
             return env_set
 
     class GaussWorker(Worker):
         def prepareWorker(self):
+            ratio=float(int(self._config['ENDX'])-int(self._config['SX']))/(int(self._config['ENDZ'])-int(self._config['SZ']))
             env_set=StringIO.StringIO()
             env_set.writelines(
-                    ["set samples 100, 100","\n",
-                     "set isosamples 10, 10","\n"
-                     "set palette model HSV functions gray, 1, 1","\n"
-                     "set autoscale","\n",
-                     "set size square","\n",
+                    [#"set samples 100, 100","\n",
+                     #"set isosamples 10, 10","\n"
+                     #"set palette model HSV functions gray, 1, 1","\n"
+                     #"set autoscale","\n",
+                     #"set size square","\n",
+                     "set size ratio ",str(ratio)," \n",
+                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n"
                      "set surface","\n",
                      'set title "TLM 2D Gauss Distribution"',"\n",
                      'set xlabel "Z"',"\n",
                      'set ylabel "X"',"\n",
-                     'set xrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
-                     'set yrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set xrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set yrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
                      'set zrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
                      'set cbrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
                      'set zero 1e-0020',"\n",
-                     #'set pm3d at s',"\n",
+                     'set pm3d map',"\n",
                      #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
                      'set terminal png size ',self._config['PNG_SIZE'],"\n",
                      #'set style data dots',"\n",
-                     'set style data points',"\n",
+                     #'set style data points',"\n",
                      #'set contour',"\n",
                      #'set cntrparam levels incremental -0.2,0.01,0.2',"\n"
                      #'unset surface',"\n",
@@ -195,27 +202,30 @@ class Visualizer(ILineAware):
 
     class OnlySinWorker(Worker):
         def prepareWorker(self):
+            ratio=float(int(self._config['ENDX'])-int(self._config['SX']))/(int(self._config['ENDZ'])-int(self._config['SZ']))
             env_set=StringIO.StringIO()
             env_set.writelines(
                     [#"set samples 100, 100","\n",
                      #"set isosamples 10, 10","\n"
-                     "set palette model HSV functions gray, 1, 1","\n"
-                     "set autoscale","\n",
-                     "set size square","\n",
+                     #"set palette model HSV functions gray, 1, 1","\n"
+                     #"set autoscale","\n",
+                     #"set size square","\n",
+                     "set size ratio ",str(ratio)," \n",
+                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n"
                      "set surface","\n",
                      'set title "TLM 2D Only SIN Distribution"',"\n",
                      'set xlabel "Z"',"\n",
                      'set ylabel "X"',"\n",
-                     'set xrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
-                     'set yrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set xrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set yrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
                      'set zrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
                      'set cbrange [',self._config['-G_RANGE'],":",self._config['+G_RANGE'],'] noreverse nowriteback',"\n",
                      'set zero 1e-0020',"\n",
-                     #'set pm3d at s',"\n",
+                     'set pm3d map',"\n",
                      #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
                      'set terminal png size ',self._config['PNG_SIZE'],"\n",
                      #'set style data dots',"\n",
-                     'set style data points',"\n",
+                     #'set style data points',"\n",
                      #'set contour',"\n",
                      #'set cntrparam levels incremental -0.2,0.01,0.2',"\n"
                      #'unset surface',"\n",
