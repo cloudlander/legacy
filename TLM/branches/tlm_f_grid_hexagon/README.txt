@@ -65,7 +65,7 @@
                                                       (仅对TLM Grid程序有效,否则,如果设置成True,TLM NRI程序会报错!)
           self._config['ONLY_SIN']=False               是否绘制SIN激励分布图像
                                                       (仅对TLM Grid程序有效,否则,如果设置成True,TLM NRI程序会报错!)
-
+          self._config['SHOW_MEDIUM']=True            是否在绘制的图像上显示介质分布
           self._config['ANI']=True                    是否生成二维和三维的动画
  
      4.  频域计算工具:
@@ -99,7 +99,7 @@
 
     FRE,NORMAL_FRE,           FRE不再使用,NORMAL_FRE为激励源的归一化频率
 
-    W0,                       高斯分布参数(高斯分布功能默认关闭,如需打开请使用Visual Fortran打开源程序,修改第349行
+    W0,                       高斯分布参数(高斯分布功能默认关闭,如需打开请使用Visual Fortran打开源程序,修改第400行
                               !              IVB(III,I,J,K)=GAUSS(I,J,K)*IVB(III,I,J,K)
                               把注释符!去掉,即可打开高斯分布
 
@@ -113,7 +113,7 @@
 
     LN,                       twotlme.in文件中指定的频域点数量,所有频域点坐标在脉冲坐标行之下
 
-    BP,                       设置Z坐标为吸收边界,该参数默认关闭,如需打开请使用Visual Fortran打开源程序,修改第397行
+    BP,                       设置Z坐标为吸收边界,该参数默认关闭,如需打开请使用Visual Fortran打开源程序,修改第450行
                               !IVB(2,I,J,K)=0
                               把注释符!去掉,即可打开该功能
 

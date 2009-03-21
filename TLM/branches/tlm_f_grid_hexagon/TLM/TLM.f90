@@ -21,7 +21,8 @@
       REAL, ALLOCATABLE:: REEY(:,:,:,:),IMEY(:,:,:,:)
      
       REAL SB(5,5)
-      REAL EY,FEY
+      REAL,ALLOCATABLE:: E(:,:,:)
+	  REAL FEY
              
       REAL, ALLOCATABLE:: GAUSS(:,:,:),GAUSS2(:,:,:)
       INTEGER, ALLOCATABLE:: PULSE(:,:)   !脉冲点
@@ -50,7 +51,7 @@
       
 	  !!!!!!!!!!!!!        NANGLE参数在2D版本中不再生效       !!!!!!!!!!!!!!1
 	  REAL NANGLE !网格偏移角度(与Z轴张角,取值范围为(0,180) 90为不倾斜
-
+      INTEGER DUMMY1,DUMMY2
       INTEGER GTYPE !网格类型 0为矩形, 1为内切椭圆(正圆), 2为等腰三角形
       INTEGER PSX,PSZ !输入脉冲开始位置
 	  INTEGER PENDZ !输入脉冲结束的Z坐标
@@ -58,7 +59,7 @@
       REAL PLENGTH !输入脉冲直线的长度
       REAL PP !脉冲直线计算参数
       INTEGER PIND, PLEN !脉冲点序号和总数
-
+      
 	  !输入脉冲数组,以下为取值说明:
       !=0: 使用PSX,PSZ,PENDZ和PLENGTH自动生成脉冲直线,直线旋转PANGLE角度,并且生成2个效果文件
       !>0: 使用输入文件的X,Z坐标作为脉冲点,介质旋转PANGLE角度,生成一个效果文件
@@ -82,11 +83,10 @@
 	  ER1_COLOR=2
 	  ER2_COLOR=3
 
-      COLORS(0)="255 255 255     "   !激发为白色
-      COLORS(1)="35 35 35 "          !默认为黑色(ER)
-      COLORS(2)="12 175 159     "    !ER1
-    !  COLORS(2)="0 0 255     "      !ER1
-	  COLORS(3)="35 35 35     "       !ER2
+      COLORS(P_COLOR)="255 255 255     "   !激发为白色
+      COLORS(ER_COLOR)="35 35 35 "          !默认为黑色(ER)
+      COLORS(ER1_COLOR)="12 175 159     "    !ER1
+	  COLORS(ER2_COLOR)="35 35 35     "       !ER2
 	        
       OPEN(11,FILE='twotlme.in',FORM='FORMATTED')
 
@@ -128,6 +128,10 @@
       PART=REAL(COL*SIDE2)/(ENDZ-SZ)
       START_ROW=SX
       START_COL=SZ+(ENDZ-SZ)*(1-PART)/2
+	  IF(START_COL .LT. SZ) THEN  !检查介质范围是否有效
+	    WRITE(*,*) "ERROR: MEDIUM OVERLAPPED THE SIMULATION AREA!"
+		STOP
+	  ENDIF
       GRID_ROW=(ENDX-SX+1)/SIDE1
       GRID_COL=(ENDZ-SZ)*PART/SIDE2
 !      IF (GRID_COL+1 .EQ. COL) THEN
@@ -147,6 +151,7 @@
 
       ALLOCATE (RVB(5,NX,NY,NZ),IVB(5,NX,NY,NZ))
       ALLOCATE (REEY(10,NX,NY,NZ),IMEY(10,NX,NY,NZ))
+	  ALLOCATE (E(NX,NY,NZ))
 
       ALLOCATE (GAUSS(NX,NY,NZ),GAUSS2(NX,NY,NZ))
       ALLOCATE (YY(NX,NZ))
@@ -160,13 +165,6 @@
             YYY(II,KK)=ER_COLOR
  2222    CONTINUE
  2221 CONTINUE
-
-      DO 2223 II=SX,ENDX
-         DO 2224 KK=START_COL,END_COL
-            YY(II,KK)=2*(U*W*SQRT(H)*ER1/V-2)  !介电常数支线结构参数的计算(方向5即为介电常数支线)
-            YYY(II,KK)=ER1_COLOR
- 2224    CONTINUE
- 2223 CONTINUE
  
       !开始绘制网格            
 	  IF(GTYPE .NE. 3) THEN   !绘制矩形,椭圆和三角形
@@ -180,7 +178,15 @@
 	 3332    CONTINUE
 	 3331 CONTINUE
 	  ELSE
-		  II=SX               !绘制蜂窝状六角形
+	                          !绘制蜂窝状六角形
+		  DO 2223 II=SX,ENDX
+			 DO 2224 KK=START_COL,END_COL
+				YY(II,KK)=2*(U*W*SQRT(H)*ER1/V-2)  !介电常数支线结构参数的计算(方向5即为介电常数支线)
+				YYY(II,KK)=ER1_COLOR
+	 2224    CONTINUE
+	 2223 CONTINUE
+
+		  II=SX              
 		  CC=0
 		  IF(MOD(GRID_COL,4) .EQ. 0) THEN        !调整蜂窝起始位置,尽量模拟从中心向两边扩展的分布
              KKK=-SIDE2
@@ -224,6 +230,9 @@
           
 		  ENDIF
       ELSE
+	      DO 232 II=1,PN       !过滤掉所有冗余的脉冲点设置
+		    READ(11,*) DUMMY1,DUMMY2
+  232     CONTINUE
 	      PLEN=1
 		  PIND=1
 		  PULSE(PIND,1)=ENDX/2
@@ -366,7 +375,7 @@
 	   OPEN(8134+T,FILE="GAUSS/GAUSS"//NAME_COUNT//".out",FORM='FORMATTED')
 	   OPEN(8135+T,FILE="ONLYSIN/ONLYSIN"//NAME_COUNT//".out",FORM='FORMATTED')
        
-         DO 6 III=2,2
+         DO 6 III=1,4
              DO 992 PIND=1,PLEN
     !		      IVB(III,X,Y,Z)=1  !为点光源持续一个幅度激励
     !             IVB(III,X,Y,Z)=sin(2*PI*FRE*t)  !为sin激发 单色波形式
@@ -438,7 +447,7 @@
 		     END IF
 	         IF (BL.EQ.0) THEN		!吸收边界条件的处理
 			    IF (K.EQ.BP) THEN
-                   !IVB(2,I,J,K)=0
+                   IVB(4,I,J,K)=0
 				ENDIF
 	            IF (K.EQ.SZ) THEN
 		           IVB(2,I,J,K)=0
@@ -465,28 +474,31 @@
       WRITE(FILE_UNIT,*) "#T=",T
       DO 101 II=SX,ENDX        
 	       DO 102 KK=SZ,ENDZ
-                CALL EJ(EY,IVB,YY,GY,II,J,KK,V,NX,NY,NZ)		!将电压转换为电场
-                   
-				IF(YYY(II,KK) .EQ. ER1_COLOR)  THEN     !绘制介质图像
-                  WRITE(FILE_UNIT,*) KK,II,-2
-				ELSE
-                  WRITE(FILE_UNIT,117) KK,II,EY
-			    ENDIF
-                
+                CALL EJ(E(II,J,KK),IVB,YY,GY,II,J,KK,V,NX,NY,NZ)		!将电压转换为电场                
                 DO 16384 LI=1,LN
                    IF(LN .EQ. 16384) THEN
                       LL=LI
                    ELSE
                       LL=L(LI)
                    ENDIF
-                   CALL FT(REEY(LI,II,J,KK),IMEY(LI,II,J,KK),EY,LL,T) !进行傅立叶变换
+                   CALL FT(REEY(LI,II,J,KK),IMEY(LI,II,J,KK),E(II,J,KK),LL,T) !进行傅立叶变换
 16384           CONTINUE
      
    102	  CONTINUE
-          WRITE(FILE_UNIT,*)
    101 CONTINUE
-       WRITE(FILE_UNIT,*)
-       WRITE(FILE_UNIT,*)
+
+       CALL NORMALIZE(E,SX,ENDX,J,J,SZ,ENDZ,NX,NY,NZ)
+       DO 111 II=SX,ENDX
+	      DO 112 KK=SZ,ENDZ
+				IF(YYY(II,KK) .EQ. ER1_COLOR)  THEN     !绘制介质图像
+                  WRITE(FILE_UNIT,*) KK,II,E(II,J,KK),0.01
+				ELSE
+                  WRITE(FILE_UNIT,117) KK,II,E(II,J,KK),E(II,J,KK)
+			    ENDIF
+   112    CONTINUE
+          WRITE(FILE_UNIT,*)        !TLM_DFT.py需要修改适应此变化
+   111 CONTINUE
+
        IF (SPLIT .EQ. 1) THEN
          CLOSE(FILE_UNIT)
        ENDIF
@@ -752,4 +764,28 @@
          ZYY(II,KK)=P_COLOR
       ENDDO
       PLEN=PIND
+      END
+
+      SUBROUTINE NORMALIZE(E,SX,ENDX,SY,ENDY,SZ,ENDZ,NX,NY,NZ)
+	  INTEGER NX,NY,NZ,SX,ENDX,SY,ENDY,SZ,ENDZ,I,J,K
+	  REAL E(NX,NY,NZ)
+	  REAL EMAX
+      EMAX=0
+      DO 1107 I=SX,ENDX
+	     DO 2107 J=SY,ENDY
+            DO 3107 K=SZ,ENDZ
+              IF(E(I,J,K) .GT. EMAX) THEN
+			     EMAX=E(I,J,K)
+			  ENDIF
+   3107     CONTINUE
+   2107  CONTINUE
+   1107 CONTINUE
+
+      DO 1106 I=SX,ENDX
+	      DO 2106 J=SY,ENDY
+            DO 3106 K=SZ,ENDZ
+			     E(I,J,K)=E(I,J,K)/EMAX
+   3106     CONTINUE
+   2106   CONTINUE
+   1106 CONTINUE
       END

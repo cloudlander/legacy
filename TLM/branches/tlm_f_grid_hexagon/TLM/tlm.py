@@ -10,8 +10,8 @@ class Config:
     def parseConfig(self):
         self._config['threads']=4
         self._config['PNG_SIZE']='1024,768'
-        self._config['+RANGE']=0.2
-        self._config['-RANGE']=-0.2
+        self._config['+RANGE']=1.0
+        self._config['-RANGE']=-1.0
         self._config['+G_RANGE']=1.0
         self._config['-G_RANGE']=-1.0
         self._config['TLM']=True
@@ -19,6 +19,7 @@ class Config:
         self._config['SURFACE']=True
         self._config['GAUSS']=True
         self._config['ONLY_SIN']=True
+        self._config['SHOW_MEDIUM']=True
         self._config['ANI']=True
         self._config['DO_EX']='0'
         self._config['DO_EY']='1'
@@ -75,13 +76,15 @@ class Visualizer(ILineAware):
             self._enabled=status
         def prepareWorker(self):
             pass
-	def removefile(self,filename):
-	    while True:
-              try:
-                    os.unlink(filename)
-                    return
-              except:
-                    time.sleep(1)
+        def getPlotOption(self):
+            return ""
+        def removefile(self,filename):
+            while True:
+                  try:
+                        os.unlink(filename)
+                        return
+                  except:
+                        time.sleep(1)
         def _worker(self):
             s=self.prepareWorker().readlines()
             while not self._producer.killed :
@@ -95,9 +98,9 @@ class Visualizer(ILineAware):
                             for i in range(trunk['start'],trunk['end']+1):
                                 print >>commands,"set output \"%s_%s/IMG%5d.png\""%(trunk['prefix'],trunk['dir'],i)
                                 if self._config['SPLIT']=='0':
-                                    print >>commands,"splot \"%s.out\" index %d"%(trunk['prefix'],i-1)
+                                    print >>commands,"splot \"%s.out\" index %d %s"%(trunk['prefix'],i-1,self.getPlotOption())
                                 else:
-                                    print >>commands,"splot \"%s/%s%5d.out\""%(trunk['prefix'],trunk['prefix'],i)
+                                    print >>commands,"splot \"%s/%s%5d.out\" %s"%(trunk['prefix'],trunk['prefix'],i,self.getPlotOption())
                             commands.write("exit\n")
                             commands.close()
                             plot=subprocess.Popen([self._config['GNUPLOT'],filename],universal_newlines=True)
@@ -109,6 +112,11 @@ class Visualizer(ILineAware):
                     print "Exceptions in %s!"%(self.getName())
 
     class MapWorker(Worker):
+        def getPlotOption(self):
+            if self._config['SHOW_MEDIUM']:
+                return "using 1:2:4"
+            else:
+                return "using 1:2:3"
         def prepareWorker(self):
             ratio=float(int(self._config['ENDX'])-int(self._config['SX']))/(int(self._config['ENDZ'])-int(self._config['SZ']))
             env_set=StringIO.StringIO()
@@ -119,7 +127,7 @@ class Visualizer(ILineAware):
                      #"set autoscale","\n",
                      #"set size square","\n",
                      "set size ratio ",str(ratio)," \n",
-                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n"
+                     "set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")","\n"
                      "set surface","\n",
                      'set title "TLM 2D"',"\n",
                      'set xlabel "Z"',"\n",
@@ -138,6 +146,11 @@ class Visualizer(ILineAware):
 
 
     class SurfaceWorker(Worker):
+        def getPlotOption(self):
+            if self._config['SHOW_MEDIUM']:
+                return "using 1:2:4"
+            else:
+                return "using 1:2:3"
         def prepareWorker(self):
             ratio=float(int(self._config['ENDX'])-int(self._config['SX']))/(int(self._config['ENDZ'])-int(self._config['SZ']))
             env_set=StringIO.StringIO()
@@ -148,7 +161,7 @@ class Visualizer(ILineAware):
                      #"set autoscale","\n",
                      #"set size square","\n",
                      "set size ratio ",str(ratio)," \n",
-                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n"
+                     "set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")","\n"
                      "set surface","\n",
                      'set title "TLM 2D"',"\n",
                      'set xlabel "Z"',"\n",
@@ -161,7 +174,7 @@ class Visualizer(ILineAware):
                      'set pm3d at s',"\n",
                      #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
                      'set terminal png size ',self._config['PNG_SIZE'],"\n",
-                     #'set style data dots',"\n",
+                     'set style data pm3d',"\n",
                     ])
             env_set.seek(0)
             return env_set
@@ -177,7 +190,7 @@ class Visualizer(ILineAware):
                      #"set autoscale","\n",
                      #"set size square","\n",
                      "set size ratio ",str(ratio)," \n",
-                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n"
+                     "set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")","\n"
                      "set surface","\n",
                      'set title "TLM 2D Gauss Distribution"',"\n",
                      'set xlabel "Z"',"\n",
@@ -191,7 +204,7 @@ class Visualizer(ILineAware):
                      #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
                      'set terminal png size ',self._config['PNG_SIZE'],"\n",
                      #'set style data dots',"\n",
-                     #'set style data points',"\n",
+                     #'set style data pm3d',"\n",
                      #'set contour',"\n",
                      #'set cntrparam levels incremental -0.2,0.01,0.2',"\n"
                      #'unset surface',"\n",
@@ -211,7 +224,7 @@ class Visualizer(ILineAware):
                      #"set autoscale","\n",
                      #"set size square","\n",
                      "set size ratio ",str(ratio)," \n",
-                     "set palette defined (-0.2 \"black\", -0.15 \"dark-blue\", -0.1 \"medium-blue\", 0 \"#CCE8CF\",  0.1 \"yellow\", 0.15 \"red\", 0.2 \"dark-red\")","\n"
+                     "set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")","\n"
                      "set surface","\n",
                      'set title "TLM 2D Only SIN Distribution"',"\n",
                      'set xlabel "Z"',"\n",
@@ -225,7 +238,7 @@ class Visualizer(ILineAware):
                      #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
                      'set terminal png size ',self._config['PNG_SIZE'],"\n",
                      #'set style data dots',"\n",
-                     #'set style data points',"\n",
+                     #'set style data pm3d',"\n",
                      #'set contour',"\n",
                      #'set cntrparam levels incremental -0.2,0.01,0.2',"\n"
                      #'unset surface',"\n",
