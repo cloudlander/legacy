@@ -42,7 +42,7 @@
 	  REAL NORMAL_FRE  !归一化频率
 
       INTEGER START_ROW,START_COL,END_COL,GRID_ROW,GRID_COL   !网格开始位置
-      INTEGER COL  !网格总列数
+      REAL COL  !网格总列数
       REAL PART  !网格所占百分比
 
       REAL NANGLE !网格偏移角度(与Z轴张角,取值范围为(0,180) 90为不倾斜
