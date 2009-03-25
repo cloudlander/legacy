@@ -1,19 +1,3 @@
-!  TLM.f90 
-!
-!  FUNCTIONS:
-!	TLM      - Entry point of console application.
-!
-!	Example of displaying 'Hello World' at execution time.
-!
-
-!****************************************************************************
-!
-!  PROGRAM: TLM
-!
-!  PURPOSE:  Entry point for 'Hello World' sample console application.
-!
-!****************************************************************************
-
       PROGRAM TWOTLME
       INTEGER SX,SY,SZ,ENDX,ENDY,ENDZ,NX,NY,NZ,X,Y,Z,T,BL,SIDE1,SIDE2   
 !网格单位长度，起始网格位置结束网格位置，边界条件标志参数
@@ -118,6 +102,7 @@
 	  !"set xrange" 对应（HY.out第一列），为介质空间Z轴； "set yrange"对应（HY.out第二列），为介质空间X轴
 	  !"set zrange" 0.03变为1.03为了画图不出现白色块
 	  !"set pm3d map"为2D画图，"set pm3d at s"为3D画图
+      CLOSE(15)
       
       U0=12566.3706144		!真空中的磁导率
       E0=8.854187818E-2		!真空中的介电常数
@@ -145,9 +130,9 @@
       ENDX=SX+GRID_ROW*SIDE1-1
 	  END_COL=START_COL+GRID_COL*SIDE2-1
 
-      NX=ENDX+1
-      NY=30
-      NZ=ENDZ+1
+      NX=ENDX-SX+3
+      NY=ENDY-SY+3
+      NZ=ENDZ-SZ+3
 
       ALLOCATE (RVB(5,NX,NY,NZ),IVB(5,NX,NY,NZ))
       ALLOCATE (REEY(10,NX,NY,NZ),IMEY(10,NX,NY,NZ))
@@ -364,7 +349,7 @@
    3    CONTINUE
    1  CONTINUE
      
-       
+      GMAX=0
       CALL CPU_TIME ( time_begin )
       
       
@@ -474,7 +459,7 @@
       WRITE(FILE_UNIT,*) "#T=",T
       DO 101 II=SX,ENDX        
 	       DO 102 KK=SZ,ENDZ
-                CALL EJ(E(II,J,KK),IVB,YY,GY,II,J,KK,V,NX,NY,NZ)		!将电压转换为电场                
+                CALL EJ(E(II,J,KK),IVB,YY(II,KK),GY,II,J,KK,V,NX,NY,NZ)		!将电压转换为电场                
                 DO 16384 LI=1,LN
                    IF(LN .EQ. 16384) THEN
                       LL=LI
@@ -487,11 +472,11 @@
    102	  CONTINUE
    101 CONTINUE
 
-       CALL NORMALIZE(E,SX,ENDX,J,J,SZ,ENDZ,NX,NY,NZ)
+       CALL NORMALIZE(GMAX,E,SX,ENDX,J,J,SZ,ENDZ,NX,NY,NZ)
        DO 111 II=SX,ENDX
 	      DO 112 KK=SZ,ENDZ
 				IF(YYY(II,KK) .EQ. ER1_COLOR)  THEN     !绘制介质图像
-                  WRITE(FILE_UNIT,*) KK,II,E(II,J,KK),0.01
+                  WRITE(FILE_UNIT,117) KK,II,E(II,J,KK),0.01
 				ELSE
                   WRITE(FILE_UNIT,117) KK,II,E(II,J,KK),E(II,J,KK)
 			    ENDIF
@@ -564,6 +549,7 @@
 
       SUBROUTINE SBL(S,Y,G)  !生成[S]散射矩阵
       REAL S(5,5)
+	  REAL Y,G
       DO 21 I=1,5
 	  DO 22 J=1,5
 	    IF (J.EQ.5) THEN 
@@ -579,7 +565,7 @@
       END
 
       SUBROUTINE EJ(E,IV,Y,G,I,J,K,L,NX,NY,NZ)
-	  INTEGER NX,NY,NZ,I,J,K
+	  INTEGER NX,NY,NZ,I,J,K,L
       REAL IV(5,NX,NY,NZ)
 	  REAL E,Y,G
       E=0.0
@@ -766,11 +752,11 @@
       PLEN=PIND
       END
 
-      SUBROUTINE NORMALIZE(E,SX,ENDX,SY,ENDY,SZ,ENDZ,NX,NY,NZ)
+      SUBROUTINE NORMALIZE(MAX,E,SX,ENDX,SY,ENDY,SZ,ENDZ,NX,NY,NZ)
 	  INTEGER NX,NY,NZ,SX,ENDX,SY,ENDY,SZ,ENDZ,I,J,K
 	  REAL E(NX,NY,NZ)
-	  REAL EMAX
-      EMAX=0
+	  REAL EMAX,MAX
+      EMAX=MAX
       DO 1107 I=SX,ENDX
 	     DO 2107 J=SY,ENDY
             DO 3107 K=SZ,ENDZ
@@ -780,7 +766,9 @@
    3107     CONTINUE
    2107  CONTINUE
    1107 CONTINUE
-
+      IF(EMAX .LT. 0.000001) THEN
+        RETURN
+      ENDIF
       DO 1106 I=SX,ENDX
 	      DO 2106 J=SY,ENDY
             DO 3106 K=SZ,ENDZ
@@ -788,4 +776,8 @@
    3106     CONTINUE
    2106   CONTINUE
    1106 CONTINUE
-      END
+      IF(EMAX .GT. MAX) THEN
+	     WRITE(*,*) "MAX REPLACED!",EMAX,MAX
+	  ENDIF
+	  MAX=EMAX
+	  END
