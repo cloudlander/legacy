@@ -584,7 +584,7 @@
 			    !IF (K.EQ.BP) THEN
                    !IVB(1,I,J,K)=0
 				   !IVB(2,I,J,K)=0
-				ENDIF
+				!ENDIF
 		         IF (J.EQ.SY) THEN        
 			    IVA(2,I,J,K)=0
 			    IVC(1,I,J,K)=0
