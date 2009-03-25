@@ -7,6 +7,7 @@ if exist "ONLYSIN_3D\IMG    1.png" (
 .\ls.exe ONLYSIN_3D\*.png > list
 start "ONLY_SIN" /WAIT mencoder\mencoder mf://@list -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o only_sin.avi
 )
+for /D  %%v in (EX_EY EX_EZ EY_EZ EX_EY_EZ HX_HY HX_HZ HY_HZ HX_HY_HZ) do call :hybrid_gen %%v
 echo set terminal png size 1024,768 >> set.gnu
 echo set output "gausA.png" >> set.gnu
 echo load 'set.gnu' > gausA.cmd
@@ -29,5 +30,12 @@ start "%1_MAP" /WAIT mencoder\mencoder mf://@list -mf w=1024:h=768:fps=25:type=p
 if exist "%1_3D\IMG    1.png" (
 .\ls.exe %1_3D\*.png > list
 start "%1_3D" /WAIT mencoder\mencoder mf://@list -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o %1_3d_color.avi
+)
+goto :end
+
+:hybrid_gen
+if exist "HYBRID\%1_IMG    1.png" (
+.\ls.exe HYBRID\%1_*.png > list
+start "HYBRID: %1" /WAIT mencoder\mencoder mf://@list -mf w=1024:h=768:fps=25:type=png -vf scale -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -o HYBRID_%1.avi
 )
 :end

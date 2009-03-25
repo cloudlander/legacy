@@ -8,33 +8,43 @@ class Config:
     def __init__(self):
         self._config={}
     def parseConfig(self):
-        self._config['threads']=4
+        self._config['threads']=2
         self._config['PNG_SIZE']='1024,768'
         self._config['+RANGE']=1.0
         self._config['-RANGE']=-1.0
         self._config['+G_RANGE']=1.0
         self._config['-G_RANGE']=-1.0
+        self._config['+H_RANGE']=3.0
+        self._config['-H_RANGE']="0"
+        self._config['PALETTE']="set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")"
+        self._config['G_PALETTE']="set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")"
+        self._config['H_PALETTE']="set palette defined (0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.1 \"black\", 0.5 \"dark-blue\", 1 \"medium-blue\", 1.5 \"blue\", 2 \"yellow\", 2.5 \"red\", 3.0 \"dark-red\")"
         self._config['TLM']=True
         self._config['MAP']=True
         self._config['SURFACE']=True
         self._config['GAUSS']=False
         self._config['ONLY_SIN']=False
+        self._config['HYBRID']=True
+        self._config['HYBRID_EXPR']="sqrt(x*x+y*y)"
+        self._config['HYBRID_LIST']=["EX,EY","EY,EZ"]
         self._config['SHOW_MEDIUM']=True
         self._config['ANI']=True
-        self._config['DO_EX']='0'
-        self._config['DO_EY']='1'
-        self._config['DO_EZ']='0'
-        self._config['DO_HX']='0'
-        self._config['DO_HY']='0'
-        self._config['DO_HZ']='0'
+        self._config['DO_EX']=True
+        self._config['DO_EY']=True
+        self._config['DO_EZ']=True
+        self._config['DO_HX']=True
+        self._config['DO_HY']=True
+        self._config['DO_HZ']=True
         if sys.platform.find("win")==0:
             self._config['GEN_ANI']="gen_ani.bat"
             self._config['TLM_EXE']="Release/TLM.exe"
             self._config['GNUPLOT']="wgnuplot.exe"
+            self._config['PASTE']="paste.exe"
         else:
             self._config['GEN_ANI']="./gen_ani.sh"
             self._config['TLM_EXE']="./tlm"
             self._config['GNUPLOT']="gnuplot"
+            self._config['PASTE']="paste"
     def resetConfig(self):
         return True
     def getConfig(self):
@@ -62,6 +72,13 @@ class FileConfig(Config):
             else:
                 break
         input.close()
+        for task in ('EX','EY','EZ','HX','HY','HZ'):
+            if self._config['GEN_'+task]=='1' and self._config['DO_'+task]:
+                self._config['DO_'+task]='1'
+            else:
+                self._config['DO_'+task]='0'
+        if self._config.has_key('HYBRID_LIST'):
+            self._config['HYBRID_NUM']=len(self._config['HYBRID_LIST'][0].split(","))
 
 class ILineAware:
     def encounterLine(self,line):
@@ -130,7 +147,7 @@ class Visualizer(ILineAware):
                      #"set autoscale","\n",
                      #"set size square","\n",
                      "set size ratio ",str(ratio)," \n",
-                     "set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")","\n"
+                     self._config['PALETTE'],"\n",
                      "set surface","\n",
                      'set title "TLM 3D"',"\n",
                      'set xlabel "Z"',"\n",
@@ -164,7 +181,7 @@ class Visualizer(ILineAware):
                      #"set autoscale","\n",
                      #"set size square","\n",
                      "set size ratio ",str(ratio)," \n",
-                     "set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")","\n"
+                     self._config['PALETTE'],"\n",
                      "set surface","\n",
                      'set title "TLM 3D"',"\n",
                      'set xlabel "Z"',"\n",
@@ -193,7 +210,7 @@ class Visualizer(ILineAware):
                      #"set autoscale","\n",
                      #"set size square","\n",
                      "set size ratio ",str(ratio)," \n",
-                     "set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")","\n"
+                     self._config['G_PALETTE'],"\n",
                      "set surface","\n",
                      'set title "TLM 2D Gauss Distribution"',"\n",
                      'set xlabel "Z"',"\n",
@@ -227,7 +244,7 @@ class Visualizer(ILineAware):
                      #"set autoscale","\n",
                      #"set size square","\n",
                      "set size ratio ",str(ratio)," \n",
-                     "set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")","\n"
+                     self._config['G_PALETTE'],"\n",
                      "set surface","\n",
                      'set title "TLM 2D Only SIN Distribution"',"\n",
                      'set xlabel "Z"',"\n",
@@ -250,15 +267,100 @@ class Visualizer(ILineAware):
             env_set.seek(0)
             return env_set
 
+    class HybridWorker(Worker):
+        def getPlotOption(self):
+            if self._config['SHOW_MEDIUM']:
+                if self._config['HYBRID_NUM']==2:
+                    return "using 1:2:(hybrid($4,$8))"
+                else:
+                    return "using 1:2:(hybrid($4,$8,$12))"
+            else:
+                if self._config['HYBRID_NUM']==2:
+                    return "using 1:2:(hybrid($3,$7))"
+                else:
+                    return "using 1:2:(hybrid($3,$7,$11))"
+        def prepareWorker(self):
+            if self._config.has_key('H_PALETTE'):
+                palette=self._config['H_PALETTE']
+            else:
+                palette=""
+            if self._config['HYBRID_NUM']==2:
+                expr_head="hybrid(x,y)="
+            else:
+                expr_head="hybrid(x,y,z)="
+            ratio=float(int(self._config['ENDX'])-int(self._config['SX']))/(int(self._config['ENDZ'])-int(self._config['SZ']))
+            env_set=StringIO.StringIO()
+            env_set.writelines(
+                    [#"set samples 100, 100","\n",
+                     #"set isosamples 10, 10","\n"
+                     #"set palette model HSV functions gray, 1, 1","\n"
+                     #"set autoscale","\n",
+                     #"set size square","\n",
+                     "set size ratio ",str(ratio)," \n",
+                     palette,"\n",
+                     "set surface","\n",
+                     'set title "TLM 3D -- Modulized: ',self._config['HYBRID_EXPR'],'"',"\n",
+                     'set xlabel "Z"',"\n",
+                     'set ylabel "X"',"\n",
+                     'set xrange [',self._config['SZ'],":",self._config['ENDZ'],'] noreverse nowriteback',"\n",
+                     'set yrange [',self._config['SX'],":",self._config['ENDX'],'] noreverse nowriteback',"\n",
+                     'set zrange [',self._config['-H_RANGE'],":",self._config['+H_RANGE'],'] noreverse nowriteback',"\n",
+                     'set cbrange [',self._config['-H_RANGE'],":",self._config['+H_RANGE'],'] noreverse nowriteback',"\n",
+                     'set zero 1e-0020',"\n",
+                     'set pm3d map',"\n",
+                     #'set dgrid3d ',str(int(self._config['ENDX'])-int(self._config['SX'])+1),",",str(int(self._config['ENDZ'])-int(self._config['SZ'])+1),"\n",
+                     'set terminal png size ',self._config['PNG_SIZE'],"\n",
+                     expr_head,self._config['HYBRID_EXPR'],"\n"
+                    ])
+            env_set.seek(0)
+            return env_set
+        def _worker(self):
+            s=self.prepareWorker().readlines()
+            while not self._producer.killed :
+                try:
+                    trunk=self._request()
+                    if trunk != None:
+                        if self._enabled:
+                            filename=self.getName()+"_"+str(trunk['start'])+"_"+trunk['prefix']+".gnu"
+                            commands=open(filename,"wb")
+                            commands.writelines(s)
+                            for i in range(trunk['start'],trunk['end']+1):
+                                print >>commands,"set output \"%s/%s_IMG%5d.png\""%(trunk['dir'],trunk['prefix'].replace(',','_'),i)
+                                if self._config['SPLIT']=='0':
+                                    print >>commands,"splot \"-\" index %d %s"%(i-1,self.getPlotOption())
+                                else:
+                                    print >>commands,"splot \"-\" %s"%(self.getPlotOption())
+                                files=trunk['prefix'].split(",")
+                                params=[self._config['PASTE']]
+                                for file in files:
+                                    params.append("%s/%s%5d.out"%(file,file,i))
+                                paste=subprocess.Popen(params,stdout=subprocess.PIPE,universal_newlines=True)
+                                line=paste.stdout.readline()
+                                while line:
+                                    print >>commands,line,
+                                    line=paste.stdout.readline()
+                                paste.wait()
+                                print >>commands,"e"
+                            commands.write("exit\n")
+                            commands.close()
+                            plot=subprocess.Popen([self._config['GNUPLOT'],filename],universal_newlines=True)
+                            plot.wait()
+                            self.removefile(filename)
+                    elif self._producer.joining:
+                        break
+                except:
+                    print "Exceptions in %s!"%(self.getName())
+
     def __init__(self,config=Config()):
         self._config=config.getConfig()
         #self._num_threads=self._config['threads']*2
-        self._num_threads=self._config['threads']*4
+        self._num_threads=self._config['threads']*5
         self._threads=range(self._num_threads)
         self._map_queue=Queue.Queue()
         self._surface_queue=Queue.Queue()
         self._gauss_queue=Queue.Queue()
         self._only_sin_queue=Queue.Queue()
+        self._hybrid_queue=Queue.Queue()
         self._trunk_start=1
         self.joining=False
         self.killed=False
@@ -292,21 +394,28 @@ class Visualizer(ILineAware):
             return ((self._trunk_start-1)/float(self._config['NT'])-self._surface_queue.qsize()*10/total)*100
 
     def getGaussPlotStatus(self):
-        total=float(self.getTotal())
+        total=float(self._config['NT'])
         if self._trunk_start > int(self._config['NT']):
-            return (total-self._gauss_queue.qsize()*10)/total*100
+            return 100
         else:
             return ((self._trunk_start-1)/float(self._config['NT'])-self._gauss_queue.qsize()*10/total)*100
 
     def getOnlySinPlotStatus(self):
-        total=float(self.getTotal())
+        total=float(self._config['NT'])
         if self._trunk_start > int(self._config['NT']):
-            return (total-self._only_sin_queue.qsize()*10)/total*100
+            return 100
         else:
             return ((self._trunk_start-1)/float(self._config['NT'])-self._only_sin_queue.qsize()*10/total)*100
 
+    def getHybridPlotStatus(self):
+        total=float(self._config['NT']) * len(self._config['HYBRID_LIST'])
+        if self._trunk_start > int(self._config['NT']):
+            return (total-self._hybrid_queue.qsize()*10)/total*100
+        else:
+            return ((self._trunk_start-1)/float(self._config['NT'])-self._hybrid_queue.qsize()*10/total)*100
+
     def printStatus(self):
-        print "TLM %.0f%% calculated,surface %.0f%% plotted,map %.0f%% plotted,Gauss %.0f%% plotted,OnlySin %.0f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus(),self.getGaussPlotStatus(),self.getOnlySinPlotStatus()),
+        print "TLM %.0f%% calculated,surface %.0f%% plotted,map %.0f%% plotted,Gauss %.0f%% plotted,OnlySin %.0f%% plotted,Hybrid %.0f%% plotted!\r"%(self.getTLMStatus(),self.getSurfacePlotStatus(),self.getMapPlotStatus(),self.getGaussPlotStatus(),self.getOnlySinPlotStatus(),self.getHybridPlotStatus()),
 
     def encounterLine(self,line):
         try:
@@ -318,6 +427,8 @@ class Visualizer(ILineAware):
                         self.surface_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'3D'})
                 self.gauss_deposit({'start':self._trunk_start,'end':end,'prefix':"GAUSS",'dir':'SIN'})
                 self.only_sin_deposit({'start':self._trunk_start,'end':end,'prefix':"ONLYSIN",'dir':'3D'})
+                for hybrid in self._config['HYBRID_LIST']:
+                    self.hybrid_deposit({'start':self._trunk_start,'end':end,'prefix':hybrid,'dir':'HYBRID'})
                 self._trunk_start=end+1
         except:
             #print "Exceptions in encounterLine: %s"%(line)
@@ -364,28 +475,43 @@ class Visualizer(ILineAware):
     def only_sin_deposit(self,trunk):
         self._only_sin_queue.put(trunk,True)
 
+    def hybrid_request(self):
+        trunk=None
+        try:
+            trunk=self._hybrid_queue.get(True,1)
+        finally:
+            return trunk
+
+    def hybrid_deposit(self,trunk):
+        self._hybrid_queue.put(trunk,True)
+
     def start(self):
         try:
-            for i in range(self._num_threads/4):
+            for i in range(self._num_threads/5):
                 self._threads[i]=self.MapWorker(self,self.map_request,self._config)
                 self._threads[i].setName("MapWorker"+str(i))
                 self._threads[i].start()
                 self._threads[i].enable(self._config['MAP'])
-            for i in range(self._num_threads/4,self._num_threads/2):
+            for i in range(self._num_threads/5,self._num_threads*2/5):
                 self._threads[i]=self.SurfaceWorker(self,self.surface_request,self._config)
                 self._threads[i].setName("SurfaceWorker"+str(i))
                 self._threads[i].start()
                 self._threads[i].enable(self._config['SURFACE'])
-            for i in range(self._num_threads/2,self._num_threads*3/4):
+            for i in range(self._num_threads*2/5,self._num_threads*3/5):
                 self._threads[i]=self.GaussWorker(self,self.gauss_request,self._config)
                 self._threads[i].setName("GaussWorker"+str(i))
                 self._threads[i].start()
                 self._threads[i].enable(self._config['GAUSS'])
-            for i in range(self._num_threads*3/4,self._num_threads):
+            for i in range(self._num_threads*3/5,self._num_threads*4/5):
                 self._threads[i]=self.OnlySinWorker(self,self.only_sin_request,self._config)
                 self._threads[i].setName("OnlySinWorker"+str(i))
                 self._threads[i].start()
                 self._threads[i].enable(self._config['ONLY_SIN'])
+            for i in range(self._num_threads*4/5,self._num_threads):
+                self._threads[i]=self.HybridWorker(self,self.hybrid_request,self._config)
+                self._threads[i].setName("HybridWorker"+str(i))
+                self._threads[i].start()
+                self._threads[i].enable(self._config['HYBRID'])
         except:
             print "Exceptions in start!"
 

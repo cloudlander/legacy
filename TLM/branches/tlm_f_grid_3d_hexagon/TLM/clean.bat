@@ -1,9 +1,10 @@
 echo off
 for /D %%v in (EX EY EZ HX HY HZ) do call :clean %%v
-del GAUSS_SIN\*
-del GAUSS\* /Q
+del GAUSS\* 
+del GAUSS_SIN\* /Q
 del ONLYSIN\*
 del ONLYSIN_3D\* /Q
+del HYBRID\*
 goto :end
 
 :clean

@@ -56,6 +56,10 @@
           self._config['-RANGE']=-0.3                 EY的下限
           self._config['+G_RANGE']=1.0                Gauss分布的上限(仅对TLM Grid程序有效)
           self._config['-G_RANGE']=-1.0               Gauss分布的下限(仅对TLM Grid程序有效)
+          self._config['+H_RANGE']=3.0                模的上限(仅对TLM Grid程序有效)
+          self._config['-H_RANGE']=0                  模的下限(仅对TLM Grid程序有效)
+          self._config['PALETTE']                     设置绘图的调色板,PALETTE是给EX,EY,EZ/HX,HY,HZ用的,G_PALETTE是给高斯用的
+                                                      H_PALETTE是给模用的
           self._config['TLM']=True                    是否运行TLM程序生成数据文件
                                                       (在已经有数据文件的情况下,可以设置成False,
                                                        这样不用重复计算,也可以绘图)
@@ -63,11 +67,21 @@
           self._config['SURFACE']=True                是否绘制三维图像
           self._config['GAUSS']=False                 是否绘制Gauss分布图像
                                                       (仅对TLM Grid程序有效,否则,如果设置成True,TLM NRI程序会报错!)
-          self._config['ONLY_SIN']=False               是否绘制SIN激励分布图像
+          self._config['ONLY_SIN']=False              是否绘制SIN激励分布图像
                                                       (仅对TLM Grid程序有效,否则,如果设置成True,TLM NRI程序会报错!)
+          self._config['HYBRID']=True                 是否绘制模的分布图像
+          self._config['HYBRID_EXPR']="sqrt(x*x+y*y)" 设置模的计算函数
+          self._config['HYBRID_LIST']=["EX,EY"]       设置要绘制模的变量,最多支持"EX,EY,EZ",可以绘制多个,用逗号隔开
+                                                      (此处只能设置同一种计算方式,例如["EX,EY","EX,EY,EZ"]是不允许的
           self._config['SHOW_MEDIUM']=True            是否在绘制的图像上显示介质分布
           self._config['ANI']=True                    是否生成二维和三维的动画
- 
+          self._config['DO_EX']=True                  是否生成对应的图像
+          self._config['DO_EY']=True                  (此选项和twotlme.in中的GEN_对应,此选项仅当对应的GEN_设置成1时才有效
+          self._config['DO_EZ']=True                  比如,如果GEN_EY=0,那么无论此处DO_EY是否为True,都会被TLM.py自动忽略,
+          self._config['DO_HX']=True                  从而不会生成EY的图像和动画)
+          self._config['DO_HY']=True
+          self._config['DO_HZ']=True 
+
      4.  频域计算工具:
           在得到所有的输出数据后,可以双击tlm_dft.py,输入需要计算的X,Z坐标,即可得到相应的频域输出
 
@@ -120,6 +134,6 @@
     SCALE                     如果为0,则根据PN的取值确定激励点,否则设置一个激励点,其位置有SCALE确定
                               (激励点距离介质=介质宽度/SCALE)
 
-    DO_EX, DO_EY, DO_EZ, DO_HX, DO_HY, DO_HZ, DO_FEX, DO_FEY, DO_FEZ, DO_FHX, DO_FHY, DO_FHZ
+    GEN_EX, GEN_EY, GEN_EZ, GEN_HX, GEN_HY, GEN_HZ, GEN_FEX, GEN_FEY, GEN_FEZ, GEN_FHX, GEN_FHY, GEN_FHZ
                               配置是否生成对应的数据(1:生成,0:不生成)
 
