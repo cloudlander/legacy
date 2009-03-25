@@ -137,3 +137,4 @@
     GEN_EX, GEN_EY, GEN_EZ, GEN_HX, GEN_HY, GEN_HZ, GEN_FEX, GEN_FEY, GEN_FEZ, GEN_FHX, GEN_FHY, GEN_FHZ
                               配置是否生成对应的数据(1:生成,0:不生成)
 
+    NORMALIZE                 如果为1,则对输出数据进行归一化处理(对所有数据除以数据集的最大值)

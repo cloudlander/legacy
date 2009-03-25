@@ -2,59 +2,59 @@
       INTEGER SX,SY,SZ,ENDX,ENDY,ENDZ,NX,NY,NZ,X,Y,Z,T,BL,SIDE1,SIDE2   
 !网格单位长度，起始网格位置结束网格位置，边界条件标志参数
 
-      REAL, ALLOCATABLE:: RVA(:,:,:,:),RVB(:,:,:,:),RVC(:,:,:,:)
-      REAL, ALLOCATABLE:: RVD(:,:,:,:),RVE(:,:,:,:),RVF(:,:,:,:)
-      REAL, ALLOCATABLE:: IVA(:,:,:,:),IVB(:,:,:,:),IVC(:,:,:,:)
-      REAL, ALLOCATABLE:: IVD(:,:,:,:),IVE(:,:,:,:),IVF(:,:,:,:)
+      DOUBLE PRECISION,  ALLOCATABLE:: RVA(:,:,:,:),RVB(:,:,:,:),RVC(:,:,:,:)
+      DOUBLE PRECISION,  ALLOCATABLE:: RVD(:,:,:,:),RVE(:,:,:,:),RVF(:,:,:,:)
+      DOUBLE PRECISION,  ALLOCATABLE:: IVA(:,:,:,:),IVB(:,:,:,:),IVC(:,:,:,:)
+      DOUBLE PRECISION,  ALLOCATABLE:: IVD(:,:,:,:),IVE(:,:,:,:),IVF(:,:,:,:)
 
-      REAL, ALLOCATABLE:: REEX(:,:,:,:),IMEX(:,:,:,:)
-      REAL, ALLOCATABLE:: REEY(:,:,:,:),IMEY(:,:,:,:)
-      REAL, ALLOCATABLE:: REEZ(:,:,:,:),IMEZ(:,:,:,:)
-      REAL, ALLOCATABLE:: REHX(:,:,:,:),IMHX(:,:,:,:)
-      REAL, ALLOCATABLE:: REHY(:,:,:,:),IMHY(:,:,:,:)
-      REAL, ALLOCATABLE:: REHZ(:,:,:,:),IMHZ(:,:,:,:)
-	  REAL, ALLOcATABLE:: EH(:,:,:)
+      DOUBLE PRECISION,  ALLOCATABLE:: REEX(:,:,:,:),IMEX(:,:,:,:)
+      DOUBLE PRECISION,  ALLOCATABLE:: REEY(:,:,:,:),IMEY(:,:,:,:)
+      DOUBLE PRECISION,  ALLOCATABLE:: REEZ(:,:,:,:),IMEZ(:,:,:,:)
+      DOUBLE PRECISION,  ALLOCATABLE:: REHX(:,:,:,:),IMHX(:,:,:,:)
+      DOUBLE PRECISION,  ALLOCATABLE:: REHY(:,:,:,:),IMHY(:,:,:,:)
+      DOUBLE PRECISION,  ALLOCATABLE:: REHZ(:,:,:,:),IMHZ(:,:,:,:)
+	  DOUBLE PRECISION,  ALLOcATABLE:: EH(:,:,:)
       INTEGER, ALLOCATABLE:: L(:)
-      REAL, ALLOCATABLE:: YY(:,:)
-	  REAL YX,YZ
+      DOUBLE PRECISION,  ALLOCATABLE:: YY(:,:)
+	  DOUBLE PRECISION YX,YZ
       INTEGER, ALLOCATABLE:: PULSE(:,:)   !脉冲点
       INTEGER, ALLOCATABLE:: YYY(:,:)      
-      REAL, ALLOCATABLE:: GAUSS(:,:,:),GAUSS2(:,:,:)
+      DOUBLE PRECISION,  ALLOCATABLE:: GAUSS(:,:,:),GAUSS2(:,:,:)
       
-      REAL SA(5,5),SB(5,5),SC(5,5),SD(5,5),SE(5,5),SF(5,5)
+      DOUBLE PRECISION SA(5,5),SB(5,5),SC(5,5),SD(5,5),SE(5,5),SF(5,5)
       
 	  INTEGER P_COLOR,ER_COLOR,ER1_COLOR,ER2_COLOR
       CHARACTER(LEN=12) COLORS(0:3)  !介质颜色表
 
-      REAL FF      
-	  REAL time_begin, time_end
+      DOUBLE PRECISION FF      
+	  DOUBLE PRECISION time_begin, time_end
       INTEGER UNIT_BASE,UNIT_BASE2
       INTEGER FILE_UNIT(6)
       INTEGER FUI
 
 	  INTEGER LN,LI,LL
-      REAL ZX,ZY,ZZ
-      REAL GX,GY,GZ
-      REAL ER,ER1,ER2
+      DOUBLE PRECISION ZX,ZY,ZZ
+      DOUBLE PRECISION GX,GY,GZ
+      DOUBLE PRECISION ER,ER1,ER2
 	  INTEGER U,V,W
 	  INTEGER SPLIT !SPLIT=1 按T分割输出文件, SPLIT=0 不分割
-	  REAL FRE !激发频率
-	  REAL NORMAL_FRE  !归一化频率
+	  DOUBLE PRECISION FRE !激发频率
+	  DOUBLE PRECISION NORMAL_FRE  !归一化频率
 
       INTEGER START_ROW,START_COL,END_COL,GRID_ROW,GRID_COL   !网格开始位置
-      REAL COL  !网格总列数
-      REAL PART  !网格所占百分比
+      DOUBLE PRECISION COL  !网格总列数
+      DOUBLE PRECISION PART  !网格所占百分比
 
-      REAL NANGLE !网格偏移角度(与Z轴张角,取值范围为(0,180) 90为不倾斜
+      DOUBLE PRECISION NANGLE !网格偏移角度(与Z轴张角,取值范围为(0,180) 90为不倾斜
 	  INTEGER DUMMY1,DUMMY2
       INTEGER GTYPE !网格类型 0为矩形, 1为内切椭圆(正圆), 2为等腰三角形
       INTEGER PSX,PSZ !输入脉冲开始位置
       INTEGER PENDZ !输入脉冲结束的Z坐标
-      REAL PANGLE  !输入脉冲直线与Z轴的张角(角度)
-      REAL PLENGTH !输入脉冲直线的长度
-      REAL PP !脉冲直线计算参数
+      DOUBLE PRECISION PANGLE  !输入脉冲直线与Z轴的张角(角度)
+      DOUBLE PRECISION PLENGTH !输入脉冲直线的长度
+      DOUBLE PRECISION PP !脉冲直线计算参数
 	  INTEGER CC
-	  REAL PI
+	  DOUBLE PRECISION PI
       !输入脉冲数组,以下为取值说明:
       !=0: 使用PSX,PSZ,PENDZ和PLENGTH自动生成脉冲直线,直线旋转PANGLE角度,并且生成2个效果文件
       !>0: 使用输入文件的X,Z坐标作为脉冲点,介质旋转PANGLE角度,生成一个效果文件
@@ -64,13 +64,16 @@
 	  !吸收边界的Z值 
       INTEGER BP
       !脉冲点距介质边界占介质宽度比例
-      REAL SCALE
+      DOUBLE PRECISION SCALE
 	  INTEGER EXPAND
+	  !是否对输出数据归一化
+	  INTEGER DO_NORMALIZE
 
-	  REAL GMAX
-	  REAL EMAX(1:6)
-      REAL W0 !高斯函数光斑半径
+	  DOUBLE PRECISION GMAX
+	  DOUBLE PRECISION EMAX(1:6)
+      DOUBLE PRECISION W0 !高斯函数光斑半径
 
+      DOUBLE PRECISION Z0
       !是否输出对应的数据文件: 1为输出, 0为不输出
       INTEGER DO_EX,DO_EY,DO_EZ,DO_HX,DO_HY,DO_HZ,DO_FEX,DO_FEY,DO_FEZ,DO_FHX,DO_FHY,DO_FHZ
       
@@ -93,7 +96,7 @@
       OPEN(11,FILE='twotlme.in',FORM='FORMATTED')
       
 	  !读入数据固定参数计算结构参数时使用
-	  READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,NORMAL_FRE,W0,PN,PSX,PSZ,PENDZ,PANGLE,LN,BP,SCALE,DO_EX,DO_EY,DO_EZ,DO_HX,DO_HY,DO_HZ,DO_FEX,DO_FEY,DO_FEZ,DO_FHX,DO_FHY,DO_FHZ
+	  READ(11,*)SX,SY,SZ,ENDX,ENDY,ENDZ,X,Y,Z,U,V,W,H,ER,UR,SGM,NT,BL,SPLIT,SIDE1,SIDE2,ER1,ER2,NANGLE,GTYPE,COL,FRE,NORMAL_FRE,W0,PN,PSX,PSZ,PENDZ,PANGLE,LN,BP,SCALE,DO_EX,DO_EY,DO_EZ,DO_HX,DO_HY,DO_HZ,DO_FEX,DO_FEY,DO_FEZ,DO_FHX,DO_FHY,DO_FHZ,DO_NORMALIZE
       
       ! 初始化文件句柄
       DO 17950 FUI=1,6
@@ -433,8 +436,8 @@
 
 	!             例如FRE=10GHz时，由于TLM色散限制 deltaL/lamd<0.1  ,此处取deltaL/lamd=(1/3)*0.1=3.33*E-2
 	!             !IVB(III,X,Y,Z)=sin(6.283E+10*(0.33333E-11)*T)  !为sin激发单色波形式 FRE=10GHz
-    !             !其中0.3333E-11=1/3E-11=dl/CC=deltaL/C(一个格点宽度/光速)  !dl取(3*E-2)*lamd=(3*E-2)*C/FRE 且取FRE=10GHz, C为光速
-                 IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(2*PI*(NORMAL_FRE/(SIDE2*4))*T)  !为sin激发单色波形式
+    !             !其中0.3333E-11=1/3E-11=dl/CC=deltaL/C(一个格点宽度/光速)  !dl取(3*E-2)*lamd=(3*E-2)*C/FRE 且取FRE=10GHz, C为光速                 
+				 IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(2*PI*(NORMAL_FRE/(SIDE2*4))*T)  !为sin激发单色波形式
 	!            IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
  992         CONTINUE 
   6      CONTINUE
@@ -524,6 +527,14 @@
 		      IVB(3,I,J,K)=RVF(2,I,J,K)
 		      IVB(4,I,J,K)=RVD(1,I,J,K)
 		      IVB(5,I,J,K)=RVB(5,I,J,K)
+
+			 ! IF(I .EQ. 10 .and. J .EQ. 3 .and. K .eq. 20) THEN
+			 ! write(*,*) I,J,K,IVB(1,I,J,K)
+			 ! WRITE(*,*) I,J,K,IVB(2,I,J,K)
+			 ! WRITE(*,*) I,J,K,IVB(3,I,J,K)
+			 ! WRITE(*,*) I,J,K,IVB(4,I,J,K)
+			 ! WRITE(*,*) I,J,K,IVB(5,I,J,K)
+			 ! ENDIF
     		  
 		      IVC(1,I,J,K)=RVD(4,I,J,K)
 		      IVC(2,I,J,K)=RVE(3,I-1,J,K)
@@ -690,8 +701,9 @@
        101 CONTINUE
 
            IF(FILE_UNIT(FUI) .GT. 0) THEN
-		          
-			   CALL NORMALIZE(EMAX(FUI),EH,SX,ENDX,Y,Y,SZ,ENDZ,NX,NY,NZ)
+		       IF(DO_NORMALIZE .NE. 0) THEN   
+			     CALL NORMALIZE(EMAX(FUI),EH,SX,ENDX,Y,Y,SZ,ENDZ,NX,NY,NZ)
+			   ENDIF
 			   DO 111 II=SX,ENDX
 				  DO 112 KK=SZ,ENDZ
 						IF(YYY(II,KK) .EQ. ER1_COLOR)  THEN     !绘制介质图像
@@ -830,8 +842,8 @@
       END          
 
       SUBROUTINE SBL(S,Y,G)  !生成[S]散射矩阵
-      REAL S(5,5)
-	  REAL Y,G
+      DOUBLE PRECISION S(5,5)
+	  DOUBLE PRECISION Y,G
       DO 21 I=1,5
 	  DO 22 J=1,5
 	    IF (J.EQ.5) THEN 
@@ -847,8 +859,8 @@
       END
       
       SUBROUTINE SCL(S,Z)
-      REAL S(5,5)
-	  REAL Z
+      DOUBLE PRECISION S(5,5)
+	  DOUBLE PRECISION Z
       S(1,1)=-1.0
       S(1,2)=1.0
       S(1,3)=1.0
@@ -879,8 +891,8 @@
 
       SUBROUTINE EJ(E,IV,Y,G,I,J,K,L,NX,NY,NZ)
 	  INTEGER NX,NY,NZ,I,J,K,L
-      REAL IV(5,NX,NY,NZ)
-	  REAL E,Y,G
+      DOUBLE PRECISION IV(5,NX,NY,NZ)
+	  DOUBLE PRECISION E,Y,G
       E=0.0
       DO 100 M=1,4
 	     E=E+IV(M,I,J,K)
@@ -891,17 +903,18 @@
       END
       
       SUBROUTINE HJ(H,IV,Z,I,J,K,Z0,NX,NY,NZ)
-      REAL H,Z,Z0
+      DOUBLE PRECISION H,Z,Z0
       INTEGER I,J,K,NX,NY,NZ
-      REAL IV(5,NX,NY,NZ)
+      DOUBLE PRECISION IV(5,NX,NY,NZ)
       H=IV(1,I,J,K)-IV(2,I,J,K)-IV(3,I,J,K)+IV(4,I,J,K)+IV(5,I,J,K)
       H=H*2/(Z0*(4+Z))
       RETURN
       END
       
-      SUBROUTINE FT(FREAL,FIM,E,LL,T)
+      SUBROUTINE FT(FREAL, FIM,E,LL,T)
       INTEGER LL,T
-	  REAL TLBB,FREAL,FIM
+	  DOUBLE PRECISION TLBB,FREAL, FIM
+	  DOUBLE PRECISION E
  !    进行傅立叶变换，其中LL和T分别为主函数中L和T，表示频域的第几个点和时域的第几个点
       TLBB=(LL*(0.1-0)/16384.0+0)
       FREAL=FREAL+E*COS(2*3.14159*T*TLBB/2.0)
@@ -912,10 +925,10 @@
       INTEGER GTYPE,S1,S2,I,K,NX,NZ,SIDE1,SIDE2
 	  REAL SHRINK
       INTEGER CC
-      REAL ZY(NX,NZ)
+      DOUBLE PRECISION ZY(NX,NZ)
       INTEGER ZYY(NX,NZ)
-      REAL C
-      REAL CROW,CCOL,A,B,AX
+      DOUBLE PRECISION C
+      DOUBLE PRECISION CROW,CCOL,A,B,AX
       INTEGER IGAP,KGAP
 
 	  SIDE1=S1*SHRINK
@@ -954,10 +967,10 @@
       INTEGER GTYPE,S1,S2,I,K,NX,NZ,SX,ENDX,SZ,ENDZ,SIDE1,SIDE2
 	  REAL SHRINK
       INTEGER CC
-      REAL ZY(NX,NZ)
+      DOUBLE PRECISION ZY(NX,NZ)
       INTEGER ZYY(NX,NZ)
-      REAL C
-      REAL CROW,CCOL,A,B,AX
+      DOUBLE PRECISION C
+      DOUBLE PRECISION CROW,CCOL,A,B,AX
       INTEGER IGAP,KGAP
 
 	  SIDE1=S1*SHRINK
@@ -987,10 +1000,10 @@
 
       SUBROUTINE GENGAUSS(GAUSS,NX,NY,NZ,XP,YP,ZP,W0)
         INTEGER X0,Y0,Z0,NX,NY,NZ,XP,YP,ZP
-        REAL GAUSS(-XP+1:NX-XP,NY,-ZP+1:NZ-ZP)
-	    REAL X,Y,Z
-        REAL C0,W0,Wz,PI,Zr,Rz,Lambda
-	    REAL AMAX
+        DOUBLE PRECISION GAUSS(-XP+1:NX-XP,NY,-ZP+1:NZ-ZP)
+	    DOUBLE PRECISION X,Y,Z
+        DOUBLE PRECISION C0,W0,Wz,PI,Zr,Rz,Lambda
+	    DOUBLE PRECISION AMAX
         
      
         PI=3.1415926
@@ -1024,8 +1037,8 @@
 
 	  SUBROUTINE LINE(X,Y,Z,PSX,PSZ,PENDZ,SX,ENDX,ANGLE,ZYY,NX,NZ,PULSE,PIND,PLEN,P_COLOR)
       INTEGER PSX,PSZ,PENDZ,SX,ENDX,NX,NZ,PIND,PLEN,X,Y,Z
-      REAL PP !脉冲直线计算参数
-      REAL PANGLE,ANGLE
+      DOUBLE PRECISION PP !脉冲直线计算参数
+      DOUBLE PRECISION PANGLE,ANGLE
       INTEGER ZYY(NX,NZ)
       INTEGER P_COLOR
       INTEGER PULSE(NX,3)
@@ -1075,8 +1088,8 @@
 
       SUBROUTINE NORMALIZE(MAX,E,SX,ENDX,SY,ENDY,SZ,ENDZ,NX,NY,NZ)
 	  INTEGER NX,NY,NZ,SX,ENDX,SY,ENDY,SZ,ENDZ,I,J,K
-	  REAL E(NX,NY,NZ)
-	  REAL EMAX,MAX
+	  DOUBLE PRECISION E(NX,NY,NZ)
+	  DOUBLE PRECISION EMAX,MAX
       EMAX=MAX
       DO 1107 I=SX,ENDX
 	     DO 2107 J=SY,ENDY
