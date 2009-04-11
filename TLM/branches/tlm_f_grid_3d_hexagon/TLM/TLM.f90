@@ -201,26 +201,55 @@
  2222    CONTINUE
  2221 CONTINUE
  
-      !开始绘制网格            
-	  IF(GTYPE .NE. 3) THEN   !绘制矩形,椭圆和三角形
-		  DO 3331 II=0,GRID_ROW-1
-			 DO 3332 KK=0,GRID_COL-1
-				IF ( MOD((II+KK),2) .EQ. 1 ) THEN
-				   CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER1/V-2),ER1_COLOR, 0.8)
-				ELSE
-				   CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 1.0)
-				ENDIF
-	 3332    CONTINUE
-	 3331 CONTINUE
-	  ELSE
-	                          !绘制蜂窝状六角形
-		  DO 2223 II=SX,ENDX
+ 		  DO 2223 II=SX,ENDX
 			 DO 2224 KK=START_COL,END_COL
 				YY(II,KK)=2*(U*W*SQRT(H)*ER1/V-2)  !介电常数支线结构参数的计算(方向5即为介电常数支线)
 				YYY(II,KK)=ER1_COLOR
 	 2224    CONTINUE
 	 2223 CONTINUE
 
+
+
+      !开始绘制网格            
+	  IF(GTYPE .LT. 3) THEN   !绘制矩形,椭圆和三角形
+
+		  II=SX              
+		  CC=0
+		  IF(MOD(GRID_COL,4) .EQ. 0) THEN        !调整蜂窝起始位置,尽量模拟从中心向两边扩展的分布
+             KKK=-2*SIDE2
+	      ELSE IF(MOD(GRID_COL,4) .EQ. 1) THEN
+		     KKK=-2*SIDE2
+	      ELSE IF(MOD(GRID_COL,4) .EQ. 2) THEN
+		     KKK=-3*SIDE2
+	      ELSE IF(MOD(GRID_COL,4) .EQ. 3) THEN
+		     KKK=-2*SIDE2
+          ENDIF
+		  KK=START_COL+KKK
+
+	      DO WHILE(II .LE. ENDX)
+		    DO WHILE(KK .LE. END_COL)
+!		  DO 3331 II=0,GRID_ROW-1
+!			 DO 3332 KK=0,GRID_COL-1
+!			IF ( MOD((II+KK),4) .EQ. 0) THEN
+!				   CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(U*W*SQRT(H)*ER1/V-2),ER1_COLOR, 0.8)
+!			ELSE
+!				   CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 1.0)
+				   CALL COLOR(GTYPE,SIDE1*4,SIDE2*4,II,KK,YY,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 1.41421356*0.7)
+!			ENDIF
+!	 3332    CONTINUE
+!	 3331 CONTINUE
+                KK=KK+8*SIDE2
+           ENDDO
+		   II=II+4*SIDE1
+			CC=CC+2
+			IF(MOD(CC,4) .EQ. 0) THEN
+			   KK=START_COL+KKK 
+			ELSE
+			   KK=START_COL+KKK+4*SIDE2
+			ENDIF
+	     ENDDO
+	  ELSE
+	                          !绘制蜂窝状六角形
 		  II=SX              
 		  CC=0
 		  IF(MOD(GRID_COL,4) .EQ. 0) THEN        !调整蜂窝起始位置,尽量模拟从中心向两边扩展的分布
@@ -235,7 +264,7 @@
 		  KK=START_COL+KKK
 		  DO WHILE(II .LE. ENDX)
 			DO WHILE(KK .LE. END_COL)
-			   CALL HEXAGON(GTYPE,SIDE1*4,SIDE2*4,II,KK,YY,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 0.8)
+			   CALL HEXAGON(GTYPE,SIDE1*4,SIDE2*4,II,KK,YY,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 0.7)
 			   KK=KK+6*SIDE2
 			ENDDO
 			II=II+2*SIDE1
@@ -437,14 +466,15 @@
 	!             例如FRE=10GHz时，由于TLM色散限制 deltaL/lamd<0.1  ,此处取deltaL/lamd=(1/3)*0.1=3.33*E-2
 	!             !IVB(III,X,Y,Z)=sin(6.283E+10*(0.33333E-11)*T)  !为sin激发单色波形式 FRE=10GHz
     !             !其中0.3333E-11=1/3E-11=dl/CC=deltaL/C(一个格点宽度/光速)  !dl取(3*E-2)*lamd=(3*E-2)*C/FRE 且取FRE=10GHz, C为光速                 
-				 IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(2*PI*(NORMAL_FRE/(SIDE2*4))*T)  !为sin激发单色波形式
+	!			 IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(2*PI*(NORMAL_FRE/(SIDE1*4*1.41421356))*T)  !为sin激发单色波形式
+                 IVE(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVE(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(2*PI*(NORMAL_FRE/(SIDE1*4*1.41421356))*T)  !为sin激发单色波形式
 	!            IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
  992         CONTINUE 
   6      CONTINUE
 
          DO 374 III=2,2
              DO 993 I=SX,ENDX
-			   DO 994 K=SZ,START_COL
+			   DO 994 K=SZ,ENDZ
 			   	  write(8134+T,117) K,I,GAUSS(I,Y,K)*IVB(III,I,Y,K)
 				  write(8135+T,117) K,I,IVB(III,I,Y,K)
     !              IVB(III,I,J,K)=GAUSS(I,J,K)*IVB(III,I,J,K)    
@@ -823,8 +853,8 @@
           
 16387 CONTINUE
    
-  117 format(I, I, 7f12.7)
-  118 format(7f12.7)
+  117 format(I, I, 7f20.12)
+  118 format(7f20.12)
   119 format(I)
 
 
@@ -921,8 +951,8 @@
       FIM=FIM+E*SIN(2*3.14159*T*TLBB/2.0)
       END
 
-      SUBROUTINE COLOR(GTYPE,S1,S2,I,K,ZY,ZYY,NX,NZ,C,CC, SHRINK)
-      INTEGER GTYPE,S1,S2,I,K,NX,NZ,SIDE1,SIDE2
+      SUBROUTINE COLOR(GTYPE,S1,S2,I,K,ZY,ZYY,NX,NZ,SX,ENDX,SZ,ENDZ,C,CC, SHRINK)
+      INTEGER GTYPE,S1,S2,I,K,NX,NZ,SIDE1,SIDE2,SX,ENDX,SZ,ENDZ
 	  REAL SHRINK
       INTEGER CC
       DOUBLE PRECISION ZY(NX,NZ)
@@ -944,19 +974,25 @@
       DO 3333 III=0,S1-1-IGAP
          DO 3334 KKK=0,S2-1-KGAP
              IF(GTYPE .EQ. 0) THEN     !矩形
+			   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
                  ZY(I+III,K+KKK)=C
                  ZYY(I+III,K+KKK)=CC
+			   ENDIF
              ENDIF
              IF(GTYPE .EQ. 1) THEN     !椭圆
                  IF((III-CROW)*(III-CROW)/(CROW*CROW)+(KKK-CCOL)*(KKK-CCOL)/(CCOL*CCOL) .LE. 1) THEN
+				   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
                      ZY(I+III,K+KKK)=C
                      ZYY(I+III,K+KKK)=CC
+				   ENDIF
                  ENDIF
              ENDIF
              IF(GTYPE .EQ. 2) THEN     !三角形
                  IF(2*A*(B/2-KKK)/B .LE. III .AND. 2*A*(KKK-B/2)/B .LE. III) THEN
+				   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
                      ZY(I+III,K+KKK)=C
                      ZYY(I+III,K+KKK)=CC
+				   ENDIF
                  ENDIF
              ENDIF            
  3334    CONTINUE
@@ -971,7 +1007,7 @@
       INTEGER ZYY(NX,NZ)
       DOUBLE PRECISION C
       DOUBLE PRECISION CROW,CCOL,A,B,AX
-      INTEGER IGAP,KGAP
+      INTEGER IGAP,KGAP,HEXGAP
 
 	  SIDE1=S1*SHRINK
 	  SIDE2=S2*SHRINK
@@ -983,7 +1019,10 @@
       B=SIDE2
       CROW=A/2
       CCOL=B/2
-      DO 3333 III=0,S1-1-IGAP
+	  HEXGAP=(B-A)/2
+	  !HEXGAP=0
+	  CROW=(A+HEXGAP)/2
+      DO 3333 III=0-HEXGAP,S1-1-IGAP+HEXGAP
          DO 3334 KKK=0,S2-1-KGAP
              IF(GTYPE .EQ. 3) THEN     !六边形                                  
                  IF((B/4-KKK)/(B/4) .LE. III/(A/2) .AND. (KKK-3*B/4)/(B/4) .LT. III/(A/2) .AND. (B/4-KKK)/(B/4) .LE. (A-III)/(A/2) .AND. (KKK-3*B/4)/(B/4) .LT. (A-III)/(A/2)) THEN
@@ -992,7 +1031,29 @@
                      ZYY(I+III,K+KKK)=CC
                    ENDIF
                  ENDIF
-             ENDIF             
+             ENDIF   
+             IF(GTYPE .EQ. 10) THEN     !矩形
+			   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
+                 ZY(I+III,K+KKK)=C
+                 ZYY(I+III,K+KKK)=CC
+			   ENDIF
+             ENDIF
+             IF(GTYPE .EQ. 11) THEN     !椭圆
+                 IF((III-CROW)*(III-CROW)/(CROW*CROW)+(KKK-CCOL)*(KKK-CCOL)/(CCOL*CCOL) .LE. 1) THEN
+                   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
+                     ZY(I+III,K+KKK)=C
+                     ZYY(I+III,K+KKK)=CC
+				   ENDIF
+                 ENDIF
+             ENDIF
+             IF(GTYPE .EQ. 12) THEN     !三角形
+                 IF(2*A*(B/2-KKK)/B .LE. III .AND. 2*A*(KKK-B/2)/B .LE. III) THEN
+                   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN 
+                     ZY(I+III,K+KKK)=C
+                     ZYY(I+III,K+KKK)=CC
+				   ENDIF
+                 ENDIF
+             ENDIF    			           
  3334    CONTINUE
  3333 CONTINUE
       END

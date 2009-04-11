@@ -1,22 +1,23 @@
 #!/usr/bin/python
-import time,subprocess,threading,Queue,os,sys,signal
+import time,subprocess,threading,Queue,os,sys,signal,copy
 import StringIO
 import re
-
+import zipfile
 
 class Config:
     def __init__(self):
         self._config={}
     def parseConfig(self):
-        self._config['threads']=2
+        self._config['threads']=4
         self._config['PNG_SIZE']='1024,768'
-        self._config['+RANGE']=1.0
-        self._config['-RANGE']=-1.0
+        self._config['+RANGE']=0.0001
+        self._config['-RANGE']=-0.0001
         self._config['+G_RANGE']=1.0
         self._config['-G_RANGE']=-1.0
         self._config['+H_RANGE']=3.0
         self._config['-H_RANGE']="0"
-        self._config['PALETTE']="set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")"
+#        self._config['PALETTE']="set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")"
+        self._config['PALETTE']="set palette defined (-0.0001 \"black\", -0.00005 \"dark-blue\", -0.00002 \"medium-blue\", 0 \"#CCE8CF\", 0.00002 \"yellow\", 0.00005 \"red\", 0.0001 \"dark-red\")"
         self._config['G_PALETTE']="set palette defined (-1.0 \"black\", -0.5 \"dark-blue\", -0.2 \"medium-blue\", 0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.2 \"yellow\", 0.5 \"red\", 1.0 \"dark-red\")"
         self._config['H_PALETTE']="set palette defined (0 \"#CCE8CF\", 0.01 \"light-yellow\", 0.1 \"black\", 0.5 \"dark-blue\", 1 \"medium-blue\", 1.5 \"blue\", 2 \"yellow\", 2.5 \"red\", 3.0 \"dark-red\")"
         self._config['TLM']=True
@@ -24,11 +25,13 @@ class Config:
         self._config['SURFACE']=True
         self._config['GAUSS']=False
         self._config['ONLY_SIN']=False
-        self._config['HYBRID']=True
+        self._config['HYBRID']=False
         self._config['HYBRID_EXPR']="sqrt(x*x+y*y)"
-        self._config['HYBRID_LIST']=["EX,EY","EY,EZ"]
+        self._config['HYBRID_LIST']=["EX,EZ","HY,HZ"]
         self._config['SHOW_MEDIUM']=True
         self._config['ANI']=True
+        self._config['ZIP']=True
+        self._config['ZIPNAME']="data_%s.zip"%(time.strftime("%y-%m-%d-%H-%M", time.localtime()))
         self._config['DO_EX']=True
         self._config['DO_EY']=True
         self._config['DO_EZ']=True
@@ -77,14 +80,40 @@ class FileConfig(Config):
                 self._config['DO_'+task]='1'
             else:
                 self._config['DO_'+task]='0'
+        #verify HYBRID_LIST:
+        hybrid_list=copy.copy(self._config['HYBRID_LIST'])
+        self._config['HYBRID_TASK_MAP']={}
+        for hybrid in self._config['HYBRID_LIST']:
+            list=hybrid.split(",")
+            valid=True
+            for task in list:
+                if self._config['DO_'+task]=='0':
+                    print task+" not generated for hybrid: "+hybrid+"("+self._config['HYBRID_EXPR']+") REMOVED!"
+                    valid=False
+                    break
+            if not valid:
+                hybrid_list.remove(hybrid)
+            else:
+                self._config['HYBRID_TASK_MAP'][hybrid]=None
         if self._config.has_key('HYBRID_LIST'):
             self._config['HYBRID_NUM']=len(self._config['HYBRID_LIST'][0].split(","))
+        if len(hybrid_list)==0:
+            self._config['HYBRID']=False
 
 class ILineAware:
     def encounterLine(self,line):
         pass
 
 class Visualizer(ILineAware):
+    class RefCount:
+        def __init__(self):
+            self._refcount=0
+        def addRef(self,val=1):
+            self._refcount+=val
+        def release(self,val=1):
+            self._refcount-=val
+        def value(self):
+            return self._refcount
     class Worker(threading.Thread):
         def __init__(self,producer,request,config):
             threading.Thread.__init__(self,None,self._worker)
@@ -92,8 +121,23 @@ class Visualizer(ILineAware):
             self._producer=producer
             self._config=config
             self._enabled=True
+            self._event=threading.Event()
+            self._collector=None
+        def __del__(self):
+            pass
         def enable(self,status):
             self._enabled=status
+        def clearEvent(self):
+#            print self.getName()+":clearEvent"
+            self._event.clear()
+        def setEvent(self):
+#            print self.getName()+":setEvent"
+            self._event.set()
+        def waitEvent(self):
+#            print self.getName()+":waitEvent"
+            self._event.wait()
+        def setCollector(self,collector):
+            self._collector=collector
         def prepareWorker(self):
             pass
         def getPlotOption(self):
@@ -126,10 +170,61 @@ class Visualizer(ILineAware):
                             plot=subprocess.Popen([self._config['GNUPLOT'],filename],universal_newlines=True)
                             plot.wait()
                             self.removefile(filename)
+                        trunk['ref'].release()
                     elif self._producer.joining:
                         break
                 except:
                     print "Exceptions in %s!"%(self.getName())
+
+    class Collector(Worker):
+        def __init__(self,producer,request,config,threads):
+            threading.Thread.__init__(self,None,self._worker)
+            self._request=request
+            self._producer=producer
+            self._config=config
+            self._enabled=True
+            self._event=threading.Event()
+            self._threads=threads
+            for thread in self._threads:
+                thread.setCollector(self)
+        def doCollection(self,trunk):
+            pass
+        def _worker(self):
+            while not self._producer.killed :
+               try:
+                    trunk=self._request()
+                    if trunk != None:
+                        if self._enabled:
+                            while True:
+                                if trunk['ref'].value() == 0:
+                                    break
+                                else:
+                                    time.sleep(1)
+                            self.doCollection(trunk)
+                    elif self._producer.joining:
+                        break
+               except:
+                    print "Exceptions in %s!"%(self.getName())
+
+    class ZipArchiver(Collector):
+        def __init__(self,producer,request,config):
+            Visualizer.Worker.__init__(self,producer,request,config)
+            self._z=None
+        def __del__(self):
+            if self._z != None:
+                self._z.close()
+        def _zip_and_remove(self,trunk):
+            for i in range(trunk['start'],trunk['end']+1):
+                filename="%s/%s%5d.out"%(trunk['prefix'],trunk['prefix'],i)
+                if os.path.isfile(filename):
+                    self._z.write(filename)
+                    self.removefile(filename)
+        def doCollection(self,trunk):
+            if None==self._z:
+                filename=self.getName()+self._config['ZIPNAME']
+                self._z=zipfile.ZipFile(filename,mode='w',compression=zipfile.ZIP_DEFLATED,allowZip64=True)
+            self._zip_and_remove(trunk)
+
 
     class MapWorker(Worker):
         def getPlotOption(self):
@@ -346,6 +441,8 @@ class Visualizer(ILineAware):
                             plot=subprocess.Popen([self._config['GNUPLOT'],filename],universal_newlines=True)
                             plot.wait()
                             self.removefile(filename)
+                        for task in trunk['refs'].values():
+                            task.release()
                     elif self._producer.joining:
                         break
                 except:
@@ -355,15 +452,22 @@ class Visualizer(ILineAware):
         self._config=config.getConfig()
         #self._num_threads=self._config['threads']*2
         self._num_threads=self._config['threads']*5
-        self._threads=range(self._num_threads)
+        self._threads=range(self._num_threads + 3)
         self._map_queue=Queue.Queue()
         self._surface_queue=Queue.Queue()
         self._gauss_queue=Queue.Queue()
         self._only_sin_queue=Queue.Queue()
         self._hybrid_queue=Queue.Queue()
+        self._archiver1_queue=Queue.Queue()
+        self._archiver2_queue=Queue.Queue()
+        self._archiver3_queue=Queue.Queue()
         self._trunk_start=1
         self.joining=False
         self.killed=False
+
+    def __del__(self):
+        for thread in self._threads:
+            thread.__del__()
 
     def getTotal(self):
         nt=float(self._config['NT'])
@@ -421,14 +525,43 @@ class Visualizer(ILineAware):
         try:
             end=int(line)
             if end % 10 == 0:
+                for hybrid in self._config['HYBRID_LIST']:
+                    refcounts={}
+                    for task in hybrid.split(','):
+                        if not refcounts.has_key(task):
+                            refcounts[task]=1
+                        else:
+                            refcounts[task]+=1
+                    self._config['HYBRID_TASK_MAP'][hybrid]=refcounts
                 for task in ('EX','EY','EZ','HX','HY','HZ'):
                     if self._config["DO_"+task] == '1':
-                        self.map_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'MAP'})
-                        self.surface_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'3D'})
-                self.gauss_deposit({'start':self._trunk_start,'end':end,'prefix':"GAUSS",'dir':'SIN'})
-                self.only_sin_deposit({'start':self._trunk_start,'end':end,'prefix':"ONLYSIN",'dir':'3D'})
+                        refcount=Visualizer.RefCount()
+                        refcount.addRef(2)
+                        self.map_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'MAP','ref':refcount})
+                        self.surface_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'3D','ref':refcount})
+                        for hybrid in self._config['HYBRID_LIST']:
+                            if self._config['HYBRID_TASK_MAP'].has_key(hybrid):
+                                refcounts=self._config['HYBRID_TASK_MAP'][hybrid]
+                                if refcounts.has_key(task):
+                                    refcount.addRef(refcounts[task])
+                                    refcounts[task]=refcount
+                        self.archiver1_deposit({'start':self._trunk_start,'end':end,'prefix':task,'dir':'3D','ref':refcount})
+                    else:
+                        for hybrid in self._config['HYBRID_LIST']:
+                            if self._config['HYBRID_TASK_MAP'].has_key(hybrid):
+                                refcounts=self._config['HYBRID_TASK_MAP'][hybrid]
+                                if refcounts.has_key(task):
+                                    del refcounts[task]
                 for hybrid in self._config['HYBRID_LIST']:
-                    self.hybrid_deposit({'start':self._trunk_start,'end':end,'prefix':hybrid,'dir':'HYBRID'})
+                    self.hybrid_deposit({'start':self._trunk_start,'end':end,'prefix':hybrid,'dir':'HYBRID','refs':self._config['HYBRID_TASK_MAP'][hybrid]})
+                refcount=Visualizer.RefCount()
+                refcount.addRef()
+                self.gauss_deposit({'start':self._trunk_start,'end':end,'prefix':"GAUSS",'dir':'SIN','ref':refcount})
+                self.archiver2_deposit({'start':self._trunk_start,'end':end,'prefix':"GAUSS",'dir':'SIN','ref':refcount})
+                refcount=Visualizer.RefCount()
+                refcount.addRef()
+                self.only_sin_deposit({'start':self._trunk_start,'end':end,'prefix':"ONLYSIN",'dir':'3D','ref':refcount})
+                self.archiver3_deposit({'start':self._trunk_start,'end':end,'prefix':"ONLYSIN",'dir':'3D','ref':refcount})
                 self._trunk_start=end+1
         except:
             #print "Exceptions in encounterLine: %s"%(line)
@@ -485,6 +618,36 @@ class Visualizer(ILineAware):
     def hybrid_deposit(self,trunk):
         self._hybrid_queue.put(trunk,True)
 
+    def archiver1_request(self):
+        trunk=None
+        try:
+            trunk=self._archiver1_queue.get(True,1)
+        finally:
+            return trunk
+
+    def archiver1_deposit(self,trunk):
+        self._archiver1_queue.put(trunk,True)
+
+    def archiver2_request(self):
+        trunk=None
+        try:
+            trunk=self._archiver2_queue.get(True,1)
+        finally:
+            return trunk
+
+    def archiver2_deposit(self,trunk):
+        self._archiver2_queue.put(trunk,True)
+
+    def archiver3_request(self):
+        trunk=None
+        try:
+            trunk=self._archiver3_queue.get(True,1)
+        finally:
+            return trunk
+
+    def archiver3_deposit(self,trunk):
+        self._archiver3_queue.put(trunk,True)
+
     def start(self):
         try:
             for i in range(self._num_threads/5):
@@ -498,20 +661,35 @@ class Visualizer(ILineAware):
                 self._threads[i].start()
                 self._threads[i].enable(self._config['SURFACE'])
             for i in range(self._num_threads*2/5,self._num_threads*3/5):
-                self._threads[i]=self.GaussWorker(self,self.gauss_request,self._config)
-                self._threads[i].setName("GaussWorker"+str(i))
-                self._threads[i].start()
-                self._threads[i].enable(self._config['GAUSS'])
-            for i in range(self._num_threads*3/5,self._num_threads*4/5):
-                self._threads[i]=self.OnlySinWorker(self,self.only_sin_request,self._config)
-                self._threads[i].setName("OnlySinWorker"+str(i))
-                self._threads[i].start()
-                self._threads[i].enable(self._config['ONLY_SIN'])
-            for i in range(self._num_threads*4/5,self._num_threads):
                 self._threads[i]=self.HybridWorker(self,self.hybrid_request,self._config)
                 self._threads[i].setName("HybridWorker"+str(i))
                 self._threads[i].start()
                 self._threads[i].enable(self._config['HYBRID'])
+            for i in range(self._num_threads*3/5,self._num_threads*4/5):
+                self._threads[i]=self.GaussWorker(self,self.gauss_request,self._config)
+                self._threads[i].setName("GaussWorker"+str(i))
+                self._threads[i].start()
+                self._threads[i].enable(self._config['GAUSS'])
+            for i in range(self._num_threads*4/5,self._num_threads):
+                self._threads[i]=self.OnlySinWorker(self,self.only_sin_request,self._config)
+                self._threads[i].setName("OnlySinWorker"+str(i))
+                self._threads[i].start()
+                self._threads[i].enable(self._config['ONLY_SIN'])
+            self._threads[self._num_threads]=self.ZipArchiver(self,self.archiver1_request,self._config)
+            self._threads[self._num_threads].setName("EH_")
+            self._threads[self._num_threads].start()
+            self._threads[self._num_threads].enable(self._config['ZIP'])
+            self._num_threads+=1
+            self._threads[self._num_threads]=self.ZipArchiver(self,self.archiver2_request,self._config)
+            self._threads[self._num_threads].setName("Gauss_")
+            self._threads[self._num_threads].start()
+            self._threads[self._num_threads].enable(self._config['ZIP'])
+            self._num_threads+=1
+            self._threads[self._num_threads]=self.ZipArchiver(self,self.archiver3_request,self._config)
+            self._threads[self._num_threads].setName("OnlySin_")
+            self._threads[self._num_threads].start()
+            self._threads[self._num_threads].enable(self._config['ZIP'])
+            self._num_threads+=1
         except:
             print "Exceptions in start!"
 
@@ -595,6 +773,7 @@ class TLM:
             else:
                 os.kill(self._tlm.pid,signal.SIGINT)
             self._tlm.wait()
+        self._visualizer.__del__()
 
     def killall(self):
         print "Terminating all calculating threads, this may take some minutes..."
