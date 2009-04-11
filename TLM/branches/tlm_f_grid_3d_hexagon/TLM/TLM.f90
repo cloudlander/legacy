@@ -15,10 +15,9 @@
       DOUBLE PRECISION,  ALLOCATABLE:: REHZ(:,:,:,:),IMHZ(:,:,:,:)
 	  DOUBLE PRECISION,  ALLOcATABLE:: EH(:,:,:)
       INTEGER, ALLOCATABLE:: L(:)
-      DOUBLE PRECISION,  ALLOCATABLE:: YY(:,:)
-	  DOUBLE PRECISION YX,YZ
+      DOUBLE PRECISION,  ALLOCATABLE:: YY(:,:),YX(:,:),YZ(:,:)
       INTEGER, ALLOCATABLE:: PULSE(:,:)   !脉冲点
-      INTEGER, ALLOCATABLE:: YYY(:,:)      
+      INTEGER, ALLOCATABLE:: YYY(:,:)
       DOUBLE PRECISION,  ALLOCATABLE:: GAUSS(:,:,:),GAUSS2(:,:,:)
       
       DOUBLE PRECISION SA(5,5),SB(5,5),SC(5,5),SD(5,5),SE(5,5),SF(5,5)
@@ -187,23 +186,25 @@
       ALLOCATE (REHZ(10,NX,NY,NZ),IMHZ(10,NX,NY,NZ))
       ALLOCATE (GAUSS(NX,NY,NZ),GAUSS2(NX,NY,NZ))
 	  ALLOCATE (EH(NX,NY,NZ))
-      ALLOCATE (YY(NX,NZ))
+      ALLOCATE (YY(NX,NZ),YX(NX,NZ),YZ(NX,NZ))
       ALLOCATE (YYY(NX,NZ))
       ALLOCATE (PULSE(NX,3))
 
       !  初始化X-Z平面ER
-	  YX=2*(V*W*SQRT(H)*ER/U-2)
-	  YZ=2*(V*U*SQRT(H)*ER/W-2)
       DO 2221 II=SX,ENDX
          DO 2222 KK=SZ,ENDZ
+	        YX(II,KK)=2*(V*W*SQRT(H)*ER/U-2)
             YY(II,KK)=2*(U*W*SQRT(H)*ER/V-2)  !介电常数支线结构参数的计算(方向5即为介电常数支线)
+	        YZ(II,KK)=2*(V*U*SQRT(H)*ER/W-2)
             YYY(II,KK)=ER_COLOR
  2222    CONTINUE
  2221 CONTINUE
  
  		  DO 2223 II=SX,ENDX
 			 DO 2224 KK=START_COL,END_COL
+	            YX(II,KK)=2*(V*W*SQRT(H)*ER1/U-2)
 				YY(II,KK)=2*(U*W*SQRT(H)*ER1/V-2)  !介电常数支线结构参数的计算(方向5即为介电常数支线)
+	            YZ(II,KK)=2*(V*U*SQRT(H)*ER1/W-2)
 				YYY(II,KK)=ER1_COLOR
 	 2224    CONTINUE
 	 2223 CONTINUE
@@ -234,7 +235,7 @@
 !				   CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(U*W*SQRT(H)*ER1/V-2),ER1_COLOR, 0.8)
 !			ELSE
 !				   CALL COLOR(GTYPE,SIDE1,SIDE2,START_ROW+II*SIDE1,START_COL+KK*SIDE2,YY,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 1.0)
-				   CALL COLOR(GTYPE,SIDE1*4,SIDE2*4,II,KK,YY,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 1.41421356*0.7)
+				   CALL COLOR(GTYPE,SIDE1*4,SIDE2*4,II,KK,YX,YY,YZ,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(V*W*SQRT(H)*ER2/U-2),2*(U*W*SQRT(H)*ER2/V-2),2*(V*U*SQRT(H)*ER2/W-2),ER2_COLOR, 1.41421356*0.7)
 !			ENDIF
 !	 3332    CONTINUE
 !	 3331 CONTINUE
@@ -264,7 +265,7 @@
 		  KK=START_COL+KKK
 		  DO WHILE(II .LE. ENDX)
 			DO WHILE(KK .LE. END_COL)
-			   CALL HEXAGON(GTYPE,SIDE1*4,SIDE2*4,II,KK,YY,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(U*W*SQRT(H)*ER2/V-2),ER2_COLOR, 0.7)
+			   CALL HEXAGON(GTYPE,SIDE1*4,SIDE2*4,II,KK,YX,YY,YZ,YYY,NX,NZ,SX,ENDX,START_COL,END_COL,2*(V*W*SQRT(H)*ER2/U-2),2*(U*W*SQRT(H)*ER2/V-2),2*(V*U*SQRT(H)*ER2/W-2),ER2_COLOR, 0.7)
 			   KK=KK+6*SIDE2
 			ENDDO
 			II=II+2*SIDE1
@@ -314,13 +315,29 @@
 		ENDIF
   231 CONTINUE
 
-      OPEN(132,FILE='ER.out',FORM='FORMATTED')
+      OPEN(132,FILE='YX.out',FORM='FORMATTED')
       DO 11113 I=SX,ENDX
         DO 11114 K=SZ,ENDZ        
-           WRITE(132,*) K,I,YY(I,K)
+           WRITE(132,117) K,I,YX(I,K)
 11114   CONTINUE
         WRITE(132,*)
 11113 CONTINUE
+      CLOSE(132) 
+      OPEN(132,FILE='YY.out',FORM='FORMATTED')
+      DO 11115 I=SX,ENDX
+        DO 11116 K=SZ,ENDZ        
+           WRITE(132,117) K,I,YY(I,K)
+11116   CONTINUE
+        WRITE(132,*)
+11115 CONTINUE
+      CLOSE(132) 
+      OPEN(132,FILE='YZ.out',FORM='FORMATTED')
+      DO 11117 I=SX,ENDX
+        DO 11118 K=SZ,ENDZ        
+           WRITE(132,117) K,I,YZ(I,K)
+11118   CONTINUE
+        WRITE(132,*)
+11117 CONTINUE
       CLOSE(132) 
 
       OPEN(133,FILE='screen.txt',FORM='FORMATTED')
@@ -466,7 +483,7 @@
 	!             例如FRE=10GHz时，由于TLM色散限制 deltaL/lamd<0.1  ,此处取deltaL/lamd=(1/3)*0.1=3.33*E-2
 	!             !IVB(III,X,Y,Z)=sin(6.283E+10*(0.33333E-11)*T)  !为sin激发单色波形式 FRE=10GHz
     !             !其中0.3333E-11=1/3E-11=dl/CC=deltaL/C(一个格点宽度/光速)  !dl取(3*E-2)*lamd=(3*E-2)*C/FRE 且取FRE=10GHz, C为光速                 
-	!			 IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(2*PI*(NORMAL_FRE/(SIDE1*4*1.41421356))*T)  !为sin激发单色波形式
+	!            IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(2*PI*(NORMAL_FRE/(SIDE1*4*1.41421356))*T)  !为sin激发单色波形式
                  IVE(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVE(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(2*PI*(NORMAL_FRE/(SIDE1*4*1.41421356))*T)  !为sin激发单色波形式
 	!            IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))=IVB(III,PULSE(PIND,1),PULSE(PIND,2),PULSE(PIND,3))+sin(PI*T/15)  !为sin激发单色波形式
  992         CONTINUE 
@@ -492,9 +509,9 @@
 	      DO 130 J=SY,ENDY
 	       DO 140 K=SZ,ENDZ
 	       
-             CALL SBL(SA,YX,GX)	!生成并联结点散射矩阵
+             CALL SBL(SA,YX(I,K),GX)	!生成并联结点散射矩阵
              CALL SBL(SB,YY(I,K),GY)	
-             CALL SBL(SC,YZ,GZ)	
+             CALL SBL(SC,YZ(I,K),GZ)	
   
 		     DO 501 M=1,5
 		        RVA(M,I,J,K)=0
@@ -951,13 +968,13 @@
       FIM=FIM+E*SIN(2*3.14159*T*TLBB/2.0)
       END
 
-      SUBROUTINE COLOR(GTYPE,S1,S2,I,K,ZY,ZYY,NX,NZ,SX,ENDX,SZ,ENDZ,C,CC, SHRINK)
+      SUBROUTINE COLOR(GTYPE,S1,S2,I,K,YX,YY,YZ,YYY,NX,NZ,SX,ENDX,SZ,ENDZ,C1,C2,C3,CC, SHRINK)
       INTEGER GTYPE,S1,S2,I,K,NX,NZ,SIDE1,SIDE2,SX,ENDX,SZ,ENDZ
 	  REAL SHRINK
       INTEGER CC
-      DOUBLE PRECISION ZY(NX,NZ)
-      INTEGER ZYY(NX,NZ)
-      DOUBLE PRECISION C
+      DOUBLE PRECISION YX(NX,NZ),YY(NX,NZ),YZ(NX,NZ)
+      INTEGER YYY(NX,NZ)
+      DOUBLE PRECISION C1,C2,C3
       DOUBLE PRECISION CROW,CCOL,A,B,AX
       INTEGER IGAP,KGAP
 
@@ -975,23 +992,29 @@
          DO 3334 KKK=0,S2-1-KGAP
              IF(GTYPE .EQ. 0) THEN     !矩形
 			   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
-                 ZY(I+III,K+KKK)=C
-                 ZYY(I+III,K+KKK)=CC
+				     YX(I+III,K+KKK)=C1
+                     YY(I+III,K+KKK)=C2
+					 YZ(I+III,K+KKK)=C3
+                     YYY(I+III,K+KKK)=CC
 			   ENDIF
              ENDIF
              IF(GTYPE .EQ. 1) THEN     !椭圆
                  IF((III-CROW)*(III-CROW)/(CROW*CROW)+(KKK-CCOL)*(KKK-CCOL)/(CCOL*CCOL) .LE. 1) THEN
 				   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
-                     ZY(I+III,K+KKK)=C
-                     ZYY(I+III,K+KKK)=CC
+				     YX(I+III,K+KKK)=C1
+                     YY(I+III,K+KKK)=C2
+					 YZ(I+III,K+KKK)=C3
+                     YYY(I+III,K+KKK)=CC
 				   ENDIF
                  ENDIF
              ENDIF
              IF(GTYPE .EQ. 2) THEN     !三角形
                  IF(2*A*(B/2-KKK)/B .LE. III .AND. 2*A*(KKK-B/2)/B .LE. III) THEN
 				   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
-                     ZY(I+III,K+KKK)=C
-                     ZYY(I+III,K+KKK)=CC
+				     YX(I+III,K+KKK)=C1
+                     YY(I+III,K+KKK)=C2
+					 YZ(I+III,K+KKK)=C3
+                     YYY(I+III,K+KKK)=CC
 				   ENDIF
                  ENDIF
              ENDIF            
@@ -999,13 +1022,13 @@
  3333 CONTINUE
       END
 
-      SUBROUTINE HEXAGON(GTYPE,S1,S2,I,K,ZY,ZYY,NX,NZ,SX,ENDX,SZ,ENDZ,C,CC, SHRINK)
+      SUBROUTINE HEXAGON(GTYPE,S1,S2,I,K,YX,YY,YZ,YYY,NX,NZ,SX,ENDX,SZ,ENDZ,C1,C2,C3,CC, SHRINK)
       INTEGER GTYPE,S1,S2,I,K,NX,NZ,SX,ENDX,SZ,ENDZ,SIDE1,SIDE2
 	  REAL SHRINK
       INTEGER CC
-      DOUBLE PRECISION ZY(NX,NZ)
-      INTEGER ZYY(NX,NZ)
-      DOUBLE PRECISION C
+      DOUBLE PRECISION YX(NX,NZ),YY(NX,NZ),YZ(NX,NZ)
+      INTEGER YYY(NX,NZ)
+      DOUBLE PRECISION C1,C2,C3
       DOUBLE PRECISION CROW,CCOL,A,B,AX
       INTEGER IGAP,KGAP,HEXGAP
 
@@ -1027,30 +1050,38 @@
              IF(GTYPE .EQ. 3) THEN     !六边形                                  
                  IF((B/4-KKK)/(B/4) .LE. III/(A/2) .AND. (KKK-3*B/4)/(B/4) .LT. III/(A/2) .AND. (B/4-KKK)/(B/4) .LE. (A-III)/(A/2) .AND. (KKK-3*B/4)/(B/4) .LT. (A-III)/(A/2)) THEN
                    IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
-                     ZY(I+III,K+KKK)=C
-                     ZYY(I+III,K+KKK)=CC
+				     YX(I+III,K+KKK)=C1
+                     YY(I+III,K+KKK)=C2
+					 YZ(I+III,K+KKK)=C3
+                     YYY(I+III,K+KKK)=CC
                    ENDIF
                  ENDIF
              ENDIF   
              IF(GTYPE .EQ. 10) THEN     !矩形
 			   IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
-                 ZY(I+III,K+KKK)=C
-                 ZYY(I+III,K+KKK)=CC
+				     YX(I+III,K+KKK)=C1
+                     YY(I+III,K+KKK)=C2
+					 YZ(I+III,K+KKK)=C3
+                     YYY(I+III,K+KKK)=CC
 			   ENDIF
              ENDIF
              IF(GTYPE .EQ. 11) THEN     !椭圆
                  IF((III-CROW)*(III-CROW)/(CROW*CROW)+(KKK-CCOL)*(KKK-CCOL)/(CCOL*CCOL) .LE. 1) THEN
                    IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN
-                     ZY(I+III,K+KKK)=C
-                     ZYY(I+III,K+KKK)=CC
+				     YX(I+III,K+KKK)=C1
+                     YY(I+III,K+KKK)=C2
+					 YZ(I+III,K+KKK)=C3
+                     YYY(I+III,K+KKK)=CC
 				   ENDIF
                  ENDIF
              ENDIF
              IF(GTYPE .EQ. 12) THEN     !三角形
                  IF(2*A*(B/2-KKK)/B .LE. III .AND. 2*A*(KKK-B/2)/B .LE. III) THEN
                    IF(I+III .LE. ENDX .AND. K+KKK .LE. ENDZ .AND. I+III .GE. SX .AND. K+KKK .GE. SZ) THEN 
-                     ZY(I+III,K+KKK)=C
-                     ZYY(I+III,K+KKK)=CC
+				     YX(I+III,K+KKK)=C1
+                     YY(I+III,K+KKK)=C2
+					 YZ(I+III,K+KKK)=C3
+                     YYY(I+III,K+KKK)=CC
 				   ENDIF
                  ENDIF
              ENDIF    			           
